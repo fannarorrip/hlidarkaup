@@ -27,11 +27,14 @@ async function getToken(): Promise<string> {
 // ── Map Regla product → our Product type ──────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapProduct(p: any) {
+  const netPrice = p.UnitPrice ?? 0;
+  const vatPct = p.VatDefinition?.Percentage ?? 24;
+  const grossPrice = Math.round(netPrice * (1 + vatPct / 100));
   return {
     id: String(p.ProductNumber ?? p.ID ?? ""),
     name: p.Name ?? "",
     description: p.DescriptionShort || p.DescriptionLong || p.Name || "",
-    price: Math.round(p.UnitPrice ?? 0),
+    price: grossPrice,
     category: p.ProductGroupNumber ?? p.ProductGroup?.Name ?? "",
     stock: p.IsInStockControl ? Math.floor(p.StockQuantity ?? 0) : undefined,
     image: p.ImageUrl ?? undefined,
