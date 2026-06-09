@@ -122,7 +122,7 @@ export default function HomePage() {
       )}
 
       {/* Popular products — only when not searching and using mock data */}
-      {!isSearching && !usingRegla && (
+      {!isSearching && !usingRegla && !initialLoading && (
         <section>
           <h2 className="text-lg font-bold text-gray-800 mb-3">🔥 Vinsælar vörur</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">

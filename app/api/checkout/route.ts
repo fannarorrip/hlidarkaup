@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Fallback: save order locally / to Netlify Blobs ────────────────────────
+  // ── Fallback: save order (best-effort) and always return orderId ────────────
   const order: StoredOrder = {
     id: orderId,
     createdAt: new Date().toISOString(),
@@ -103,8 +103,12 @@ export async function POST(req: NextRequest) {
     status: "pending",
     reglaError: true,
   };
-  await saveOrder(order);
-  console.log(`[Store] Order saved: ${orderId}`);
+  try {
+    await saveOrder(order);
+    console.log(`[Store] Order saved: ${orderId}`);
+  } catch (err) {
+    console.warn("[Store] Could not save order, returning orderId anyway:", err);
+  }
 
   return NextResponse.json({ orderId });
 }
