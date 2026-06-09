@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCart } from "@/lib/cart-context";
 import { ShoppingCartIcon } from "@heroicons/react/24/solid";
 
 export default function CartBar() {
   const { count, total } = useCart();
+  const pathname = usePathname();
 
   if (count === 0) return null;
+  if (pathname === "/cart" || pathname === "/checkout" || pathname === "/confirmation") return null;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 p-4 sm:hidden z-50">
