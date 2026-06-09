@@ -71,7 +71,7 @@ export default function HomePage() {
       <div className="bg-gradient-to-r from-brand-red to-brand-red-light rounded-2xl px-6 py-8 text-white">
         <h1 className="text-2xl sm:text-3xl font-extrabold mb-1">Velkomin í Hlíðarkaup</h1>
         <p className="text-red-100 text-sm sm:text-base">
-          Pantaðu og sæktu í verslunina — opið <strong className="text-white">10:00–22:00</strong>
+          Pantaðu og sæktu í verslunina — opið <strong className="text-white">09:00–22:00</strong>
         </p>
       </div>
 

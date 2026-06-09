@@ -41,11 +41,11 @@ export default function Footer() {
           <ul className="space-y-1.5 text-sm text-red-100">
             <li className="flex items-center gap-2">
               <ClockIcon className="w-4 h-4 flex-shrink-0" />
-              <span>Mán–Fös: 10:00–22:00</span>
+              <span>Mán–Lau: 09:00–22:00</span>
             </li>
             <li className="flex items-center gap-2">
               <ClockIcon className="w-4 h-4 flex-shrink-0 opacity-0" />
-              <span>Lau–Sun: 10:00–22:00</span>
+              <span>Sun: 10:00–22:00</span>
             </li>
           </ul>
           <p className="mt-4 text-xs text-red-200">Netpantanir eru tilbúnar til sótt á völdum tíma.</p>

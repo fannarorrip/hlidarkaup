@@ -8,12 +8,20 @@ import { useCart } from "@/lib/cart-context";
 import { TruckIcon, BuildingStorefrontIcon } from "@heroicons/react/24/outline";
 
 // ── Time slots ────────────────────────────────────────────────────────────────
-const ALL_TIMES = Array.from({ length: 25 }, (_, i) => {
-  const hour = 10 + Math.floor(i / 2);
-  const mins = i % 2 === 0 ? "00" : "30";
-  if (hour > 22 || (hour === 22 && mins === "30")) return null;
-  return `${hour}:${mins}`;
-}).filter(Boolean) as string[];
+// Pickup: 09:00–21:30, Delivery: 09:00–18:30
+// Sunday opens at 10:00
+function generateTimes(lastHour: number, lastMin: number): string[] {
+  const times: string[] = [];
+  for (let h = 9; h <= lastHour; h++) {
+    for (const m of [0, 30]) {
+      if (h === lastHour && m > lastMin) break;
+      times.push(`${String(h).padStart(2, "0")}:${m === 0 ? "00" : "30"}`);
+    }
+  }
+  return times;
+}
+const PICKUP_TIMES   = generateTimes(21, 30);
+const DELIVERY_TIMES = generateTimes(18, 30);
 
 const IS_MONTHS = ["janúar","febrúar","mars","apríl","maí","júní","júlí","ágúst","september","október","nóvember","desember"];
 const IS_WEEKDAYS = ["Sunnudagur","Mánudagur","Þriðjudagur","Miðvikudagur","Fimmtudagur","Föstudagur","Laugardagur"];
@@ -76,16 +84,20 @@ export default function CheckoutPage() {
   const { todayLabel, availableTimes, firstAvailable } = useMemo(() => {
     const now = new Date();
     const nowMin = now.getHours() * 60 + now.getMinutes();
-    const availableTimes = ALL_TIMES.map((t) => {
+    const isSunday = now.getDay() === 0;
+    const openMin = isSunday ? 10 * 60 : 9 * 60;
+    const allTimes = deliveryType === "delivery" ? DELIVERY_TIMES : PICKUP_TIMES;
+    const availableTimes = allTimes.map((t) => {
       const [h, m] = t.split(":").map(Number);
-      return { time: t, past: h * 60 + m <= nowMin + 30 };
+      const slotMin = h * 60 + m;
+      return { time: t, past: slotMin <= nowMin + 30 || slotMin < openMin };
     });
     return {
       todayLabel: formatTodayIcelandic(now),
       availableTimes,
       firstAvailable: availableTimes.find(t => !t.past)?.time ?? null,
     };
-  }, []);
+  }, [deliveryType]);
 
   // Init autocomplete when Maps is ready AND delivery section is visible
   useEffect(() => {
@@ -275,7 +287,9 @@ export default function CheckoutPage() {
               </span>
             </div>
             <p className="text-sm text-gray-500 mb-4">
-              Við erum opin <strong>10:00–22:00</strong>
+              {deliveryType === "delivery"
+                ? <>Heimsending til <strong>18:30</strong></>
+                : <>Sækja til <strong>21:30</strong> &mdash; opið 09:00–22:00 (Sun 10:00)</>}
               {firstAvailable ? ` — fyrsti laus tími er ${firstAvailable}` : ""}
             </p>
             <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
