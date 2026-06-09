@@ -24,7 +24,7 @@ export default function Footer() {
             </li>
             <li className="flex items-center gap-2">
               <PhoneIcon className="w-4 h-4 flex-shrink-0" />
-              <a href="tel:+3545551234" className="hover:text-white transition-colors">555-1234</a>
+              <a href="tel:+3544536166" className="hover:text-white transition-colors">453-6166</a>
             </li>
             <li className="flex items-center gap-2">
               <EnvelopeIcon className="w-4 h-4 flex-shrink-0" />
