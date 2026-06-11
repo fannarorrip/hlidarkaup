@@ -4,7 +4,7 @@ const REGLA_BASE = process.env.REGLA_BASE_URL ?? "https://www.regla.is/fibs/Rest
 const REGLA_USER = process.env.REGLA_USERNAME ?? "";
 const REGLA_PASS = process.env.REGLA_PASSWORD ?? "";
 
-// ── Token cache (reuse for 20 min) ────────────────────────────────────────────
+// ── Token cache ───────────────────────────────────────────────────────────────
 let cachedToken: string | null = null;
 let tokenExpiry = 0;
 
@@ -20,11 +20,19 @@ async function getToken(): Promise<string> {
   const token = data.Result.Messages?.[0];
   if (!token || token.startsWith("INFO_")) throw new Error("No token");
   cachedToken = token;
-  tokenExpiry = Date.now() + 20 * 60 * 1000; // 20 min
+  tokenExpiry = Date.now() + 20 * 60 * 1000;
   return token;
 }
 
-// ── Map Regla product → our Product type ──────────────────────────────────────
+// ── Product cache (5 min TTL per query) ───────────────────────────────────────
+interface CacheEntry {
+  products: ReturnType<typeof mapProduct>[];
+  total: number;
+  expiresAt: number;
+}
+const productCache = new Map<string, CacheEntry>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapProduct(p: any) {
   const netPrice = p.UnitPrice ?? 0;
@@ -43,14 +51,19 @@ function mapProduct(p: any) {
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const search   = searchParams.get("search") ?? "";
-  const page     = parseInt(searchParams.get("page") ?? "0", 10);
-  const limit    = parseInt(searchParams.get("limit") ?? "48", 10);
+  const search  = searchParams.get("search") ?? "";
+  const page    = parseInt(searchParams.get("page") ?? "0", 10);
+  const limit   = parseInt(searchParams.get("limit") ?? "48", 10);
   const indexFrom = page * limit;
 
-  // Fall back to mock data if no Regla credentials
   if (!REGLA_USER || !REGLA_PASS) {
     return NextResponse.json({ products: [], total: 0, page, limit });
+  }
+
+  const cacheKey = `${search}|${page}|${limit}`;
+  const cached = productCache.get(cacheKey);
+  if (cached && Date.now() < cached.expiresAt) {
+    return NextResponse.json({ products: cached.products, total: cached.total, page, limit });
   }
 
   try {
@@ -59,12 +72,7 @@ export async function GET(req: NextRequest) {
     const res = await fetch(`${REGLA_BASE}/SearchProducts`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        token,
-        search,
-        indexFrom,
-        maxRecordCount: limit,
-      }),
+      body: JSON.stringify({ token, search, indexFrom, maxRecordCount: limit }),
     });
 
     const data = await res.json();
@@ -74,11 +82,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ products: [], total: 0, page, limit });
     }
 
-    // Parse total count from messages
     const countMsg = data.Result.Messages?.find((m: string) => m.includes("INFO_SEARCH_TOTAL_COUNT"));
     const total = countMsg ? parseInt(countMsg.split(";")[1], 10) : 0;
-
     const products = (data.Returned ?? []).map(mapProduct).filter((p: { price: number }) => p.price > 0);
+
+    productCache.set(cacheKey, { products, total, expiresAt: Date.now() + CACHE_TTL });
 
     return NextResponse.json({ products, total, page, limit });
   } catch (err) {

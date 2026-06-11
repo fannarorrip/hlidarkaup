@@ -25,6 +25,19 @@ async function getReglaToken(): Promise<string> {
   return token;
 }
 
+async function reglaPost(endpoint: string, body: object) {
+  const res = await fetch(`${REGLA_BASE}/${endpoint}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`Regla ${endpoint} HTTP ${res.status}: ${txt.slice(0, 200)}`);
+  }
+  return res.json();
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -44,36 +57,63 @@ export async function POST(req: NextRequest) {
   if (REGLA_USER && REGLA_PASS) {
     try {
       const token = await getReglaToken();
-      const invoiceEntries = items.map((item: { product: { id: string; name: string; price: number }; quantity: number }) => ({
-        Product: { ProductNumber: item.product.id, Name: item.product.name, UnitPrice: item.product.price, AllowPriceOverwrite: true, VatDefinition: { Key: "U2" } },
-        Quantity: item.quantity,
-        UnitPrice: item.product.price,
-        Text: item.product.name,
-        Amount: 0, VATPercentage: 0, VATAmount: 0, Discount: 0, IsDiscountPercentage: false, ID: 0,
+
+      // Fetch full product objects from Regla so all required fields are present
+      const productObjects = await Promise.all(
+        items.map(async (item: { product: { id: string }; quantity: number }) => {
+          const data = await reglaPost("GetProduct", { token, productNumber: item.product.id });
+          if (!data?.Returned) throw new Error(`Product ${item.product.id} not found in Regla`);
+          return { product: data.Returned, quantity: item.quantity };
+        })
+      );
+
+      // Block overselling: Regla lets stock go negative, so enforce it here.
+      const shortItems = productObjects.filter(
+        ({ product, quantity }) => product.IsInStockControl && (product.StockQuantity ?? 0) < quantity,
+      );
+      if (shortItems.length > 0) {
+        const names = shortItems
+          .map(({ product }) => `${product.Name} (${Math.max(0, Math.floor(product.StockQuantity ?? 0))} eftir)`)
+          .join(", ");
+        return NextResponse.json(
+          { error: `Því miður er ekki nóg til á lager af: ${names}. Minnkaðu magnið eða fjarlægðu vöruna úr körfunni.` },
+          { status: 409 },
+        );
+      }
+
+      const invoiceEntries = productObjects.map(({ product, quantity }) => ({
+        Product: product,
+        Quantity: quantity,
+        Text: product.Name,
       }));
 
       if (deliveryType === "delivery" && shippingCost > 0) {
-        invoiceEntries.push({ Product: { ProductNumber: "SENDING", Name: "Sendingarkostnaður", UnitPrice: shippingCost, AllowPriceOverwrite: true, VatDefinition: { Key: "U2" } }, Quantity: 1, UnitPrice: shippingCost, Text: `Sending: ${deliveryAddress}`, Amount: 0, VATPercentage: 0, VATAmount: 0, Discount: 0, IsDiscountPercentage: false, ID: 0 });
+        // Shipping as a plain text entry — no product lookup needed
+        const shippingProduct = await reglaPost("GetProduct", { token, productNumber: "SENDING" }).catch(() => null);
+        if (shippingProduct?.Returned) {
+          invoiceEntries.push({ Product: { ...shippingProduct.Returned, UnitPrice: shippingCost }, Quantity: 1, Text: `Sending: ${deliveryAddress}` });
+        }
       }
 
-      const res = await fetch(`${REGLA_BASE}/CreateInvoice`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          token,
-          invoice: {
-            Customer: { CustomerNumber: customerPhone.replace(/[^0-9]/g, "").padEnd(10, "0").slice(0, 10), Name: customerName, Phone1: customerPhone, PaymentMethod: { ID: 2848 } },
-            Concerning: `Netpöntun – ${customerName}`,
-            Comment: comment,
-            InvoiceEntries: invoiceEntries,
-            Amount: 0, DiscountAmount: 0, VatAmount: 0,
-            Date: new Date().toISOString(),
-            Type: 25, IsElectronicInvoice: false, IsPrinted: false, UniqueReference: orderId,
+      // Regla requires: valid kennitala as CustomerNumber, full PaymentMethod
+      // object and PostalCode — omitting any of these crashes their API (HTTP 500).
+      const data = await reglaPost("CreateInvoice", {
+        token,
+        invoice: {
+          Customer: {
+            CustomerNumber: process.env.REGLA_WEB_CUSTOMER_KENNITALA ?? "",
+            Name: customerName,
+            Phone1: customerPhone,
+            PostalCode: { Value: "550", Name: "Sauðárkróki" },
+            PaymentMethod: { ID: 2848, Name: "Vefverslun", NameEnglish: "Webshop", IssuerID: 0 },
           },
-        }),
+          Concerning: `Netpöntun – ${customerName}`,
+          Comment: comment,
+          InvoiceEntries: invoiceEntries,
+          UniqueReference: orderId,
+        },
       });
 
-      const data = await res.json();
       if (data?.Result?.Success) {
         const invoiceMsg = data.Result.Messages?.find((m: string) => m.includes("INFO_INVOICE_NUMBER"));
         const invoiceNumber = invoiceMsg ? invoiceMsg.split(";")[1] : orderId;
@@ -86,7 +126,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Fallback: save order (best-effort) and always return orderId ────────────
+  // ── Fallback: save locally ────────────────────────────────────────────────
   const order: StoredOrder = {
     id: orderId,
     createdAt: new Date().toISOString(),
@@ -105,9 +145,8 @@ export async function POST(req: NextRequest) {
   };
   try {
     await saveOrder(order);
-    console.log(`[Store] Order saved: ${orderId}`);
   } catch (err) {
-    console.warn("[Store] Could not save order, returning orderId anyway:", err);
+    console.warn("[Store] Could not save order:", err);
   }
 
   return NextResponse.json({ orderId });

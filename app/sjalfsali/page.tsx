@@ -1,93 +1,79 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function SjalfsaliPage() {
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [age, setAge] = useState("");
-  const [sent, setSent] = useState(false);
-  const [loading, setLoading] = useState(false);
+const ERROR_MESSAGES: Record<string, string> = {
+  cancelled: "Þú hættir við staðfestinguna. Reyndu aftur.",
+  invalid_state: "Öryggisvillar kom upp. Reyndu aftur.",
+  token_failed: "Gat ekki tengt við Kenni. Reyndu aftur.",
+  no_kennitala: "Kennitala fékkst ekki frá Kenni. Reyndu aftur.",
+  too_young: "Því miður ert þú of ung/ur til að fá aðgang að sjálfsalanum.",
+};
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name || !phone || !age) return;
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setSent(true);
-    }, 800);
-  }
-
-  if (sent) {
-    return (
-      <div className="max-w-md mx-auto px-4 py-20 text-center">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <span className="text-4xl">✅</span>
-        </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Takk fyrir umsóknina!</h1>
-        <p className="text-gray-500 mb-8">Við munum hafa samband við þig eins fljótt og auðið er.</p>
-        <Link href="/" className="inline-block bg-brand-red hover:bg-brand-red-dark text-white font-bold px-8 py-3 rounded-xl transition-colors">
-          Fara á forsíðu
-        </Link>
-      </div>
-    );
-  }
+function SjalfsaliContent() {
+  const params = useSearchParams();
+  const errorKey = params.get("error");
+  const detail = params.get("detail");
+  const errorMsg = errorKey ? (ERROR_MESSAGES[errorKey] ?? "Villa kom upp. Reyndu aftur.") : null;
+  const fullError = errorMsg && detail ? `${errorMsg} (${detail})` : errorMsg;
 
   return (
     <div className="max-w-md mx-auto px-4 py-12">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-brand-red to-brand-red-light rounded-2xl px-6 py-8 text-white mb-8 text-center">
-        <p className="text-4xl mb-3">🏪</p>
-        <h1 className="text-2xl font-extrabold mb-1">Sjálfsali — 24/7</h1>
-        <p className="text-red-100 text-sm">Fylltu út formið hér að neðan til að fá aðgang að sjálfsalanum okkar.</p>
+      {/* Hero */}
+      <div className="bg-gradient-to-br from-brand-red to-brand-red-dark rounded-3xl px-6 py-10 text-white mb-8 text-center">
+        <div className="text-5xl mb-4">🏪</div>
+        <h1 className="text-2xl font-extrabold mb-2">Sjálfsali — 24/7</h1>
+        <p className="text-red-100 text-sm leading-relaxed">
+          Fáðu aðgang að sjálfsalanum okkar og verslaðu hvenær sem er, dag sem nótt. Skráning tekur um 2 mínútur.
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nafn *</label>
-          <input
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            required
-            placeholder="Fullt nafn"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-red text-sm"
-          />
+      {/* How it works */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-6 space-y-4">
+        <h2 className="font-bold text-gray-900">Hvernig virkar þetta?</h2>
+        <div className="space-y-3">
+          {[
+            { icon: "🪪", text: "Staðfestu þig með rafrænum skilríkjum í gegnum Kenni" },
+            { icon: "🤳", text: "Taktu mynd af andliti þínu — hún er notuð til að þekkja þig við dyrnar" },
+            { icon: "✅", text: "Þú getur strax farið í sjálfsalann og notað andlitsgreininguna til að opna" },
+          ].map(({ icon, text }, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <span className="text-xl shrink-0 mt-0.5">{icon}</span>
+              <p className="text-sm text-gray-600">{text}</p>
+            </div>
+          ))}
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Símanúmer *</label>
-          <input
-            type="tel"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            required
-            placeholder="555-1234"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-red text-sm"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Aldur *</label>
-          <input
-            type="number"
-            value={age}
-            onChange={e => setAge(e.target.value)}
-            required
-            min={1}
-            placeholder="25"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-red text-sm"
-          />
-        </div>
+      </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-brand-red hover:bg-brand-red-dark disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors"
-        >
-          {loading ? "Sendi..." : "Senda umsókn"}
-        </button>
-      </form>
+      {/* Error */}
+      {fullError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm mb-4">
+          {fullError}
+        </div>
+      )}
+
+      {/* CTA */}
+      <Link
+        href="/api/auth/kenni"
+        className="block w-full bg-brand-red hover:bg-brand-red-dark text-white font-bold py-4 rounded-xl transition-colors text-center text-lg mb-3"
+      >
+        Skrá mig með rafrænum skilríkjum →
+      </Link>
+
+      <p className="text-center text-xs text-gray-400 leading-relaxed">
+        Við notum <strong>Kenni</strong> til að staðfesta aldur og auðkenni. Persónuupplýsingar eru eingöngu notaðar til aðgangsstjórnunar.
+        Aðgangur er eingöngu veittur einstaklingum 18 ára og eldri.
+      </p>
     </div>
+  );
+}
+
+export default function SjalfsaliPage() {
+  return (
+    <Suspense>
+      <SjalfsaliContent />
+    </Suspense>
   );
 }

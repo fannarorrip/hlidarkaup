@@ -37,10 +37,13 @@ export default function HomePage() {
     }
   }, []);
 
-  useEffect(() => { fetchProducts("", 0, true); }, [fetchProducts]);
+  // Don't auto-load on mount — wait for user to search (blank search takes 20s on Regla)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setInitialLoading(false); }, []);
 
   useEffect(() => {
     if (debounceTimer) clearTimeout(debounceTimer);
+    if (!search.trim()) { setProducts([]); setTotal(0); return; }
     const t = setTimeout(() => { fetchProducts(search, 0, true); }, 400);
     setDebounceTimer(t);
     return () => clearTimeout(t);
@@ -122,14 +125,19 @@ export default function HomePage() {
           </>
         ) : (
           <div className="text-center py-20">
-            <p className="text-4xl mb-3">🛒</p>
-            <p className="text-gray-500 font-medium">
-              {isSearching ? "Engar vörur fundust" : "Vörur eru að koma bráðlega!"}
+            <p className="text-5xl mb-4">{search.trim() ? "🔍" : "🛒"}</p>
+            <p className="text-gray-600 font-semibold text-lg mb-1">
+              {search.trim() ? "Engar vörur fundust" : "Leitaðu að vöru til að byrja"}
             </p>
-            {isSearching && (
+            <p className="text-gray-400 text-sm">
+              {search.trim()
+                ? "Prófaðu annað leitarorð"
+                : "Sláðu inn nafn vöru, vörumerki eða lýsingu"}
+            </p>
+            {search.trim() && (
               <button
                 onClick={() => { setSearch(""); setCategory(""); }}
-                className="mt-3 text-brand-red hover:underline text-sm font-medium"
+                className="mt-4 text-brand-red hover:underline text-sm font-medium"
               >
                 Hreinsa leit
               </button>
