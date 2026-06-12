@@ -446,10 +446,13 @@ export default function KassiPage() {
         </svg>
 
         <div className="relative z-10 flex flex-col h-full px-10 pt-8 pb-24">
-          <div className="bg-white rounded-2xl px-5 py-3 self-start mb-6 shadow-sm">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="Hlíðarkaup" className="h-10 w-auto" />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.png"
+            alt="Hlíðarkaup"
+            className="h-12 w-auto self-start mb-6"
+            style={{ filter: "brightness(0) invert(1)" }}
+          />
 
           {/* Product card */}
           <div className="bg-white rounded-[2rem] shadow-sm flex-1 flex flex-col p-8 max-w-md" style={PATTERN_BG}>
