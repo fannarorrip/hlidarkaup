@@ -12,11 +12,11 @@ interface CartLine {
 
 type Screen = "idle" | "scan" | "paying" | "done" | "payError";
 
-// ── Kiosk palette (Krónan-style) ─────────────────────────────────────────────
-const YELLOW = "#F6E14B";
-const YELLOW_DEEP = "#EFD52E";
-const TEAL = "#7ECFC9";
-const TEAL_LIGHT = "#DFF1EF";
+// ── Kiosk palette (Hlíðarkaup: red + white + warm cream) ─────────────────────
+const RED = "#eb1515";
+const RED_DARK = "#c00f0f";
+const CREAM = "#F3E9D7";
+const PINK = "#FCE7E7";
 const INK = "#2B2B2B";
 
 // Subtle guilloche / fingerprint-wave background used behind every screen
@@ -276,7 +276,7 @@ export default function KassiPage() {
     >
       <span
         className="w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-md group-active:scale-95 transition-transform"
-        style={{ backgroundColor: YELLOW }}
+        style={{ backgroundColor: RED }}
       >
         🙋
       </span>
@@ -295,16 +295,14 @@ export default function KassiPage() {
         {scannerInput}
         {/* Organic corner blobs */}
         <svg className="absolute top-0 left-0 w-[45%] h-[55%]" viewBox="0 0 400 400" preserveAspectRatio="none">
-          <path d="M0,0 H320 C380,120 260,200 300,320 C200,400 80,330 0,360 Z" fill={YELLOW} />
+          <path d="M0,0 H320 C380,120 260,200 300,320 C200,400 80,330 0,360 Z" fill={RED} />
         </svg>
         <svg className="absolute bottom-0 right-0 w-[40%] h-[50%]" viewBox="0 0 400 400" preserveAspectRatio="none">
-          <path d="M400,400 V60 C300,20 240,140 140,120 C60,220 140,330 100,400 Z" fill={TEAL} />
+          <path d="M400,400 V60 C300,20 240,140 140,120 C60,220 140,330 100,400 Z" fill={CREAM} />
         </svg>
 
-        <p className="relative z-10 text-8xl mb-8">🛒</p>
-        <h1 className="relative z-10 text-7xl font-extrabold tracking-tight mb-3" style={{ color: INK }}>
-          Hlíðarkaup
-        </h1>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="Hlíðarkaup" className="relative z-10 w-[28rem] max-w-[70vw] mb-4" />
         <p className="relative z-10 text-2xl font-medium mb-16 text-gray-500">Sjálfsafgreiðslukassi</p>
 
         <div className="relative z-10 animate-pulse flex flex-col items-center gap-2">
@@ -323,10 +321,10 @@ export default function KassiPage() {
       <div className="fixed inset-0 z-50 overflow-hidden" style={PATTERN_BG}>
         {/* Faded light-blue blobs in the background */}
         <svg className="absolute top-0 left-0 w-[50%] h-[60%] opacity-70" viewBox="0 0 400 400" preserveAspectRatio="none">
-          <path d="M0,0 H300 C370,130 250,220 290,340 C190,410 70,340 0,370 Z" fill={TEAL_LIGHT} />
+          <path d="M0,0 H300 C370,130 250,220 290,340 C190,410 70,340 0,370 Z" fill={PINK} />
         </svg>
         <svg className="absolute bottom-0 right-0 w-[45%] h-[55%] opacity-70" viewBox="0 0 400 400" preserveAspectRatio="none">
-          <path d="M400,400 V50 C290,10 230,150 130,130 C50,230 130,340 90,400 Z" fill={TEAL_LIGHT} />
+          <path d="M400,400 V50 C290,10 230,150 130,130 C50,230 130,340 90,400 Z" fill={PINK} />
         </svg>
 
         {/* Cart summary, dimmed at the edge like the reference */}
@@ -349,8 +347,8 @@ export default function KassiPage() {
             <svg viewBox="0 0 260 180" className="w-64 h-44 mb-6">
               {/* Terminal */}
               <rect x="95" y="78" width="78" height="92" rx="12" fill="#fff" stroke={INK} strokeWidth="3" />
-              <rect x="107" y="92" width="54" height="26" rx="4" fill={TEAL} opacity="0.5" />
-              <circle cx="116" cy="132" r="5" fill={YELLOW} />
+              <rect x="107" y="92" width="54" height="26" rx="4" fill={CREAM} opacity="0.5" />
+              <circle cx="116" cy="132" r="5" fill={RED} />
               {[0, 1, 2].map((r) =>
                 [0, 1, 2].map((c) => (
                   <rect key={`${r}${c}`} x={130 + c * 13} y={126 + r * 13} width="9" height="9" rx="2" fill="#e5e5e5" stroke={INK} strokeWidth="1" />
@@ -359,7 +357,7 @@ export default function KassiPage() {
               {/* Card */}
               <g transform="rotate(-18 185 65)">
                 <rect x="158" y="48" width="56" height="36" rx="6" fill="#fff" stroke={INK} strokeWidth="3" />
-                <rect x="166" y="58" width="14" height="11" rx="2" fill={TEAL} />
+                <rect x="166" y="58" width="14" height="11" rx="2" fill={CREAM} />
               </g>
               {/* Hand + thumbs up */}
               <g stroke={INK} strokeWidth="3" fill="#fff" strokeLinejoin="round" strokeLinecap="round">
@@ -367,7 +365,7 @@ export default function KassiPage() {
                 <path d="M222 52 C220 42 226 34 233 36 C239 38 240 47 236 54" />
               </g>
               {/* Sleeve */}
-              <path d="M244 58 L260 50 L260 92 L240 84 Z" fill={YELLOW} stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+              <path d="M244 58 L260 50 L260 92 L240 84 Z" fill={RED} stroke={INK} strokeWidth="3" strokeLinejoin="round" />
               {/* Contactless waves */}
               <g stroke={INK} strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.5">
                 <path d="M186 96 a14 14 0 0 1 0 20" />
@@ -378,7 +376,7 @@ export default function KassiPage() {
             <h1 className="text-3xl font-extrabold mb-2" style={{ color: INK }}>Bíð eftir greiðslu</h1>
             <p className="text-gray-400 text-lg mb-6">Fylgdu leiðbeiningum á posanum</p>
             <p className="text-4xl font-extrabold mb-8" style={{ color: INK }}>Verð: {total.toLocaleString("is-IS")} kr.</p>
-            <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: YELLOW_DEEP, borderTopColor: "transparent" }} />
+            <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: RED_DARK, borderTopColor: "transparent" }} />
           </div>
         </div>
       </div>
@@ -390,10 +388,10 @@ export default function KassiPage() {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 text-center overflow-hidden" style={PATTERN_BG}>
         <svg className="absolute bottom-0 left-0 w-[40%] h-[45%] opacity-80" viewBox="0 0 400 400" preserveAspectRatio="none">
-          <path d="M0,400 V80 C110,40 170,170 270,150 C350,250 270,360 310,400 Z" fill={TEAL_LIGHT} />
+          <path d="M0,400 V80 C110,40 170,170 270,150 C350,250 270,360 310,400 Z" fill={PINK} />
         </svg>
-        <div className="relative z-10 w-32 h-32 rounded-full flex items-center justify-center mb-8 shadow-lg" style={{ backgroundColor: YELLOW }}>
-          <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke={INK} strokeWidth={3}>
+        <div className="relative z-10 w-32 h-32 rounded-full flex items-center justify-center mb-8 shadow-lg" style={{ backgroundColor: RED }}>
+          <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={3}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
@@ -403,7 +401,7 @@ export default function KassiPage() {
         <button
           onClick={newSale}
           className="relative z-10 text-2xl font-extrabold px-16 py-6 rounded-full shadow-lg active:scale-95 transition-transform"
-          style={{ backgroundColor: YELLOW, color: INK }}
+          style={{ backgroundColor: RED, color: "#fff" }}
         >
           Ný sala
         </button>
@@ -428,7 +426,7 @@ export default function KassiPage() {
           </button>
           <button onClick={() => pay(cart)}
             className="text-xl font-extrabold px-10 py-5 rounded-full active:scale-95 transition-transform"
-            style={{ backgroundColor: YELLOW, color: INK }}>
+            style={{ backgroundColor: RED, color: "#fff" }}>
             Reyna aftur
           </button>
         </div>
@@ -444,11 +442,11 @@ export default function KassiPage() {
       {/* Left: yellow organic panel with last-scanned product card */}
       <div className="relative w-[44%] flex flex-col">
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 440 900" preserveAspectRatio="none">
-          <path d="M0,0 H372 C448,180 340,360 408,540 C460,700 350,810 396,900 H0 Z" fill={YELLOW} />
+          <path d="M0,0 H372 C448,180 340,360 408,540 C460,700 350,810 396,900 H0 Z" fill={RED} />
         </svg>
 
         <div className="relative z-10 flex flex-col h-full px-10 pt-8 pb-24">
-          <h1 className="text-3xl font-extrabold tracking-tight mb-6" style={{ color: INK }}>
+          <h1 className="text-3xl font-extrabold tracking-tight mb-6 text-white">
             HLÍÐARKAUP
           </h1>
 
@@ -476,7 +474,7 @@ export default function KassiPage() {
           </div>
 
           {scanError && (
-            <div className="mt-4 max-w-md bg-red-600 text-white rounded-2xl px-5 py-3 font-bold flex items-center gap-3">
+            <div className="mt-4 max-w-md bg-white rounded-2xl px-5 py-3 font-bold flex items-center gap-3 shadow-md" style={{ color: RED_DARK }}>
               <span className="text-2xl">⚠️</span> {scanError}
             </div>
           )}
@@ -487,7 +485,7 @@ export default function KassiPage() {
       <button
         onClick={openSearch}
         className="absolute z-30 bottom-6 left-[44%] -translate-x-1/2 flex items-center gap-3 px-8 py-4 rounded-full font-extrabold text-lg shadow-lg border-4 border-white active:scale-95 transition-transform"
-        style={{ backgroundColor: YELLOW, color: INK }}
+        style={{ backgroundColor: RED, color: "#fff" }}
       >
         🔍 Leita að vöru
       </button>
@@ -514,7 +512,7 @@ export default function KassiPage() {
               >
                 <div
                   className="flex items-center gap-1 rounded-xl px-2 py-2"
-                  style={{ backgroundColor: TEAL_LIGHT }}
+                  style={{ backgroundColor: PINK }}
                 >
                   <button onClick={() => changeQty(l.id, -1)} className="w-8 h-8 rounded-lg bg-white font-bold text-lg active:scale-90 transition-transform">−</button>
                   <span className="font-extrabold px-1 whitespace-nowrap" style={{ color: INK }}>{l.quantity} stk.</span>
@@ -551,7 +549,7 @@ export default function KassiPage() {
           onClick={startPay}
           disabled={cart.length === 0}
           className="h-16 text-xl font-extrabold tracking-wide transition-opacity disabled:opacity-40"
-          style={{ backgroundColor: YELLOW, color: INK }}
+          style={{ backgroundColor: RED, color: "#fff" }}
         >
           Borga
         </button>
@@ -562,15 +560,16 @@ export default function KassiPage() {
         <div className="absolute inset-0 z-40 flex overflow-hidden" style={PATTERN_BG}>
           {/* Teal blob left, yellow blob right */}
           <svg className="absolute top-0 left-0 w-[55%] h-full" viewBox="0 0 550 900" preserveAspectRatio="none">
-            <path d="M0,0 H460 C540,200 420,400 500,580 C540,740 430,830 470,900 H0 Z" fill={TEAL} opacity="0.9" />
+            <path d="M0,0 H460 C540,200 420,400 500,580 C540,740 430,830 470,900 H0 Z" fill={CREAM} opacity="0.9" />
           </svg>
           <svg className="absolute top-0 right-0 w-[52%] h-full" viewBox="0 0 520 900" preserveAspectRatio="none">
-            <path d="M520,0 H90 C20,180 130,380 60,560 C20,730 120,830 80,900 H520 Z" fill={YELLOW} />
+            <path d="M520,0 H90 C20,180 130,380 60,560 C20,730 120,830 80,900 H520 Z" fill={RED} />
           </svg>
 
           {/* Left: prompt + popular / results */}
           <div className="relative z-10 w-[48%] shrink-0 flex flex-col px-10 pt-8 pb-20">
-            <h1 className="text-2xl font-extrabold tracking-tight mb-5" style={{ color: INK }}>HLÍÐARKAUP</h1>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Hlíðarkaup" className="h-12 w-auto self-start mb-5" />
 
             <div className="bg-white/95 rounded-[2rem] shadow-sm flex-1 flex flex-col p-7 overflow-hidden" style={PATTERN_BG}>
               <div className="flex items-start gap-3 mb-5">
@@ -582,7 +581,7 @@ export default function KassiPage() {
 
               {searching ? (
                 <div className="flex-1 flex flex-col items-center justify-center">
-                  <div className="w-10 h-10 border-4 rounded-full animate-spin mb-4" style={{ borderColor: TEAL, borderTopColor: "transparent" }} />
+                  <div className="w-10 h-10 border-4 rounded-full animate-spin mb-4" style={{ borderColor: RED, borderTopColor: "transparent" }} />
                   <p className="text-gray-400">Leita...</p>
                 </div>
               ) : searchQuery.trim().length >= 2 ? (
@@ -653,7 +652,7 @@ export default function KassiPage() {
                       key={k}
                       onClick={() => setSearchQuery((q) => q + k)}
                       className="w-12 h-12 rounded-xl font-extrabold text-lg uppercase shadow-sm active:scale-90 transition-transform"
-                      style={{ backgroundColor: YELLOW_DEEP, color: INK }}
+                      style={{ backgroundColor: "#fff", color: RED_DARK }}
                     >
                       {k}
                     </button>
@@ -664,21 +663,21 @@ export default function KassiPage() {
                 <button
                   onClick={() => setShowDigits((d) => !d)}
                   className="w-24 h-12 rounded-xl font-extrabold text-sm shadow-sm active:scale-95 transition-transform"
-                  style={{ backgroundColor: YELLOW_DEEP, color: INK }}
+                  style={{ backgroundColor: "#fff", color: RED_DARK }}
                 >
                   {showDigits ? "ABC" : "0-9"}
                 </button>
                 <button
                   onClick={() => setSearchQuery((q) => q + " ")}
                   className="w-52 h-12 rounded-xl font-extrabold text-sm shadow-sm active:scale-95 transition-transform"
-                  style={{ backgroundColor: YELLOW_DEEP, color: INK }}
+                  style={{ backgroundColor: "#fff", color: RED_DARK }}
                 >
                   BIL
                 </button>
                 <button
                   onClick={() => setSearchQuery((q) => q.slice(0, -1))}
                   className="w-24 h-12 rounded-xl font-extrabold text-xl shadow-sm active:scale-95 transition-transform"
-                  style={{ backgroundColor: YELLOW_DEEP, color: INK }}
+                  style={{ backgroundColor: "#fff", color: RED_DARK }}
                 >
                   ⌫
                 </button>
@@ -689,7 +688,7 @@ export default function KassiPage() {
             <button
               onClick={closeSearch}
               className="self-end bg-white rounded-2xl px-10 py-4 font-extrabold text-lg shadow-md border-2 active:scale-95 transition-transform"
-              style={{ borderColor: YELLOW_DEEP, color: INK }}
+              style={{ borderColor: RED_DARK, color: INK }}
             >
               ← Til baka
             </button>
@@ -697,7 +696,7 @@ export default function KassiPage() {
 
           <div className="absolute bottom-6 left-8 z-20">
             <button onClick={() => setHelpOpen(true)} className="flex items-center gap-3 group">
-              <span className="w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-md group-active:scale-95 transition-transform" style={{ backgroundColor: YELLOW }}>🙋</span>
+              <span className="w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-md group-active:scale-95 transition-transform" style={{ backgroundColor: RED }}>🙋</span>
               <span className="font-bold text-lg" style={{ color: INK }}>Fá aðstoð</span>
             </button>
           </div>
@@ -721,7 +720,7 @@ export default function KassiPage() {
                 <button
                   onClick={() => setBagCount((c) => Math.max(0, c - 1))}
                   className="w-16 h-16 rounded-full text-3xl font-bold active:scale-90 transition-transform"
-                  style={{ backgroundColor: TEAL_LIGHT, color: INK }}
+                  style={{ backgroundColor: PINK, color: INK }}
                 >
                   −
                 </button>
@@ -729,7 +728,7 @@ export default function KassiPage() {
                 <button
                   onClick={() => setBagCount((c) => Math.min(9, c + 1))}
                   className="w-16 h-16 rounded-full text-3xl font-bold active:scale-90 transition-transform"
-                  style={{ backgroundColor: TEAL_LIGHT, color: INK }}
+                  style={{ backgroundColor: PINK, color: INK }}
                 >
                   +
                 </button>
@@ -747,7 +746,7 @@ export default function KassiPage() {
                 onClick={confirmBagsAndPay}
                 disabled={!!bagProduct && bagCount === 0}
                 className="flex-1 text-lg font-extrabold py-4 rounded-full active:scale-95 transition-transform disabled:opacity-30"
-                style={{ backgroundColor: YELLOW, color: INK }}
+                style={{ backgroundColor: RED, color: "#fff" }}
               >
                 {bagCount > 0 && bagProduct
                   ? `Bæta við og borga (+${(bagCount * bagProduct.price).toLocaleString("is-IS")} kr.)`
@@ -768,7 +767,7 @@ export default function KassiPage() {
             <button
               onClick={() => setHelpOpen(false)}
               className="text-lg font-extrabold px-10 py-4 rounded-full active:scale-95 transition-transform"
-              style={{ backgroundColor: YELLOW, color: INK }}
+              style={{ backgroundColor: RED, color: "#fff" }}
             >
               Loka
             </button>
