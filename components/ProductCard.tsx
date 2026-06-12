@@ -18,10 +18,10 @@ const CATEGORY_EMOJI: Record<string, string> = {
 };
 
 function StockBadge({ stock }: { stock: number }) {
-  if (stock === 0)
+  if (stock <= 0)
     return (
       <span className="absolute top-2 left-2 bg-gray-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-        Uppselt
+        Ekki til á lager
       </span>
     );
   if (stock <= 4)
@@ -39,10 +39,11 @@ export default function ProductCard({ product }: { product: Product }) {
   const cartItem = items.find((i) => i.product.id === product.id);
   const qty = cartItem?.quantity ?? 0;
   const emoji = CATEGORY_EMOJI[product.category ?? ""] ?? "🛒";
-  const soldOut = product.stock === 0;
+  const soldOut = product.stock !== undefined && product.stock <= 0;
+  const atStockLimit = product.stock !== undefined && qty >= product.stock;
 
   function handleAdd() {
-    if (soldOut) return;
+    if (soldOut || atStockLimit) return;
     add(product);
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 700);
@@ -82,7 +83,7 @@ export default function ProductCard({ product }: { product: Product }) {
           </span>
 
           {soldOut ? (
-            <span className="text-xs text-gray-400 font-medium">Ekki til</span>
+            <span className="text-xs text-gray-400 font-medium">Ekki til á lager</span>
           ) : qty === 0 ? (
             <button
               onClick={handleAdd}
@@ -112,7 +113,8 @@ export default function ProductCard({ product }: { product: Product }) {
               <span className="w-5 text-center font-bold text-sm">{qty}</span>
               <button
                 onClick={handleAdd}
-                className="w-7 h-7 rounded-full bg-brand-red hover:bg-brand-red-dark flex items-center justify-center transition-colors"
+                disabled={atStockLimit}
+                className="w-7 h-7 rounded-full bg-brand-red hover:bg-brand-red-dark flex items-center justify-center transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 <PlusIcon className="w-3.5 h-3.5 text-white" />
               </button>

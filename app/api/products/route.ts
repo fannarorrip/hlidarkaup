@@ -44,7 +44,7 @@ function mapProduct(p: any) {
     description: p.DescriptionShort || p.DescriptionLong || p.Name || "",
     price: grossPrice,
     category: p.ProductGroupNumber ?? p.ProductGroup?.Name ?? "",
-    stock: p.IsInStockControl ? Math.floor(p.StockQuantity ?? 0) : undefined,
+    stock: p.IsInStockControl ? Math.max(0, Math.floor(p.StockQuantity ?? 0)) : undefined,
     image: p.ImageUrl ?? undefined,
   };
 }
