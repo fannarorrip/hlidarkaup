@@ -25,6 +25,13 @@ export default function KassiPage() {
   const [buffer, setBuffer] = useState("");
   const lastScanTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Product search overlay (for items without barcode, e.g. produce)
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<{ id: string; name: string; price: number; stock?: number }[]>([]);
+  const [searching, setSearching] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   const total = cart.reduce((s, l) => s + l.price * l.quantity, 0);
   const itemCount = cart.reduce((s, l) => s + l.quantity, 0);
 
@@ -40,10 +47,50 @@ export default function KassiPage() {
   // Keep hidden input focused so USB scanners (keyboard wedge) always land here
   useEffect(() => {
     const t = setInterval(() => {
-      if (screen === "idle" || screen === "scan") inputRef.current?.focus();
+      if ((screen === "idle" || screen === "scan") && !searchOpen) inputRef.current?.focus();
     }, 500);
     return () => clearInterval(t);
-  }, [screen]);
+  }, [screen, searchOpen]);
+
+  // Debounced product search
+  useEffect(() => {
+    if (!searchOpen) return;
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    setSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/kassi/search?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        setSearchResults(
+          (data.products ?? []).map((p: { id: string; name: string; price: number; stock?: number }) => ({
+            id: p.id, name: p.name, price: p.price, stock: p.stock,
+          })),
+        );
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 350);
+    return () => clearTimeout(t);
+  }, [searchQuery, searchOpen]);
+
+  function openSearch() {
+    setSearchOpen(true);
+    setSearchQuery("");
+    setSearchResults([]);
+    setTimeout(() => searchInputRef.current?.focus(), 50);
+  }
+
+  function closeSearch() {
+    setSearchOpen(false);
+    setSearchQuery("");
+    setSearchResults([]);
+  }
 
   // Auto-return to attract screen after a finished sale
   useEffect(() => {
@@ -52,6 +99,32 @@ export default function KassiPage() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
+
+  const addProduct = useCallback((data: { id: string; name: string; price: number; stock?: number }) => {
+    let added: CartLine | null = null;
+    setCart((prev) => {
+      const existing = prev.find((l) => l.id === data.id);
+      if (existing) {
+        if (data.stock !== undefined && existing.quantity >= data.stock) {
+          setScanError(`Ekki meira til á lager af ${data.name}`);
+          return prev;
+        }
+        added = { ...existing, quantity: existing.quantity + 1 };
+        return prev.map((l) => (l.id === data.id ? added! : l));
+      }
+      if (data.stock !== undefined && data.stock <= 0) {
+        setScanError(`${data.name} er ekki til á lager`);
+        return prev;
+      }
+      added = { id: data.id, name: data.name, price: data.price, stock: data.stock, quantity: 1 };
+      return [...prev, added!];
+    });
+    if (added) {
+      setLastScanned(added);
+      if (lastScanTimer.current) clearTimeout(lastScanTimer.current);
+      lastScanTimer.current = setTimeout(() => setLastScanned(null), 4000);
+    }
+  }, []);
 
   const handleScan = useCallback(async (code: string) => {
     const trimmed = code.trim();
@@ -66,36 +139,14 @@ export default function KassiPage() {
         setScreen("scan");
         return;
       }
-      let added: CartLine | null = null;
-      setCart((prev) => {
-        const existing = prev.find((l) => l.id === data.id);
-        if (existing) {
-          if (data.stock !== undefined && existing.quantity >= data.stock) {
-            setScanError(`Ekki meira til á lager af ${data.name}`);
-            return prev;
-          }
-          added = { ...existing, quantity: existing.quantity + 1 };
-          return prev.map((l) => (l.id === data.id ? added! : l));
-        }
-        if (data.stock !== undefined && data.stock <= 0) {
-          setScanError(`${data.name} er ekki til á lager`);
-          return prev;
-        }
-        added = { ...data, quantity: 1 };
-        return [...prev, added!];
-      });
-      if (added) {
-        setLastScanned(added);
-        if (lastScanTimer.current) clearTimeout(lastScanTimer.current);
-        lastScanTimer.current = setTimeout(() => setLastScanned(null), 4000);
-      }
+      addProduct(data);
       setScreen("scan");
     } catch {
       setScanError("Villa við að sækja vöru");
     } finally {
       setBusy(false);
     }
-  }, [busy]);
+  }, [busy, addProduct]);
 
   function changeQty(id: string, delta: number) {
     setCart((prev) =>
@@ -383,6 +434,12 @@ export default function KassiPage() {
 
           <div className="p-6 space-y-3">
             <button
+              onClick={openSearch}
+              className="w-full bg-white border-2 border-gray-300 hover:border-brand-red hover:text-brand-red text-gray-700 text-lg font-bold py-4 rounded-2xl transition-colors flex items-center justify-center gap-2"
+            >
+              🔍 Leita að vöru
+            </button>
+            <button
               onClick={pay}
               disabled={cart.length === 0}
               className="w-full bg-green-600 hover:bg-green-700 text-white text-xl font-extrabold py-5 rounded-2xl transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-green-100"
@@ -399,6 +456,69 @@ export default function KassiPage() {
           </div>
         </aside>
       </div>
+
+      {/* Search overlay */}
+      {searchOpen && (
+        <div className="absolute inset-0 z-20 bg-black/40 flex items-start justify-center pt-16" onClick={closeSearch}>
+          <div
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl mx-6 max-h-[75vh] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-gray-100 flex items-center gap-3">
+              <span className="text-2xl">🔍</span>
+              <input
+                ref={searchInputRef}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Leitaðu að vöru, t.d. bananar..."
+                className="flex-1 text-xl font-medium outline-none placeholder:text-gray-300"
+              />
+              <button
+                onClick={closeSearch}
+                className="w-11 h-11 rounded-full bg-gray-100 hover:bg-gray-200 text-xl font-bold text-gray-500"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              {searching ? (
+                <div className="py-14 text-center">
+                  <div className="w-10 h-10 border-4 border-brand-red border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                  <p className="text-gray-400">Leita...</p>
+                </div>
+              ) : searchQuery.trim().length < 2 ? (
+                <p className="py-14 text-center text-gray-400 text-lg">Sláðu inn a.m.k. 2 stafi</p>
+              ) : searchResults.length === 0 ? (
+                <p className="py-14 text-center text-gray-400 text-lg">Engin vara fannst</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {searchResults.map((p) => {
+                    const out = p.stock !== undefined && p.stock <= 0;
+                    return (
+                      <button
+                        key={p.id}
+                        disabled={out}
+                        onClick={() => {
+                          handleScan(p.id);
+                          closeSearch();
+                        }}
+                        className="text-left bg-gray-50 hover:bg-red-50 border border-gray-100 hover:border-brand-red rounded-2xl p-4 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <p className="font-bold text-gray-900 leading-snug line-clamp-2">{p.name}</p>
+                        <div className="flex items-center justify-between mt-2">
+                          <p className="text-brand-red font-extrabold">{p.price.toLocaleString("is-IS")} kr.</p>
+                          {out && <span className="text-xs font-bold text-gray-400">Ekki til á lager</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
