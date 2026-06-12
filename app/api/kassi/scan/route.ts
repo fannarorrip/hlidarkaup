@@ -17,7 +17,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: `Vara fannst ekki (${code})` }, { status: 404 });
     }
 
-    const stock = product.IsInStockControl
+    // KASSI_IGNORE_STOCK=true disables stock limits while testing
+    const ignoreStock = process.env.KASSI_IGNORE_STOCK === "true";
+    const stock = !ignoreStock && product.IsInStockControl
       ? Math.max(0, Math.floor(product.StockQuantity ?? 0))
       : undefined;
 

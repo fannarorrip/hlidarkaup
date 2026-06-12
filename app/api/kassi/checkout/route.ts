@@ -35,12 +35,15 @@ export async function POST(req: NextRequest) {
       }),
     );
 
-    const short = products.filter(
-      ({ product, quantity }) => product.IsInStockControl && (product.StockQuantity ?? 0) < quantity,
-    );
-    if (short.length > 0) {
-      const names = short.map(({ product }) => product.Name).join(", ");
-      return NextResponse.json({ error: `Ekki til á lager: ${names}` }, { status: 409 });
+    // KASSI_IGNORE_STOCK=true disables the stock guard while testing
+    if (process.env.KASSI_IGNORE_STOCK !== "true") {
+      const short = products.filter(
+        ({ product, quantity }) => product.IsInStockControl && (product.StockQuantity ?? 0) < quantity,
+      );
+      if (short.length > 0) {
+        const names = short.map(({ product }) => product.Name).join(", ");
+        return NextResponse.json({ error: `Ekki til á lager: ${names}` }, { status: 409 });
+      }
     }
 
     const orderId = `KASSI-${Date.now()}`;
