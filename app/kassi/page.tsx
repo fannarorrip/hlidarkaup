@@ -10,7 +10,7 @@ interface CartLine {
   quantity: number;
 }
 
-type Screen = "idle" | "scan" | "paying" | "done" | "payError";
+type Screen = "idle" | "scan" | "paying" | "receipt" | "done" | "payError";
 type Lang = "is" | "en";
 
 const STR = {
@@ -58,6 +58,10 @@ const STR = {
     helpComing: "Aðstoð er á leiðinni",
     helpText: "Starfsmaður kemur til þín fljótlega. Þú getur líka hringt í síma 455-4500.",
     close: "Loka",
+    paymentApproved: "Greiðsla samþykkt",
+    wantReceipt: "Viltu fá kvittun?",
+    yesPlease: "Já takk",
+    receiptPrinting: "Kvittunin er að prentast",
   },
   en: {
     langName: "English",
@@ -103,6 +107,10 @@ const STR = {
     helpComing: "Help is on the way",
     helpText: "A member of staff will be with you shortly. You can also call 455-4500.",
     close: "Close",
+    paymentApproved: "Payment approved",
+    wantReceipt: "Would you like a receipt?",
+    yesPlease: "Yes please",
+    receiptPrinting: "Your receipt is printing",
   },
 } as const;
 
@@ -151,6 +159,7 @@ export default function KassiPage() {
   const [bagProduct, setBagProduct] = useState<{ id: string; name: string; price: number } | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [showDigits, setShowDigits] = useState(false);
+  const [receiptWanted, setReceiptWanted] = useState(false);
   const [lang, setLang] = useState<Lang>("is");
   const t = STR[lang];
   const otherLang = STR[lang === "is" ? "en" : "is"];
@@ -215,8 +224,9 @@ export default function KassiPage() {
 
   // Auto-return to attract screen after a finished sale
   useEffect(() => {
-    if (screen !== "done") return;
-    const t = setTimeout(() => newSale(), 15_000);
+    if (screen !== "done" && screen !== "receipt") return;
+    // Give the receipt question a bit longer before resetting
+    const t = setTimeout(() => newSale(), screen === "receipt" ? 30_000 : 15_000);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
@@ -307,7 +317,7 @@ export default function KassiPage() {
     setScreen("paying");
     setPayError("");
 
-    // MOCK terminal: replace this block with the Teya/Verifone terminal call.
+    // MOCK terminal: replace this block with the Straumur terminal call.
     await new Promise((r) => setTimeout(r, 2500));
     const payment = {
       approved: true,
@@ -330,7 +340,7 @@ export default function KassiPage() {
         return;
       }
       setInvoiceNumber(data.invoiceNumber);
-      setScreen("done");
+      setScreen("receipt");
     } catch {
       setPayError("Samband við kerfið rofnaði. Reyndu aftur.");
       setScreen("payError");
@@ -340,6 +350,7 @@ export default function KassiPage() {
   function newSale() {
     setCart([]);
     setInvoiceNumber("");
+    setReceiptWanted(false);
     setPayError("");
     setScanError("");
     setLastScanned(null);
@@ -493,6 +504,46 @@ export default function KassiPage() {
     );
   }
 
+  // ── Receipt question after payment ───────────────────────────────────────
+  if (screen === "receipt") {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 text-center overflow-hidden" style={PATTERN_BG}>
+        <svg className="absolute top-0 left-0 w-[40%] h-[45%] opacity-80" viewBox="0 0 400 400" preserveAspectRatio="none">
+          <path d="M0,0 H300 C370,120 250,200 290,320 C190,400 70,330 0,360 Z" fill={PINK} />
+        </svg>
+        <svg className="absolute bottom-0 right-0 w-[38%] h-[42%] opacity-80" viewBox="0 0 400 400" preserveAspectRatio="none">
+          <path d="M400,400 V60 C300,20 240,140 140,120 C60,220 140,330 100,400 Z" fill={CREAM} />
+        </svg>
+
+        <div className="relative z-10 bg-white rounded-[2.5rem] shadow-xl px-16 py-14 flex flex-col items-center max-w-xl w-full">
+          <div className="w-24 h-24 rounded-full flex items-center justify-center mb-6" style={{ backgroundColor: RED }}>
+            <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <p className="text-xl font-bold text-gray-400 mb-2">{t.paymentApproved}</p>
+          <p className="text-2xl font-extrabold mb-1" style={{ color: INK }}>{total.toLocaleString("is-IS")} kr.</p>
+          <h1 className="text-4xl font-extrabold mt-6 mb-10" style={{ color: INK }}>{t.wantReceipt}</h1>
+          <div className="flex gap-4 w-full">
+            <button
+              onClick={() => { setReceiptWanted(false); setScreen("done"); }}
+              className="flex-1 bg-white border-2 border-gray-200 text-gray-600 text-2xl font-bold py-6 rounded-full active:scale-95 transition-transform"
+            >
+              {t.noThanks}
+            </button>
+            <button
+              onClick={() => { setReceiptWanted(true); setScreen("done"); }}
+              className="flex-1 text-2xl font-extrabold py-6 rounded-full active:scale-95 transition-transform"
+              style={{ backgroundColor: RED, color: "#fff" }}
+            >
+              🧾 {t.yesPlease}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Receipt / done ───────────────────────────────────────────────────────
   if (screen === "done") {
     return (
@@ -507,7 +558,13 @@ export default function KassiPage() {
         </div>
         <h1 className="relative z-10 text-5xl font-extrabold mb-3" style={{ color: INK }}>{t.thanks}</h1>
         <p className="relative z-10 text-2xl text-gray-600 mb-1">{total.toLocaleString("is-IS")} kr. {t.paidByCard}</p>
-        <p className="relative z-10 text-gray-400 text-lg mb-12">{t.receiptNo} {invoiceNumber}</p>
+        <p className="relative z-10 text-gray-400 text-lg mb-2">{t.receiptNo} {invoiceNumber}</p>
+        {receiptWanted && (
+          <p className="relative z-10 text-lg font-bold mb-2 flex items-center gap-2" style={{ color: INK }}>
+            🧾 {t.receiptPrinting}…
+          </p>
+        )}
+        <div className="relative z-10 mb-10" />
         <button
           onClick={newSale}
           className="relative z-10 text-2xl font-extrabold px-16 py-6 rounded-full shadow-lg active:scale-95 transition-transform"
