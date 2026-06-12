@@ -11,6 +11,100 @@ interface CartLine {
 }
 
 type Screen = "idle" | "scan" | "paying" | "done" | "payError";
+type Lang = "is" | "en";
+
+const STR = {
+  is: {
+    langName: "Íslenska",
+    langFlag: "🇮🇸",
+    selfCheckout: "Sjálfsafgreiðslukassi",
+    scanToStart: "Skannaðu vöru til að byrja",
+    orTouch: "eða snertu skjáinn",
+    yourCart: "Karfan þín",
+    pcs: "stk.",
+    waitingPayment: "Bíð eftir greiðslu",
+    followTerminal: "Fylgdu leiðbeiningum á posanum",
+    price: "Verð",
+    thanks: "Takk fyrir viðskiptin!",
+    paidByCard: "greitt með korti",
+    receiptNo: "Kvittun nr.",
+    newSale: "Ný sala",
+    autoReturn: "Skjárinn fer sjálfkrafa á byrjunarskjá",
+    somethingWrong: "Eitthvað fór úrskeiðis",
+    backToCart: "Til baka í körfu",
+    retry: "Reyna aftur",
+    scanItem: "Skannaðu vöru",
+    pointBarcode: "Beindu strikamerkinu að skannanum",
+    searchProduct: "Leita að vöru",
+    getHelp: "Fá aðstoð",
+    cartEmpty: "Karfan er tóm",
+    perPiece: "kr. / stk.",
+    totalLabel: "Samtals:",
+    vatIncluded: "VSK innifalinn",
+    payNow: "Borga",
+    searchPromptA: "Leitaðu eftir nafni",
+    searchPromptB: "eða veldu vinsæla vöru",
+    popular: "Vinsælar",
+    typeName: "SLÁÐU INN NAFN",
+    searchingNow: "Leita...",
+    noResults: "Engin vara fannst",
+    outOfStock: "Ekki til",
+    space: "BIL",
+    back: "Til baka",
+    needBags: "Þarftu poka?",
+    noBags: "Pokar eru ekki í boði á þessum kassa",
+    noThanks: "Nei takk",
+    addAndPay: "Bæta við og borga",
+    helpComing: "Aðstoð er á leiðinni",
+    helpText: "Starfsmaður kemur til þín fljótlega. Þú getur líka hringt í síma 455-4500.",
+    close: "Loka",
+  },
+  en: {
+    langName: "English",
+    langFlag: "🇬🇧",
+    selfCheckout: "Self-checkout",
+    scanToStart: "Scan an item to start",
+    orTouch: "or touch the screen",
+    yourCart: "Your basket",
+    pcs: "pcs",
+    waitingPayment: "Waiting for payment",
+    followTerminal: "Follow the instructions on the terminal",
+    price: "Price",
+    thanks: "Thank you for shopping!",
+    paidByCard: "paid by card",
+    receiptNo: "Receipt no.",
+    newSale: "New sale",
+    autoReturn: "The screen returns to start automatically",
+    somethingWrong: "Something went wrong",
+    backToCart: "Back to basket",
+    retry: "Try again",
+    scanItem: "Scan an item",
+    pointBarcode: "Point the barcode at the scanner",
+    searchProduct: "Search for item",
+    getHelp: "Get help",
+    cartEmpty: "Your basket is empty",
+    perPiece: "kr. each",
+    totalLabel: "Total:",
+    vatIncluded: "VAT included",
+    payNow: "Pay",
+    searchPromptA: "Search by name",
+    searchPromptB: "or pick a popular item",
+    popular: "Popular",
+    typeName: "TYPE A NAME",
+    searchingNow: "Searching...",
+    noResults: "No items found",
+    outOfStock: "Out of stock",
+    space: "SPACE",
+    back: "Back",
+    needBags: "Do you need bags?",
+    noBags: "Bags are not available at this register",
+    noThanks: "No thanks",
+    addAndPay: "Add and pay",
+    helpComing: "Help is on the way",
+    helpText: "A member of staff will be with you shortly. You can also call 455-4500.",
+    close: "Close",
+  },
+} as const;
 
 // ── Kiosk palette (Hlíðarkaup: red + white + warm cream) ─────────────────────
 const RED = "#eb1515";
@@ -57,6 +151,9 @@ export default function KassiPage() {
   const [bagProduct, setBagProduct] = useState<{ id: string; name: string; price: number } | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [showDigits, setShowDigits] = useState(false);
+  const [lang, setLang] = useState<Lang>("is");
+  const t = STR[lang];
+  const otherLang = STR[lang === "is" ? "en" : "is"];
 
   // Load the bag product once
   useEffect(() => {
@@ -269,6 +366,19 @@ export default function KassiPage() {
     />
   );
 
+  /* Language toggle — shows the language you switch TO */
+  const langButton = (onRed = false) => (
+    <button
+      onClick={() => setLang((l) => (l === "is" ? "en" : "is"))}
+      className="flex items-center gap-3 active:scale-95 transition-transform"
+    >
+      <span className="font-bold text-lg" style={{ color: onRed ? "#fff" : INK }}>{otherLang.langName}</span>
+      <span className="w-10 h-10 rounded-full overflow-hidden shadow flex items-center justify-center text-2xl bg-white">
+        {otherLang.langFlag}
+      </span>
+    </button>
+  );
+
   const helpButton = (
     <button
       onClick={() => setHelpOpen(true)}
@@ -280,7 +390,7 @@ export default function KassiPage() {
       >
         🙋
       </span>
-      <span className="font-bold text-lg" style={{ color: INK }}>Fá aðstoð</span>
+      <span className="font-bold text-lg" style={{ color: INK }}>{t.getHelp}</span>
     </button>
   );
 
@@ -303,11 +413,11 @@ export default function KassiPage() {
 
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="Hlíðarkaup" className="relative z-10 w-[28rem] max-w-[70vw] mb-4" />
-        <p className="relative z-10 text-2xl font-medium mb-16 text-gray-500">Sjálfsafgreiðslukassi</p>
+        <p className="relative z-10 text-2xl font-medium mb-16 text-gray-500">{t.selfCheckout}</p>
 
         <div className="relative z-10 animate-pulse flex flex-col items-center gap-2">
-          <p className="text-3xl font-bold" style={{ color: INK }}>Skannaðu vöru til að byrja</p>
-          <p className="text-gray-400 text-lg">eða snertu skjáinn</p>
+          <p className="text-3xl font-bold" style={{ color: INK }}>{t.scanToStart}</p>
+          <p className="text-gray-400 text-lg">{t.orTouch}</p>
         </div>
 
         <p className="absolute bottom-6 z-10 text-gray-400 text-sm">Akurhlíð 1 · Sauðárkrókur</p>
@@ -329,12 +439,12 @@ export default function KassiPage() {
 
         {/* Cart summary, dimmed at the edge like the reference */}
         <div className="absolute left-0 inset-y-0 w-72 p-8 hidden lg:flex flex-col opacity-50">
-          <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-5">Karfan þín</p>
+          <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-5">{t.yourCart}</p>
           <div className="space-y-3 flex-1 overflow-hidden">
             {cart.map((l) => (
               <div key={l.id} className="bg-white/70 rounded-2xl px-4 py-3">
                 <p className="font-bold text-sm leading-snug" style={{ color: INK }}>{l.name}</p>
-                <p className="text-gray-400 text-xs mt-0.5">{l.quantity} stk. · {(l.price * l.quantity).toLocaleString("is-IS")} kr.</p>
+                <p className="text-gray-400 text-xs mt-0.5">{l.quantity} {t.pcs} · {(l.price * l.quantity).toLocaleString("is-IS")} kr.</p>
               </div>
             ))}
           </div>
@@ -373,9 +483,9 @@ export default function KassiPage() {
               </g>
             </svg>
 
-            <h1 className="text-3xl font-extrabold mb-2" style={{ color: INK }}>Bíð eftir greiðslu</h1>
-            <p className="text-gray-400 text-lg mb-6">Fylgdu leiðbeiningum á posanum</p>
-            <p className="text-4xl font-extrabold mb-8" style={{ color: INK }}>Verð: {total.toLocaleString("is-IS")} kr.</p>
+            <h1 className="text-3xl font-extrabold mb-2" style={{ color: INK }}>{t.waitingPayment}</h1>
+            <p className="text-gray-400 text-lg mb-6">{t.followTerminal}</p>
+            <p className="text-4xl font-extrabold mb-8" style={{ color: INK }}>{t.price}: {total.toLocaleString("is-IS")} kr.</p>
             <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: RED_DARK, borderTopColor: "transparent" }} />
           </div>
         </div>
@@ -395,17 +505,15 @@ export default function KassiPage() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h1 className="relative z-10 text-5xl font-extrabold mb-3" style={{ color: INK }}>Takk fyrir viðskiptin!</h1>
-        <p className="relative z-10 text-2xl text-gray-600 mb-1">{total.toLocaleString("is-IS")} kr. greitt með korti</p>
-        <p className="relative z-10 text-gray-400 text-lg mb-12">Kvittun nr. {invoiceNumber}</p>
+        <h1 className="relative z-10 text-5xl font-extrabold mb-3" style={{ color: INK }}>{t.thanks}</h1>
+        <p className="relative z-10 text-2xl text-gray-600 mb-1">{total.toLocaleString("is-IS")} kr. {t.paidByCard}</p>
+        <p className="relative z-10 text-gray-400 text-lg mb-12">{t.receiptNo} {invoiceNumber}</p>
         <button
           onClick={newSale}
           className="relative z-10 text-2xl font-extrabold px-16 py-6 rounded-full shadow-lg active:scale-95 transition-transform"
           style={{ backgroundColor: RED, color: "#fff" }}
-        >
-          Ný sala
-        </button>
-        <p className="relative z-10 text-gray-300 text-sm mt-8">Skjárinn fer sjálfkrafa á byrjunarskjá</p>
+        >{t.newSale}</button>
+        <p className="relative z-10 text-gray-300 text-sm mt-8">{t.autoReturn}</p>
       </div>
     );
   }
@@ -417,18 +525,14 @@ export default function KassiPage() {
         <div className="w-28 h-28 bg-red-100 rounded-full flex items-center justify-center mb-8">
           <span className="text-6xl">❌</span>
         </div>
-        <h1 className="text-3xl font-extrabold mb-3" style={{ color: INK }}>Eitthvað fór úrskeiðis</h1>
+        <h1 className="text-3xl font-extrabold mb-3" style={{ color: INK }}>{t.somethingWrong}</h1>
         <p className="text-gray-500 text-lg mb-10">{payError}</p>
         <div className="flex gap-4">
           <button onClick={() => setScreen("scan")}
-            className="bg-white border-2 border-gray-300 text-gray-700 text-xl font-bold px-10 py-5 rounded-full">
-            Til baka í körfu
-          </button>
+            className="bg-white border-2 border-gray-300 text-gray-700 text-xl font-bold px-10 py-5 rounded-full">{t.backToCart}</button>
           <button onClick={() => pay(cart)}
             className="text-xl font-extrabold px-10 py-5 rounded-full active:scale-95 transition-transform"
-            style={{ backgroundColor: RED, color: "#fff" }}>
-            Reyna aftur
-          </button>
+            style={{ backgroundColor: RED, color: "#fff" }}>{t.retry}</button>
         </div>
       </div>
     );
@@ -471,8 +575,8 @@ export default function KassiPage() {
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-center gap-4">
                 <span className="text-8xl">📦</span>
-                <p className="text-2xl font-bold" style={{ color: INK }}>Skannaðu vöru</p>
-                <p className="text-gray-400">Beindu strikamerkinu að skannanum</p>
+                <p className="text-2xl font-bold" style={{ color: INK }}>{t.scanItem}</p>
+                <p className="text-gray-400">{t.pointBarcode}</p>
               </div>
             )}
           </div>
@@ -488,24 +592,23 @@ export default function KassiPage() {
       {/* Center: search pill straddling the boundary */}
       <button
         onClick={openSearch}
-        className="absolute z-30 bottom-6 left-[44%] -translate-x-1/2 flex items-center gap-3 px-8 py-4 rounded-full font-extrabold text-lg shadow-lg border-4 border-white active:scale-95 transition-transform"
+        className="absolute z-30 bottom-6 left-[38%] -translate-x-1/2 flex items-center gap-3 px-8 py-4 rounded-full font-extrabold text-lg shadow-lg border-4 border-white active:scale-95 transition-transform"
         style={{ backgroundColor: RED, color: "#fff" }}
       >
-        🔍 Leita að vöru
+        🔍 {t.searchProduct}
       </button>
 
       {helpButton}
 
       {/* Right: cart list + Samtals + Borga */}
       <div className="flex-1 flex flex-col relative z-10">
-        <div className="flex justify-end items-center gap-3 px-8 pt-6 pb-2">
-          <span className="font-bold text-lg" style={{ color: INK }}>Íslenska</span>
-          <span className="w-10 h-10 rounded-full overflow-hidden shadow flex items-center justify-center text-2xl bg-white">🇮🇸</span>
+        <div className="flex justify-end items-center px-8 pt-6 pb-2">
+          {langButton()}
         </div>
 
         <div className="flex-1 overflow-y-auto px-8 py-2 space-y-3">
           {cart.length === 0 ? (
-            <p className="text-gray-300 text-xl font-medium text-center mt-24">Karfan er tóm</p>
+            <p className="text-gray-300 text-xl font-medium text-center mt-24">{t.cartEmpty}</p>
           ) : (
             cart.map((l) => (
               <div
@@ -519,7 +622,7 @@ export default function KassiPage() {
                   style={{ backgroundColor: PINK }}
                 >
                   <button onClick={() => changeQty(l.id, -1)} className="w-8 h-8 rounded-lg bg-white font-bold text-lg active:scale-90 transition-transform">−</button>
-                  <span className="font-extrabold px-1 whitespace-nowrap" style={{ color: INK }}>{l.quantity} stk.</span>
+                  <span className="font-extrabold px-1 whitespace-nowrap" style={{ color: INK }}>{l.quantity} {t.pcs}</span>
                   <button
                     onClick={() => changeQty(l.id, 1)}
                     disabled={l.stock !== undefined && l.quantity >= l.stock}
@@ -528,7 +631,7 @@ export default function KassiPage() {
                 </div>
                 <div className="flex-1 min-w-0 text-center">
                   <p className="font-bold truncate" style={{ color: INK }}>{l.name}</p>
-                  <p className="text-gray-400 text-sm">{l.price.toLocaleString("is-IS")} kr. / stk.</p>
+                  <p className="text-gray-400 text-sm">{l.price.toLocaleString("is-IS")} {t.perPiece}</p>
                 </div>
                 <p className="font-extrabold whitespace-nowrap" style={{ color: INK }}>
                   {(l.price * l.quantity).toLocaleString("is-IS")} kr.
@@ -542,10 +645,10 @@ export default function KassiPage() {
         {/* Totals + Borga bar */}
         <div className="pl-40 pr-8 pt-3 pb-0">
           <div className="flex justify-between items-end border-t border-gray-200 pt-4 pb-3">
-            <span className="text-xl font-bold text-gray-500">Samtals:</span>
+            <span className="text-xl font-bold text-gray-500">{t.totalLabel}</span>
             <div className="text-right">
               <p className="text-3xl font-extrabold" style={{ color: INK }}>{total.toLocaleString("is-IS")} kr.</p>
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide">VSK innifalinn</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide">{t.vatIncluded}</p>
             </div>
           </div>
         </div>
@@ -554,9 +657,7 @@ export default function KassiPage() {
           disabled={cart.length === 0}
           className="h-16 text-xl font-extrabold tracking-wide transition-opacity disabled:opacity-40"
           style={{ backgroundColor: RED, color: "#fff" }}
-        >
-          Borga
-        </button>
+        >{t.payNow}</button>
       </div>
 
       {/* Full-screen search — Krónan produce-style */}
@@ -579,18 +680,18 @@ export default function KassiPage() {
               <div className="flex items-start gap-3 mb-5">
                 <span className="text-3xl">🪄</span>
                 <p className="text-lg font-medium leading-snug" style={{ color: INK }}>
-                  Leitaðu eftir nafni<br />eða veldu vinsæla vöru
+                  {t.searchPromptA}<br />{t.searchPromptB}
                 </p>
               </div>
 
               {searching ? (
                 <div className="flex-1 flex flex-col items-center justify-center">
                   <div className="w-10 h-10 border-4 rounded-full animate-spin mb-4" style={{ borderColor: RED, borderTopColor: "transparent" }} />
-                  <p className="text-gray-400">Leita...</p>
+                  <p className="text-gray-400">{t.searchingNow}</p>
                 </div>
               ) : searchQuery.trim().length >= 2 ? (
                 searchResults.length === 0 ? (
-                  <p className="flex-1 flex items-center justify-center text-gray-400 text-lg">Engin vara fannst</p>
+                  <p className="flex-1 flex items-center justify-center text-gray-400 text-lg">{t.noResults}</p>
                 ) : (
                   <div className="flex-1 overflow-y-auto grid grid-cols-2 gap-3 content-start">
                     {searchResults.map((p) => {
@@ -605,7 +706,7 @@ export default function KassiPage() {
                           <p className="font-bold leading-snug line-clamp-2" style={{ color: INK }}>{p.name}</p>
                           <div className="flex items-center justify-between mt-2">
                             <p className="font-extrabold" style={{ color: INK }}>{p.price.toLocaleString("is-IS")} kr.</p>
-                            {out && <span className="text-xs font-bold text-gray-400">Ekki til</span>}
+                            {out && <span className="text-xs font-bold text-gray-400">{t.outOfStock}</span>}
                           </div>
                         </button>
                       );
@@ -614,7 +715,7 @@ export default function KassiPage() {
                 )
               ) : (
                 <>
-                  <p className="text-sm font-bold text-gray-500 mb-3">Vinsælar</p>
+                  <p className="text-sm font-bold text-gray-500 mb-3">{t.popular}</p>
                   <div className="grid grid-cols-5 gap-3 content-start">
                     {QUICK_PICKS.map((q) => (
                       <button
@@ -634,16 +735,15 @@ export default function KassiPage() {
 
           {/* Right: input + yellow keyboard */}
           <div className="relative z-10 flex-1 flex flex-col px-10 pt-8 pb-8">
-            <div className="flex justify-end items-center gap-3 mb-8">
-              <span className="font-bold" style={{ color: INK }}>Íslenska</span>
-              <span className="w-9 h-9 rounded-full overflow-hidden shadow flex items-center justify-center text-xl bg-white">🇮🇸</span>
+            <div className="flex justify-end items-center mb-8">
+              {langButton(true)}
             </div>
 
             <input
               ref={searchInputRef}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="SLÁÐU INN NAFN"
+              placeholder={t.typeName}
               className="w-full bg-white/95 rounded-2xl px-6 py-4 text-center text-lg font-bold tracking-widest uppercase outline-none placeholder:text-gray-400 shadow-inner mb-6"
               style={{ color: INK }}
             />
@@ -675,9 +775,7 @@ export default function KassiPage() {
                   onClick={() => setSearchQuery((q) => q + " ")}
                   className="w-52 h-12 rounded-xl font-extrabold text-sm shadow-sm active:scale-95 transition-transform"
                   style={{ backgroundColor: "#fff", color: RED_DARK }}
-                >
-                  BIL
-                </button>
+                >{t.space}</button>
                 <button
                   onClick={() => setSearchQuery((q) => q.slice(0, -1))}
                   className="w-24 h-12 rounded-xl font-extrabold text-xl shadow-sm active:scale-95 transition-transform"
@@ -694,14 +792,14 @@ export default function KassiPage() {
               className="self-end bg-white rounded-2xl px-10 py-4 font-extrabold text-lg shadow-md border-2 active:scale-95 transition-transform"
               style={{ borderColor: RED_DARK, color: INK }}
             >
-              ← Til baka
+              ← {t.back}
             </button>
           </div>
 
           <div className="absolute bottom-6 left-8 z-20">
             <button onClick={() => setHelpOpen(true)} className="flex items-center gap-3 group">
               <span className="w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-md group-active:scale-95 transition-transform" style={{ backgroundColor: RED }}>🙋</span>
-              <span className="font-bold text-lg" style={{ color: INK }}>Fá aðstoð</span>
+              <span className="font-bold text-lg" style={{ color: INK }}>{t.getHelp}</span>
             </button>
           </div>
         </div>
@@ -712,10 +810,10 @@ export default function KassiPage() {
         <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-6">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg p-8 text-center">
             <p className="text-6xl mb-4">🛍️</p>
-            <h2 className="text-3xl font-extrabold mb-2" style={{ color: INK }}>Þarftu poka?</h2>
+            <h2 className="text-3xl font-extrabold mb-2" style={{ color: INK }}>{t.needBags}</h2>
             <p className="text-gray-500 mb-8">
               {bagProduct
-                ? `${bagProduct.name} — ${bagProduct.price.toLocaleString("is-IS")} kr. stk.`
+                ? `${bagProduct.name} — ${bagProduct.price.toLocaleString("is-IS")} kr. ${t.pcs}`
                 : "Pokar eru ekki í boði á þessum kassa"}
             </p>
 
@@ -743,9 +841,7 @@ export default function KassiPage() {
               <button
                 onClick={() => { setBagCount(0); setBagModalOpen(false); pay(cart); }}
                 className="flex-1 bg-white border-2 border-gray-200 text-gray-600 text-lg font-bold py-4 rounded-full"
-              >
-                Nei takk
-              </button>
+              >{t.noThanks}</button>
               <button
                 onClick={confirmBagsAndPay}
                 disabled={!!bagProduct && bagCount === 0}
@@ -753,8 +849,8 @@ export default function KassiPage() {
                 style={{ backgroundColor: RED, color: "#fff" }}
               >
                 {bagCount > 0 && bagProduct
-                  ? `Bæta við og borga (+${(bagCount * bagProduct.price).toLocaleString("is-IS")} kr.)`
-                  : "Borga"}
+                  ? `${t.addAndPay} (+${(bagCount * bagProduct.price).toLocaleString("is-IS")} kr.)`
+                  : t.payNow}
               </button>
             </div>
           </div>
@@ -766,15 +862,13 @@ export default function KassiPage() {
         <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-6" onClick={() => setHelpOpen(false)}>
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md p-10 text-center" onClick={(e) => e.stopPropagation()}>
             <p className="text-6xl mb-4">🙋</p>
-            <h2 className="text-2xl font-extrabold mb-2" style={{ color: INK }}>Aðstoð er á leiðinni</h2>
-            <p className="text-gray-500 mb-8">Starfsmaður kemur til þín fljótlega. Þú getur líka hringt í síma 455-4500.</p>
+            <h2 className="text-2xl font-extrabold mb-2" style={{ color: INK }}>{t.helpComing}</h2>
+            <p className="text-gray-500 mb-8">{t.helpText}</p>
             <button
               onClick={() => setHelpOpen(false)}
               className="text-lg font-extrabold px-10 py-4 rounded-full active:scale-95 transition-transform"
               style={{ backgroundColor: RED, color: "#fff" }}
-            >
-              Loka
-            </button>
+            >{t.close}</button>
           </div>
         </div>
       )}
