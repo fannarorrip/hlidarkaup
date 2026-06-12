@@ -32,6 +32,21 @@ export default function KassiPage() {
   const [searching, setSearching] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Bag prompt before payment + help modal
+  const [bagModalOpen, setBagModalOpen] = useState(false);
+  const [bagCount, setBagCount] = useState(0);
+  const [bagProduct, setBagProduct] = useState<{ id: string; name: string; price: number } | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [showDigits, setShowDigits] = useState(false);
+
+  // Load the bag product once
+  useEffect(() => {
+    fetch("/api/kassi/bag")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setBagProduct(d))
+      .catch(() => null);
+  }, []);
+
   const total = cart.reduce((s, l) => s + l.price * l.quantity, 0);
   const itemCount = cart.reduce((s, l) => s + l.quantity, 0);
 
@@ -161,7 +176,28 @@ export default function KassiPage() {
     );
   }
 
-  async function pay() {
+  /** Open the bag prompt before payment (Krónan-style). */
+  function startPay() {
+    if (cart.length === 0) return;
+    setBagCount(0);
+    setBagModalOpen(true);
+  }
+
+  /** Confirm bag count, add bags to the cart, then charge. */
+  function confirmBagsAndPay() {
+    setBagModalOpen(false);
+    let finalCart = cart;
+    if (bagCount > 0 && bagProduct) {
+      const existing = cart.find((l) => l.id === bagProduct.id);
+      finalCart = existing
+        ? cart.map((l) => (l.id === bagProduct.id ? { ...l, quantity: l.quantity + bagCount } : l))
+        : [...cart, { ...bagProduct, quantity: bagCount }];
+      setCart(finalCart);
+    }
+    pay(finalCart);
+  }
+
+  async function pay(finalCart: CartLine[]) {
     setScreen("paying");
     setPayError("");
 
@@ -179,7 +215,7 @@ export default function KassiPage() {
       const res = await fetch("/api/kassi/checkout", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ items: cart.map(({ id, quantity }) => ({ id, quantity })), payment }),
+        body: JSON.stringify({ items: finalCart.map(({ id, quantity }) => ({ id, quantity })), payment }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -201,6 +237,8 @@ export default function KassiPage() {
     setPayError("");
     setScanError("");
     setLastScanned(null);
+    setBagModalOpen(false);
+    setHelpOpen(false);
     setScreen("idle");
   }
 
@@ -306,7 +344,7 @@ export default function KassiPage() {
             className="bg-white border-2 border-gray-300 text-gray-700 text-xl font-bold px-10 py-5 rounded-2xl">
             Til baka í körfu
           </button>
-          <button onClick={pay}
+          <button onClick={() => pay(cart)}
             className="bg-brand-red hover:bg-brand-red-dark text-white text-xl font-bold px-10 py-5 rounded-2xl transition-colors">
             Reyna aftur
           </button>
@@ -329,8 +367,14 @@ export default function KassiPage() {
             <p className="text-red-200 text-xs">Sjálfsafgreiðsla</p>
           </div>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           <span className="text-red-100 font-medium hidden sm:block">Skannaðu vörurnar þínar</span>
+          <button
+            onClick={() => setHelpOpen(true)}
+            className="bg-white/15 hover:bg-white/25 px-4 py-1.5 rounded-lg font-bold transition-colors"
+          >
+            🙋 Fá aðstoð
+          </button>
           <span className="bg-white/15 px-3 py-1 rounded-lg font-mono text-lg">{clock}</span>
         </div>
       </header>
@@ -440,7 +484,7 @@ export default function KassiPage() {
               🔍 Leita að vöru
             </button>
             <button
-              onClick={pay}
+              onClick={startPay}
               disabled={cart.length === 0}
               className="w-full bg-green-600 hover:bg-green-700 text-white text-xl font-extrabold py-5 rounded-2xl transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-green-100"
             >
@@ -488,7 +532,21 @@ export default function KassiPage() {
                   <p className="text-gray-400">Leita...</p>
                 </div>
               ) : searchQuery.trim().length < 2 ? (
-                <p className="py-14 text-center text-gray-400 text-lg">Sláðu inn a.m.k. 2 stafi</p>
+                <div>
+                  <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Vinsælar vörur</p>
+                  <div className="grid grid-cols-4 gap-3">
+                    {QUICK_PICKS.map((q) => (
+                      <button
+                        key={q.term}
+                        onClick={() => setSearchQuery(q.term)}
+                        className="bg-gray-50 hover:bg-red-50 border border-gray-100 hover:border-brand-red rounded-2xl p-4 flex flex-col items-center gap-2 transition-colors"
+                      >
+                        <span className="text-4xl">{q.emoji}</span>
+                        <span className="font-bold text-gray-800 text-sm">{q.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ) : searchResults.length === 0 ? (
                 <p className="py-14 text-center text-gray-400 text-lg">Engin vara fannst</p>
               ) : (
@@ -516,9 +574,141 @@ export default function KassiPage() {
                 </div>
               )}
             </div>
+
+            {/* On-screen keyboard */}
+            <div className="border-t border-gray-100 bg-gray-50 p-3 select-none">
+              {(showDigits ? DIGIT_ROWS : LETTER_ROWS).map((row, i) => (
+                <div key={i} className="flex justify-center gap-1.5 mb-1.5">
+                  {row.map((k) => (
+                    <button
+                      key={k}
+                      onClick={() => setSearchQuery((q) => q + k)}
+                      className="w-12 h-12 bg-white border border-gray-200 rounded-xl font-bold text-lg text-gray-800 hover:bg-red-50 hover:border-brand-red active:scale-95 transition-all uppercase"
+                    >
+                      {k}
+                    </button>
+                  ))}
+                </div>
+              ))}
+              <div className="flex justify-center gap-1.5">
+                <button
+                  onClick={() => setShowDigits((d) => !d)}
+                  className="w-20 h-12 bg-white border border-gray-200 rounded-xl font-bold text-sm text-gray-600 hover:bg-red-50 active:scale-95 transition-all"
+                >
+                  {showDigits ? "ABC" : "0-9"}
+                </button>
+                <button
+                  onClick={() => setSearchQuery((q) => q + " ")}
+                  className="flex-1 max-w-xs h-12 bg-white border border-gray-200 rounded-xl font-bold text-sm text-gray-600 hover:bg-red-50 active:scale-95 transition-all"
+                >
+                  BIL
+                </button>
+                <button
+                  onClick={() => setSearchQuery((q) => q.slice(0, -1))}
+                  className="w-20 h-12 bg-white border border-gray-200 rounded-xl font-bold text-xl text-gray-600 hover:bg-red-50 active:scale-95 transition-all"
+                >
+                  ⌫
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bag prompt before payment */}
+      {bagModalOpen && (
+        <div className="absolute inset-0 z-30 bg-black/50 flex items-center justify-center p-6">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 text-center">
+            <p className="text-6xl mb-4">🛍️</p>
+            <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Þarftu poka?</h2>
+            <p className="text-gray-500 mb-8">
+              {bagProduct
+                ? `${bagProduct.name} — ${bagProduct.price.toLocaleString("is-IS")} kr. stk.`
+                : "Pokar eru ekki í boði á þessum kassa"}
+            </p>
+
+            {bagProduct && (
+              <div className="flex items-center justify-center gap-6 mb-10">
+                <button
+                  onClick={() => setBagCount((c) => Math.max(0, c - 1))}
+                  className="w-16 h-16 rounded-full bg-gray-100 hover:bg-red-100 text-3xl font-bold text-gray-700 transition-colors"
+                >
+                  −
+                </button>
+                <span className="text-5xl font-extrabold text-gray-900 w-16">{bagCount}</span>
+                <button
+                  onClick={() => setBagCount((c) => Math.min(9, c + 1))}
+                  className="w-16 h-16 rounded-full bg-gray-100 hover:bg-green-100 text-3xl font-bold text-gray-700 transition-colors"
+                >
+                  +
+                </button>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setBagCount(0); setBagModalOpen(false); pay(cart); }}
+                className="flex-1 bg-white border-2 border-gray-200 hover:border-gray-400 text-gray-600 text-lg font-bold py-4 rounded-2xl transition-colors"
+              >
+                Nei takk
+              </button>
+              <button
+                onClick={confirmBagsAndPay}
+                disabled={!!bagProduct && bagCount === 0}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white text-lg font-extrabold py-4 rounded-2xl transition-colors disabled:opacity-30"
+              >
+                {bagCount > 0 && bagProduct
+                  ? `Bæta við og greiða (+${(bagCount * bagProduct.price).toLocaleString("is-IS")} kr.)`
+                  : "Greiða"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Help modal */}
+      {helpOpen && (
+        <div className="absolute inset-0 z-30 bg-black/50 flex items-center justify-center p-6" onClick={() => setHelpOpen(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-10 text-center" onClick={(e) => e.stopPropagation()}>
+            <p className="text-6xl mb-4">🙋</p>
+            <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Aðstoð er á leiðinni</h2>
+            <p className="text-gray-500 mb-8">Starfsmaður kemur til þín fljótlega. Þú getur líka hringt í síma 455-4500.</p>
+            <button
+              onClick={() => setHelpOpen(false)}
+              className="bg-brand-red hover:bg-brand-red-dark text-white text-lg font-bold px-10 py-4 rounded-2xl transition-colors"
+            >
+              Loka
+            </button>
           </div>
         </div>
       )}
     </div>
   );
 }
+
+// ── Kiosk constants ──────────────────────────────────────────────────────────
+const QUICK_PICKS = [
+  { emoji: "🍌", label: "Bananar", term: "bananar" },
+  { emoji: "🍎", label: "Epli", term: "epli" },
+  { emoji: "🍊", label: "Appelsínur", term: "appelsín" },
+  { emoji: "🍅", label: "Tómatar", term: "tómat" },
+  { emoji: "🫑", label: "Paprika", term: "paprika" },
+  { emoji: "🥒", label: "Agúrka", term: "agúrka" },
+  { emoji: "🍋", label: "Sítrónur", term: "sítrón" },
+  { emoji: "🥑", label: "Avókadó", term: "avókadó" },
+  { emoji: "🍄", label: "Sveppir", term: "sveppir" },
+  { emoji: "🧅", label: "Laukur", term: "laukur" },
+  { emoji: "🥔", label: "Kartöflur", term: "kartöflur" },
+  { emoji: "🍇", label: "Vínber", term: "vínber" },
+];
+
+const LETTER_ROWS = [
+  ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "ð"],
+  ["a", "s", "d", "f", "g", "h", "j", "k", "l", "æ", "ö"],
+  ["z", "x", "c", "v", "b", "n", "m", "þ", "á", "é", "í"],
+  ["ó", "ú", "ý"],
+];
+
+const DIGIT_ROWS = [
+  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+];
