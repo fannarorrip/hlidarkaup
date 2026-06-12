@@ -10,7 +10,7 @@ interface CartLine {
   quantity: number;
 }
 
-type Screen = "idle" | "scan" | "paying" | "receipt" | "done" | "payError";
+type Screen = "idle" | "scan" | "paying" | "done" | "payError";
 type Lang = "is" | "en";
 
 const STR = {
@@ -51,17 +51,22 @@ const STR = {
     outOfStock: "Ekki til",
     space: "BIL",
     back: "Til baka",
-    needBags: "Þarftu poka?",
-    noBags: "Pokar eru ekki í boði á þessum kassa",
-    noThanks: "Nei takk",
-    addAndPay: "Bæta við og borga",
     helpComing: "Aðstoð er á leiðinni",
     helpText: "Starfsmaður kemur til þín fljótlega. Þú getur líka hringt í síma 455-4500.",
     close: "Loka",
-    paymentApproved: "Greiðsla samþykkt",
-    wantReceipt: "Viltu fá kvittun?",
-    yesPlease: "Já takk",
     receiptPrinting: "Kvittunin er að prentast",
+    bagTitle: "Poka?",
+    chooseQty: "Veldu magn",
+    noBag: "Engan poka",
+    thanksShort: "Takk fyrir!",
+    sumPrefix: "Samtals",
+    sumItems: "vörur og",
+    sumLines: "vöruliðir í körfu",
+    rememberItems: "Mundu eftir vörunum þínum.",
+    printReceipt: "Prenta kvittun",
+    eReceipt: "Rafræn kvittun",
+    newCheckout: "Ný afgreiðsla",
+    comingSoon: "Kemur fljótlega",
   },
   en: {
     langName: "English",
@@ -100,17 +105,22 @@ const STR = {
     outOfStock: "Out of stock",
     space: "SPACE",
     back: "Back",
-    needBags: "Do you need bags?",
-    noBags: "Bags are not available at this register",
-    noThanks: "No thanks",
-    addAndPay: "Add and pay",
     helpComing: "Help is on the way",
     helpText: "A member of staff will be with you shortly. You can also call 455-4500.",
     close: "Close",
-    paymentApproved: "Payment approved",
-    wantReceipt: "Would you like a receipt?",
-    yesPlease: "Yes please",
     receiptPrinting: "Your receipt is printing",
+    bagTitle: "Bags?",
+    chooseQty: "Choose quantity",
+    noBag: "No bag",
+    thanksShort: "Thank you!",
+    sumPrefix: "Total",
+    sumItems: "items and",
+    sumLines: "product lines in your basket",
+    rememberItems: "Don't forget your items.",
+    printReceipt: "Print receipt",
+    eReceipt: "E-receipt",
+    newCheckout: "New checkout",
+    comingSoon: "Coming soon",
   },
 } as const;
 
@@ -155,8 +165,8 @@ export default function KassiPage() {
 
   // Bag prompt before payment + help modal
   const [bagModalOpen, setBagModalOpen] = useState(false);
-  const [bagCount, setBagCount] = useState(0);
   const [bagProduct, setBagProduct] = useState<{ id: string; name: string; price: number } | null>(null);
+  const [eReceiptHint, setEReceiptHint] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [showDigits, setShowDigits] = useState(false);
   const [receiptWanted, setReceiptWanted] = useState(false);
@@ -224,9 +234,8 @@ export default function KassiPage() {
 
   // Auto-return to attract screen after a finished sale
   useEffect(() => {
-    if (screen !== "done" && screen !== "receipt") return;
-    // Give the receipt question a bit longer before resetting
-    const t = setTimeout(() => newSale(), screen === "receipt" ? 30_000 : 15_000);
+    if (screen !== "done") return;
+    const t = setTimeout(() => newSale(), 30_000);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
@@ -295,19 +304,22 @@ export default function KassiPage() {
   /** Open the bag prompt before payment (Krónan-style). */
   function startPay() {
     if (cart.length === 0) return;
-    setBagCount(0);
+    if (!bagProduct) {
+      pay(cart);
+      return;
+    }
     setBagModalOpen(true);
   }
 
-  /** Confirm bag count, add bags to the cart, then charge. */
-  function confirmBagsAndPay() {
+  /** Picking a count on the numpad (or "Engan poka") adds the bags and charges. */
+  function payWithBags(count: number) {
     setBagModalOpen(false);
     let finalCart = cart;
-    if (bagCount > 0 && bagProduct) {
+    if (count > 0 && bagProduct) {
       const existing = cart.find((l) => l.id === bagProduct.id);
       finalCart = existing
-        ? cart.map((l) => (l.id === bagProduct.id ? { ...l, quantity: l.quantity + bagCount } : l))
-        : [...cart, { ...bagProduct, quantity: bagCount }];
+        ? cart.map((l) => (l.id === bagProduct.id ? { ...l, quantity: l.quantity + count } : l))
+        : [...cart, { ...bagProduct, quantity: count }];
       setCart(finalCart);
     }
     pay(finalCart);
@@ -340,7 +352,7 @@ export default function KassiPage() {
         return;
       }
       setInvoiceNumber(data.invoiceNumber);
-      setScreen("receipt");
+      setScreen("done");
     } catch {
       setPayError("Samband við kerfið rofnaði. Reyndu aftur.");
       setScreen("payError");
@@ -351,6 +363,7 @@ export default function KassiPage() {
     setCart([]);
     setInvoiceNumber("");
     setReceiptWanted(false);
+    setEReceiptHint(false);
     setPayError("");
     setScanError("");
     setLastScanned(null);
@@ -504,73 +517,93 @@ export default function KassiPage() {
     );
   }
 
-  // ── Receipt question after payment ───────────────────────────────────────
-  if (screen === "receipt") {
-    return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 text-center overflow-hidden" style={PATTERN_BG}>
-        <svg className="absolute top-0 left-0 w-[40%] h-[45%] opacity-80" viewBox="0 0 400 400" preserveAspectRatio="none">
-          <path d="M0,0 H300 C370,120 250,200 290,320 C190,400 70,330 0,360 Z" fill={PINK} />
-        </svg>
-        <svg className="absolute bottom-0 right-0 w-[38%] h-[42%] opacity-80" viewBox="0 0 400 400" preserveAspectRatio="none">
-          <path d="M400,400 V60 C300,20 240,140 140,120 C60,220 140,330 100,400 Z" fill={CREAM} />
-        </svg>
-
-        <div className="relative z-10 bg-white rounded-[2.5rem] shadow-xl px-16 py-14 flex flex-col items-center max-w-xl w-full">
-          <div className="w-24 h-24 rounded-full flex items-center justify-center mb-6" style={{ backgroundColor: RED }}>
-            <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <p className="text-xl font-bold text-gray-400 mb-2">{t.paymentApproved}</p>
-          <p className="text-2xl font-extrabold mb-1" style={{ color: INK }}>{total.toLocaleString("is-IS")} kr.</p>
-          <h1 className="text-4xl font-extrabold mt-6 mb-10" style={{ color: INK }}>{t.wantReceipt}</h1>
-          <div className="flex gap-4 w-full">
-            <button
-              onClick={() => { setReceiptWanted(false); setScreen("done"); }}
-              className="flex-1 bg-white border-2 border-gray-200 text-gray-600 text-2xl font-bold py-6 rounded-full active:scale-95 transition-transform"
-            >
-              {t.noThanks}
-            </button>
-            <button
-              onClick={() => { setReceiptWanted(true); setScreen("done"); }}
-              className="flex-1 text-2xl font-extrabold py-6 rounded-full active:scale-95 transition-transform"
-              style={{ backgroundColor: RED, color: "#fff" }}
-            >
-              🧾 {t.yesPlease}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // ── Receipt / done ───────────────────────────────────────────────────────
   if (screen === "done") {
+    const itemCount = cart.reduce((s, l) => s + l.quantity, 0);
     return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 text-center overflow-hidden" style={PATTERN_BG}>
-        <svg className="absolute bottom-0 left-0 w-[40%] h-[45%] opacity-80" viewBox="0 0 400 400" preserveAspectRatio="none">
-          <path d="M0,400 V80 C110,40 170,170 270,150 C350,250 270,360 310,400 Z" fill={PINK} />
+      <div className="fixed inset-0 z-50 flex overflow-hidden" style={PATTERN_BG}>
+        {/* Right: big red circle blob with illustration + actions (like the photo) */}
+        <svg className="absolute -top-[10%] -right-[12%] w-[65%] h-[130%]" viewBox="0 0 400 400" preserveAspectRatio="none">
+          <circle cx="220" cy="200" r="190" fill={RED} />
         </svg>
-        <div className="relative z-10 w-32 h-32 rounded-full flex items-center justify-center mb-8 shadow-lg" style={{ backgroundColor: RED }}>
-          <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={3}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
+
+        {/* Left: thank-you text */}
+        <div className="relative z-10 w-[55%] flex flex-col px-12 pt-8 pb-8">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Hlíðarkaup" className="h-12 w-auto self-start mb-10" />
+          <div className="flex-1 flex flex-col justify-center max-w-lg">
+            <h1 className="text-7xl font-extrabold mb-8" style={{ color: INK }}>{t.thanksShort}</h1>
+            <p className="text-xl text-gray-600 mb-6 flex items-center gap-2 flex-wrap">
+              {t.sumPrefix}
+              <span className="inline-flex w-9 h-9 rounded-full items-center justify-center font-extrabold text-white" style={{ backgroundColor: RED }}>
+                {itemCount}
+              </span>
+              {t.sumItems}
+              <span className="inline-flex w-9 h-9 rounded-full items-center justify-center font-extrabold text-white" style={{ backgroundColor: RED }}>
+                {cart.length}
+              </span>
+              {t.sumLines}
+            </p>
+            <p
+              className="text-4xl font-extrabold self-start mb-6 pb-1"
+              style={{ color: INK, boxShadow: `inset 0 -0.45em 0 ${PINK}` }}
+            >
+              {total.toLocaleString("is-IS")} kr.
+            </p>
+            <p className="text-gray-400 mb-2">{t.receiptNo} {invoiceNumber}</p>
+            <p className="text-xl font-bold" style={{ color: INK }}>{t.rememberItems}</p>
+          </div>
+
+          {/* Bottom-left: e-receipt */}
+          <button
+            onClick={() => setEReceiptHint(true)}
+            className="self-start flex items-center gap-3 active:scale-95 transition-transform"
+          >
+            <span className="w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-md" style={{ backgroundColor: PINK }}>
+              ✉️
+            </span>
+            <span className="font-bold text-lg" style={{ color: INK }}>
+              {t.eReceipt}{eReceiptHint && <span className="text-gray-400 font-medium"> — {t.comingSoon}</span>}
+            </span>
+          </button>
         </div>
-        <h1 className="relative z-10 text-5xl font-extrabold mb-3" style={{ color: INK }}>{t.thanks}</h1>
-        <p className="relative z-10 text-2xl text-gray-600 mb-1">{total.toLocaleString("is-IS")} kr. {t.paidByCard}</p>
-        <p className="relative z-10 text-gray-400 text-lg mb-2">{t.receiptNo} {invoiceNumber}</p>
-        {receiptWanted && (
-          <p className="relative z-10 text-lg font-bold mb-2 flex items-center gap-2" style={{ color: INK }}>
-            🧾 {t.receiptPrinting}…
-          </p>
-        )}
-        <div className="relative z-10 mb-10" />
-        <button
-          onClick={newSale}
-          className="relative z-10 text-2xl font-extrabold px-16 py-6 rounded-full shadow-lg active:scale-95 transition-transform"
-          style={{ backgroundColor: RED, color: "#fff" }}
-        >{t.newSale}</button>
-        <p className="relative z-10 text-gray-300 text-sm mt-8">{t.autoReturn}</p>
+
+        {/* Right column content over the red circle */}
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center gap-10 pr-8">
+          {/* Grocery bag illustration */}
+          <svg viewBox="0 0 200 140" className="w-72 h-52">
+            <path d="M60 12 q8 -10 16 0" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
+            <text x="28" y="38" fontSize="26">🥕</text>
+            <text x="62" y="28" fontSize="26">🍎</text>
+            <text x="98" y="32" fontSize="26">🥛</text>
+            <text x="132" y="40" fontSize="26">🥖</text>
+            <rect x="30" y="44" width="84" height="78" rx="8" fill="#fff" />
+            <path d="M52 44 q0 -16 16 -16 q16 0 16 16" fill="none" stroke={INK} strokeWidth="4" />
+            <circle cx="60" cy="84" r="4.5" fill={INK} />
+            <circle cx="84" cy="84" r="4.5" fill={INK} />
+            <path d="M64 100 q8 7 16 0" fill="none" stroke={INK} strokeWidth="3.5" strokeLinecap="round" />
+            <rect x="122" y="58" width="52" height="64" rx="8" fill={PINK} />
+            <path d="M136 58 q0 -12 12 -12 q12 0 12 12" fill="none" stroke={INK} strokeWidth="4" />
+          </svg>
+
+          <div className="flex flex-col gap-4 w-72">
+            <button
+              onClick={() => setReceiptWanted(true)}
+              disabled={receiptWanted}
+              className="bg-white rounded-full py-5 px-8 text-xl font-extrabold shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-3 disabled:opacity-90"
+              style={{ color: INK }}
+            >
+              🧾 {receiptWanted ? `${t.receiptPrinting}…` : t.printReceipt}
+            </button>
+            <button
+              onClick={newSale}
+              className="bg-white rounded-full py-5 px-8 text-xl font-extrabold shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-3"
+              style={{ color: INK }}
+            >
+              🛍️ {t.newCheckout}
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -862,52 +895,55 @@ export default function KassiPage() {
         </div>
       )}
 
-      {/* Bag prompt before payment */}
-      {bagModalOpen && (
-        <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg p-8 text-center">
-            <p className="text-6xl mb-4">🛍️</p>
-            <h2 className="text-3xl font-extrabold mb-2" style={{ color: INK }}>{t.needBags}</h2>
-            <p className="text-gray-500 mb-8">
-              {bagProduct
-                ? `${bagProduct.name} — ${bagProduct.price.toLocaleString("is-IS")} kr. ${t.pcs}`
-                : "Pokar eru ekki í boði á þessum kassa"}
-            </p>
+      {/* Bag prompt before payment — Krónan-style: bag illustration + numpad */}
+      {bagModalOpen && bagProduct && (
+        <div className="absolute inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-8">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-3xl p-10 flex gap-10" style={PATTERN_BG}>
+            {/* Left: bag with eyes + price tag */}
+            <div className="flex-1 flex flex-col">
+              <h2 className="text-3xl font-extrabold mb-4" style={{ color: INK }}>{t.bagTitle}</h2>
+              <svg viewBox="0 0 220 200" className="w-full max-w-xs mx-auto">
+                {/* Price tag */}
+                <g transform="rotate(-14 60 50)">
+                  <rect x="14" y="34" width="96" height="34" rx="6" fill={RED} />
+                  <text x="62" y="57" textAnchor="middle" fontSize="17" fontWeight="800" fill="#fff">
+                    {bagProduct.price.toLocaleString("is-IS")} kr. {t.pcs}
+                  </text>
+                </g>
+                <path d="M104 64 q14 10 18 26" fill="none" stroke={INK} strokeWidth="2.5" strokeDasharray="1 6" strokeLinecap="round" />
+                {/* Paper bag */}
+                <rect x="92" y="88" width="92" height="96" rx="6" fill="#E8C99B" stroke={INK} strokeWidth="3" />
+                <path d="M112 88 q0 -22 26 -22 q26 0 26 22" fill="none" stroke={INK} strokeWidth="3.5" />
+                <line x1="92" y1="170" x2="184" y2="170" stroke={INK} strokeWidth="2" strokeDasharray="5 5" opacity="0.35" />
+                {/* Eyes */}
+                <circle cx="156" cy="124" r="6" fill="#fff" stroke={INK} strokeWidth="2.5" />
+                <circle cx="174" cy="124" r="6" fill="#fff" stroke={INK} strokeWidth="2.5" />
+                <circle cx="157.5" cy="125.5" r="2.2" fill={INK} />
+                <circle cx="175.5" cy="125.5" r="2.2" fill={INK} />
+              </svg>
+            </div>
 
-            {bagProduct && (
-              <div className="flex items-center justify-center gap-6 mb-10">
-                <button
-                  onClick={() => setBagCount((c) => Math.max(0, c - 1))}
-                  className="w-16 h-16 rounded-full text-3xl font-bold active:scale-90 transition-transform"
-                  style={{ backgroundColor: PINK, color: INK }}
-                >
-                  −
-                </button>
-                <span className="text-5xl font-extrabold w-16" style={{ color: INK }}>{bagCount}</span>
-                <button
-                  onClick={() => setBagCount((c) => Math.min(9, c + 1))}
-                  className="w-16 h-16 rounded-full text-3xl font-bold active:scale-90 transition-transform"
-                  style={{ backgroundColor: PINK, color: INK }}
-                >
-                  +
-                </button>
+            {/* Right: choose quantity numpad */}
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <p className="text-xl font-bold mb-6" style={{ color: INK }}>{t.chooseQty}</p>
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => payWithBags(n)}
+                    className="w-20 h-20 rounded-2xl text-2xl font-extrabold shadow-sm active:scale-90 transition-transform"
+                    style={{ backgroundColor: PINK, color: INK }}
+                  >
+                    {n}
+                  </button>
+                ))}
               </div>
-            )}
-
-            <div className="flex gap-3">
               <button
-                onClick={() => { setBagCount(0); setBagModalOpen(false); pay(cart); }}
-                className="flex-1 bg-white border-2 border-gray-200 text-gray-600 text-lg font-bold py-4 rounded-full"
-              >{t.noThanks}</button>
-              <button
-                onClick={confirmBagsAndPay}
-                disabled={!!bagProduct && bagCount === 0}
-                className="flex-1 text-lg font-extrabold py-4 rounded-full active:scale-95 transition-transform disabled:opacity-30"
+                onClick={() => payWithBags(0)}
+                className="w-full max-w-[16.5rem] py-5 rounded-2xl text-xl font-extrabold shadow-md active:scale-95 transition-transform"
                 style={{ backgroundColor: RED, color: "#fff" }}
               >
-                {bagCount > 0 && bagProduct
-                  ? `${t.addAndPay} (+${(bagCount * bagProduct.price).toLocaleString("is-IS")} kr.)`
-                  : t.payNow}
+                {t.noBag}
               </button>
             </div>
           </div>
