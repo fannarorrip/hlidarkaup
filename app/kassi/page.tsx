@@ -62,6 +62,8 @@ const STR = {
     sumPrefix: "Samtals",
     sumItems: "vörur og",
     sumLines: "vöruliðir í körfu",
+    itemsWord: "Vörur",
+    linesWord: "Vöruliðir",
     rememberItems: "Mundu eftir vörunum þínum.",
     printReceipt: "Prenta kvittun",
     eReceipt: "Rafræn kvittun",
@@ -116,6 +118,8 @@ const STR = {
     sumPrefix: "Total",
     sumItems: "items and",
     sumLines: "product lines in your basket",
+    itemsWord: "Items",
+    linesWord: "Lines",
     rememberItems: "Don't forget your items.",
     printReceipt: "Print receipt",
     eReceipt: "E-receipt",
@@ -131,13 +135,18 @@ const CREAM = "#F3E9D7";
 const PINK = "#FCE7E7";
 const INK = "#2B2B2B";
 
-// Soft cross-weave texture (Hlíðarkaup) — distinct from the concentric-wave look
+// Subtle guilloche / fingerprint-wave background used behind every screen
+const PATTERN_SVG = encodeURIComponent(
+  `<svg xmlns='http://www.w3.org/2000/svg' width='900' height='900'>` +
+    `<g fill='none' stroke='#9a9a8e' stroke-opacity='0.07' stroke-width='14'>` +
+    Array.from({ length: 16 }, (_, i) => `<circle cx='450' cy='450' r='${50 + i * 38}'/>`).join("") +
+    `</g></svg>`,
+);
 const PATTERN_BG: CSSProperties = {
   backgroundColor: "#f7f5ef",
-  backgroundImage: [
-    "repeating-linear-gradient(45deg, rgba(154,154,142,0.05) 0px, rgba(154,154,142,0.05) 1px, transparent 1px, transparent 22px)",
-    "repeating-linear-gradient(-45deg, rgba(154,154,142,0.05) 0px, rgba(154,154,142,0.05) 1px, transparent 1px, transparent 22px)",
-  ].join(", "),
+  backgroundImage: `url("data:image/svg+xml,${PATTERN_SVG}")`,
+  backgroundSize: "1100px 1100px",
+  backgroundPosition: "center",
 };
 
 export default function KassiPage() {
@@ -424,10 +433,10 @@ export default function KassiPage() {
         {scannerInput}
         {/* Organic corner blobs */}
         <svg className="absolute top-0 left-0 w-[45%] h-[55%]" viewBox="0 0 400 400" preserveAspectRatio="none">
-          <path d="M0,0 H300 Q360,210 230,400 H0 Z" fill={RED} />
+          <path d="M0,0 H320 C380,120 260,200 300,320 C200,400 80,330 0,360 Z" fill={RED} />
         </svg>
         <svg className="absolute bottom-0 right-0 w-[40%] h-[50%]" viewBox="0 0 400 400" preserveAspectRatio="none">
-          <path d="M400,400 V80 Q300,120 170,400 Z" fill={CREAM} />
+          <path d="M400,400 V60 C300,20 240,140 140,120 C60,220 140,330 100,400 Z" fill={CREAM} />
         </svg>
 
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -450,10 +459,10 @@ export default function KassiPage() {
       <div className="fixed inset-0 z-50 overflow-hidden" style={PATTERN_BG}>
         {/* Faded light-blue blobs in the background */}
         <svg className="absolute top-0 left-0 w-[50%] h-[60%] opacity-70" viewBox="0 0 400 400" preserveAspectRatio="none">
-          <path d="M0,0 H280 Q350,210 220,400 H0 Z" fill={PINK} />
+          <path d="M0,0 H300 C370,130 250,220 290,340 C190,410 70,340 0,370 Z" fill={PINK} />
         </svg>
         <svg className="absolute bottom-0 right-0 w-[45%] h-[55%] opacity-70" viewBox="0 0 400 400" preserveAspectRatio="none">
-          <path d="M400,400 V90 Q290,120 170,400 Z" fill={PINK} />
+          <path d="M400,400 V50 C290,10 230,150 130,130 C50,230 130,340 90,400 Z" fill={PINK} />
         </svg>
 
         {/* Cart summary, dimmed at the edge like the reference */}
@@ -512,89 +521,94 @@ export default function KassiPage() {
     );
   }
 
-  // ── Receipt / done ───────────────────────────────────────────────────────
+  // ── Receipt / done — centered ticket-stub receipt (Hlíðarkaup original) ────
   if (screen === "done") {
     const itemCount = cart.reduce((s, l) => s + l.quantity, 0);
+    const notch = { backgroundColor: "#f7f5ef" };
     return (
-      <div className="fixed inset-0 z-50 flex overflow-hidden" style={PATTERN_BG}>
-        {/* Right: big red circle blob with illustration + actions (like the photo) */}
-        <svg className="absolute top-0 right-0 w-[48%] h-full" viewBox="0 0 400 900" preserveAspectRatio="none">
-          <path d="M400,0 H120 Q40,450 120,900 H400 Z" fill={RED} />
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 overflow-hidden" style={PATTERN_BG}>
+        {/* Brand corner blobs — same family as the other screens */}
+        <svg className="absolute top-0 left-0 w-[30%] h-[38%]" viewBox="0 0 400 400" preserveAspectRatio="none">
+          <path d="M0,0 H320 C380,120 260,200 300,320 C200,400 80,330 0,360 Z" fill={RED} />
+        </svg>
+        <svg className="absolute bottom-0 right-0 w-[28%] h-[34%]" viewBox="0 0 400 400" preserveAspectRatio="none">
+          <path d="M400,400 V60 C300,20 240,140 140,120 C60,220 140,330 100,400 Z" fill={CREAM} />
         </svg>
 
-        {/* Left: thank-you text */}
-        <div className="relative z-10 w-[55%] flex flex-col px-12 pt-8 pb-8">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Hlíðarkaup" className="h-12 w-auto self-start mb-10" />
-          <div className="flex-1 flex flex-col justify-center max-w-lg">
-            <h1 className="text-7xl font-extrabold mb-8" style={{ color: INK }}>{t.thanksShort}</h1>
-            <p className="text-xl text-gray-600 mb-6 flex items-center gap-2 flex-wrap">
-              {t.sumPrefix}
-              <span className="inline-flex w-9 h-9 rounded-full items-center justify-center font-extrabold text-white" style={{ backgroundColor: RED }}>
-                {itemCount}
-              </span>
-              {t.sumItems}
-              <span className="inline-flex w-9 h-9 rounded-full items-center justify-center font-extrabold text-white" style={{ backgroundColor: RED }}>
-                {cart.length}
-              </span>
-              {t.sumLines}
-            </p>
-            <p
-              className="text-4xl font-extrabold self-start mb-6 pb-1"
-              style={{ color: INK, boxShadow: `inset 0 -0.45em 0 ${PINK}` }}
-            >
-              {total.toLocaleString("is-IS")} kr.
-            </p>
-            <p className="text-gray-400 mb-2">{t.receiptNo} {invoiceNumber}</p>
-            <p className="text-xl font-bold" style={{ color: INK }}>{t.rememberItems}</p>
+        <div className="relative z-10 w-full max-w-sm">
+          {/* The receipt */}
+          <div className="relative bg-white rounded-[1.75rem] shadow-2xl overflow-hidden">
+            {/* Red header with logo + check */}
+            <div className="px-8 pt-7 pb-6 text-center" style={{ backgroundColor: RED }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="Hlíðarkaup" className="h-7 w-auto mx-auto mb-5" style={{ filter: "brightness(0) invert(1)" }} />
+              <div className="w-16 h-16 mx-auto rounded-full bg-white flex items-center justify-center mb-3 shadow-sm">
+                <svg className="w-9 h-9" fill="none" viewBox="0 0 24 24" stroke={RED} strokeWidth={3.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-extrabold text-white">{t.thanks}</h1>
+            </div>
+
+            {/* Receipt body */}
+            <div className="px-8 py-7">
+              <div className="space-y-3 text-gray-600">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span>{t.itemsWord}</span>
+                  <span className="flex-1 border-b border-dotted border-gray-300 translate-y-[-3px]" />
+                  <span className="font-bold" style={{ color: INK }}>{itemCount}</span>
+                </div>
+                <div className="flex items-baseline justify-between gap-2">
+                  <span>{t.linesWord}</span>
+                  <span className="flex-1 border-b border-dotted border-gray-300 translate-y-[-3px]" />
+                  <span className="font-bold" style={{ color: INK }}>{cart.length}</span>
+                </div>
+              </div>
+
+              <div className="my-5 border-t-2 border-dashed border-gray-200" />
+
+              <div className="flex items-end justify-between">
+                <span className="text-lg font-bold text-gray-500">{t.totalLabel}</span>
+                <span className="text-4xl font-extrabold" style={{ color: RED }}>{total.toLocaleString("is-IS")} kr.</span>
+              </div>
+              <p className="text-right text-[10px] text-gray-400 uppercase tracking-wide mt-1">{t.vatIncluded}</p>
+
+              <p className="mt-5 font-mono text-sm text-gray-400 text-center">
+                {t.receiptNo} {invoiceNumber}
+              </p>
+            </div>
+
+            {/* Ticket-stub notches at the header/body seam */}
+            <div className="absolute left-[-12px] top-[164px] w-6 h-6 rounded-full" style={notch} />
+            <div className="absolute right-[-12px] top-[164px] w-6 h-6 rounded-full" style={notch} />
           </div>
 
-          {/* Bottom-left: e-receipt */}
-          <button
-            onClick={() => setEReceiptHint(true)}
-            className="self-start flex items-center gap-3 active:scale-95 transition-transform"
-          >
-            <span className="w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-md" style={{ backgroundColor: PINK }}>
-              ✉️
-            </span>
-            <span className="font-bold text-lg" style={{ color: INK }}>
-              {t.eReceipt}{eReceiptHint && <span className="text-gray-400 font-medium"> — {t.comingSoon}</span>}
-            </span>
-          </button>
-        </div>
-
-        {/* Right column content over the red circle */}
-        <div className="relative z-10 flex-1 flex flex-col items-center justify-center gap-10 pr-8">
-          {/* Grocery bag illustration */}
-          <svg viewBox="0 0 200 140" className="w-72 h-52">
-            <path d="M60 12 q8 -10 16 0" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
-            <text x="28" y="38" fontSize="26">🥕</text>
-            <text x="62" y="28" fontSize="26">🍎</text>
-            <text x="98" y="32" fontSize="26">🥛</text>
-            <text x="132" y="40" fontSize="26">🥖</text>
-            <rect x="30" y="44" width="84" height="78" rx="8" fill="#fff" />
-            <path d="M52 44 q0 -16 16 -16 q16 0 16 16" fill="none" stroke={INK} strokeWidth="4" />
-            <path d="M48 70 H96" stroke={INK} strokeWidth="3" strokeLinecap="round" opacity="0.25" />
-            <rect x="122" y="58" width="52" height="64" rx="8" fill={PINK} />
-            <path d="M136 58 q0 -12 12 -12 q12 0 12 12" fill="none" stroke={INK} strokeWidth="4" />
-          </svg>
-
-          <div className="flex flex-col gap-4 w-72">
+          {/* Actions */}
+          <div className="mt-6 flex flex-col gap-3">
             <button
               onClick={() => setReceiptWanted(true)}
               disabled={receiptWanted}
-              className="bg-white rounded-full py-5 px-8 text-xl font-extrabold shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-3 disabled:opacity-90"
-              style={{ color: INK }}
+              className="w-full rounded-2xl py-4 text-lg font-extrabold shadow-lg active:scale-[0.98] transition-transform flex items-center justify-center gap-3 disabled:opacity-90"
+              style={{ backgroundColor: RED, color: "#fff" }}
             >
               🧾 {receiptWanted ? `${t.receiptPrinting}…` : t.printReceipt}
             </button>
-            <button
-              onClick={newSale}
-              className="bg-white rounded-full py-5 px-8 text-xl font-extrabold shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-3"
-              style={{ color: INK }}
-            >
-              🛍️ {t.newCheckout}
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setEReceiptHint(true)}
+                className="flex-1 bg-white rounded-2xl py-4 text-base font-bold shadow-md active:scale-[0.98] transition-transform"
+                style={{ color: INK }}
+              >
+                ✉️ {eReceiptHint ? t.comingSoon : t.eReceipt}
+              </button>
+              <button
+                onClick={newSale}
+                className="flex-1 rounded-2xl py-4 text-base font-bold shadow-md active:scale-[0.98] transition-transform border-2"
+                style={{ borderColor: RED, color: RED, backgroundColor: "#fff" }}
+              >
+                {t.newCheckout}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -629,7 +643,7 @@ export default function KassiPage() {
       {/* Left: yellow organic panel with last-scanned product card */}
       <div className="relative w-[44%] flex flex-col">
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 440 900" preserveAspectRatio="none">
-          <path d="M0,0 H360 Q470,450 360,900 H0 Z" fill={RED} />
+          <path d="M0,0 H372 C448,180 340,360 408,540 C460,700 350,810 396,900 H0 Z" fill={RED} />
         </svg>
 
         <div className="relative z-10 flex flex-col h-full px-10 pt-8 pb-24">
@@ -671,15 +685,6 @@ export default function KassiPage() {
           )}
         </div>
       </div>
-
-      {/* Center: search pill straddling the boundary */}
-      <button
-        onClick={openSearch}
-        className="absolute z-30 bottom-6 left-[38%] -translate-x-1/2 flex items-center gap-3 px-8 py-4 rounded-full font-extrabold text-lg shadow-lg border-4 border-white active:scale-95 transition-transform"
-        style={{ backgroundColor: RED, color: "#fff" }}
-      >
-        🔍 {t.searchProduct}
-      </button>
 
       {helpButton}
 
@@ -725,22 +730,41 @@ export default function KassiPage() {
           )}
         </div>
 
-        {/* Totals + Borga bar */}
-        <div className="pl-40 pr-8 pt-3 pb-0">
-          <div className="flex justify-between items-end border-t border-gray-200 pt-4 pb-3">
+        {/* Search + totals + pay footer */}
+        <div className="px-8 pt-3 pb-6 space-y-4 border-t border-gray-200">
+          <button
+            onClick={openSearch}
+            className="mt-4 w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl font-bold text-lg bg-white shadow-sm border-2 active:scale-[0.98] transition-transform"
+            style={{ borderColor: PINK, color: RED_DARK }}
+          >
+            🔍 {t.searchProduct}
+          </button>
+
+          <div className="flex justify-between items-end">
             <span className="text-xl font-bold text-gray-500">{t.totalLabel}</span>
             <div className="text-right">
               <p className="text-3xl font-extrabold" style={{ color: INK }}>{total.toLocaleString("is-IS")} kr.</p>
               <p className="text-[10px] text-gray-400 uppercase tracking-wide">{t.vatIncluded}</p>
             </div>
           </div>
+
+          <button
+            onClick={startPay}
+            disabled={cart.length === 0}
+            className="w-full rounded-2xl py-5 pl-7 pr-5 flex items-center justify-between text-2xl font-extrabold shadow-lg active:scale-[0.98] transition-transform disabled:opacity-40"
+            style={{ backgroundColor: RED, color: "#fff" }}
+          >
+            <span>{t.payNow}</span>
+            <span className="flex items-center gap-3 text-xl">
+              {total.toLocaleString("is-IS")} kr.
+              <span className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </span>
+            </span>
+          </button>
         </div>
-        <button
-          onClick={startPay}
-          disabled={cart.length === 0}
-          className="h-16 text-xl font-extrabold tracking-wide transition-opacity disabled:opacity-40"
-          style={{ backgroundColor: RED, color: "#fff" }}
-        >{t.payNow}</button>
       </div>
 
       {/* Full-screen search — Krónan produce-style */}
@@ -748,10 +772,10 @@ export default function KassiPage() {
         <div className="absolute inset-0 z-40 flex overflow-hidden" style={PATTERN_BG}>
           {/* Teal blob left, yellow blob right */}
           <svg className="absolute top-0 left-0 w-[55%] h-full" viewBox="0 0 550 900" preserveAspectRatio="none">
-            <path d="M0,0 H470 Q560,450 470,900 H0 Z" fill={CREAM} opacity="0.9" />
+            <path d="M0,0 H460 C540,200 420,400 500,580 C540,740 430,830 470,900 H0 Z" fill={CREAM} opacity="0.9" />
           </svg>
           <svg className="absolute top-0 right-0 w-[52%] h-full" viewBox="0 0 520 900" preserveAspectRatio="none">
-            <path d="M520,0 H80 Q-10,450 80,900 H520 Z" fill={RED} />
+            <path d="M520,0 H90 C20,180 130,380 60,560 C20,730 120,830 80,900 H520 Z" fill={RED} />
           </svg>
 
           {/* Left: prompt + popular / results */}
@@ -909,8 +933,8 @@ export default function KassiPage() {
                 <rect x="92" y="88" width="92" height="96" rx="6" fill="#E8C99B" stroke={INK} strokeWidth="3" />
                 <path d="M112 88 q0 -22 26 -22 q26 0 26 22" fill="none" stroke={INK} strokeWidth="3.5" />
                 <line x1="92" y1="170" x2="184" y2="170" stroke={INK} strokeWidth="2" strokeDasharray="5 5" opacity="0.35" />
-                {/* Hlíðarkaup mark on the bag */}
-                <text x="138" y="140" textAnchor="middle" fontSize="34" fontWeight="900" fill={RED}>H</text>
+                {/* Hlíðarkaup logo on the bag */}
+                <image href="/logo.png" x="100" y="118" width="76" height="40" preserveAspectRatio="xMidYMid meet" />
               </svg>
             </div>
 
