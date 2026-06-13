@@ -424,16 +424,20 @@ export default function KassiPage() {
     </span>
   );
 
-  const wandIcon = (cls: string) => (
-    <svg viewBox="0 0 24 24" className={cls} aria-hidden>
-      <line x1="5" y1="19" x2="17" y2="7" stroke={RED} strokeWidth="3.2" strokeLinecap="round" />
-      <g fill={RED}>
-        <path d="M14.5 2 Q15.1 4.4 17.5 5 Q15.1 5.6 14.5 8 Q13.9 5.6 11.5 5 Q13.9 4.4 14.5 2 Z" />
-        <path d="M5 6 Q5.4 7.6 7 8 Q5.4 8.4 5 10 Q4.6 8.4 3 8 Q4.6 7.6 5 6 Z" />
-        <path d="M18.5 14 Q18.9 15.6 20.5 16 Q18.9 16.4 18.5 18 Q18.1 16.4 16.5 16 Q18.1 15.6 18.5 14 Z" />
-      </g>
-    </svg>
-  );
+  const wandIcon = (cls: string) => {
+    const star = (cx: number, cy: number, r: number) =>
+      `M${cx} ${cy - r} Q${cx} ${cy} ${cx + r} ${cy} Q${cx} ${cy} ${cx} ${cy + r} Q${cx} ${cy} ${cx - r} ${cy} Q${cx} ${cy} ${cx} ${cy - r} Z`;
+    return (
+      <svg viewBox="0 0 24 24" className={cls} fill={RED} preserveAspectRatio="xMidYMid meet" aria-hidden>
+        {/* wand, corner to corner */}
+        <line x1="4.5" y1="19.5" x2="19.5" y2="4.5" stroke={RED} strokeWidth="3" strokeLinecap="round" />
+        {/* sparkles, kept clear of the wand */}
+        <path d={star(5, 9, 2.6)} />
+        <path d={star(13, 3.8, 1.7)} />
+        <path d={star(19, 17, 1.7)} />
+      </svg>
+    );
+  };
 
   const helpButton = (
     <button
