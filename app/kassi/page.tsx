@@ -415,17 +415,21 @@ export default function KassiPage() {
     </button>
   );
 
+  const personIcon = (
+    <span className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-md group-active:scale-95 transition-transform">
+      <svg viewBox="0 0 24 24" className="w-7 h-7" fill={RED} aria-hidden>
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8z" />
+      </svg>
+    </span>
+  );
+
   const helpButton = (
     <button
       onClick={() => setHelpOpen(true)}
       className="absolute bottom-6 left-8 z-20 flex items-center gap-3 group"
     >
-      <span
-        className="w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-md group-active:scale-95 transition-transform"
-        style={{ backgroundColor: RED }}
-      >
-        🙋
-      </span>
+      {personIcon}
       <span className="font-bold text-lg" style={{ color: INK }}>{t.getHelp}</span>
     </button>
   );
@@ -914,7 +918,7 @@ export default function KassiPage() {
 
           <div className="absolute bottom-6 left-8 z-20">
             <button onClick={() => setHelpOpen(true)} className="flex items-center gap-3 group">
-              <span className="w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-md group-active:scale-95 transition-transform" style={{ backgroundColor: RED }}>🙋</span>
+              {personIcon}
               <span className="font-bold text-lg" style={{ color: INK }}>{t.getHelp}</span>
             </button>
           </div>
