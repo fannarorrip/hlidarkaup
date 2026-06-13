@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getReglaToken, reglaPost, grossPrice, ReglaProduct } from "@/lib/regla";
+import { getReglaToken, reglaPost, grossPrice, vatPct, ReglaProduct } from "@/lib/regla";
 
 /** Product search for the kiosk — honors KASSI_IGNORE_STOCK like the rest of /api/kassi. */
 export async function GET(req: NextRequest) {
@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
         id: String(p.ProductNumber),
         name: p.Name ?? "",
         price: grossPrice(p),
+        vatPct: vatPct(p),
         stock: !ignoreStock && p.IsInStockControl
           ? Math.max(0, Math.floor(p.StockQuantity ?? 0))
           : undefined,

@@ -6,6 +6,7 @@ interface CartLine {
   id: string;
   name: string;
   price: number;
+  vatPct?: number;
   stock?: number;
   quantity: number;
 }
@@ -40,7 +41,7 @@ const STR = {
     cartEmpty: "Karfan er tóm",
     perPiece: "kr. / stk.",
     totalLabel: "Samtals:",
-    vatIncluded: "VSK innifalinn",
+    vatIncluded: "VSK",
     payNow: "Borga",
     searchPromptA: "Leitaðu eftir nafni",
     searchPromptB: "eða veldu vinsæla vöru",
@@ -96,7 +97,7 @@ const STR = {
     cartEmpty: "Your basket is empty",
     perPiece: "kr. each",
     totalLabel: "Total:",
-    vatIncluded: "VAT included",
+    vatIncluded: "VAT",
     payNow: "Pay",
     searchPromptA: "Search by name",
     searchPromptB: "or pick a popular item",
@@ -163,13 +164,13 @@ export default function KassiPage() {
   // Product search overlay (for items without barcode, e.g. produce)
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<{ id: string; name: string; price: number; stock?: number }[]>([]);
+  const [searchResults, setSearchResults] = useState<{ id: string; name: string; price: number; vatPct?: number; stock?: number }[]>([]);
   const [searching, setSearching] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Bag prompt before payment + help modal
   const [bagModalOpen, setBagModalOpen] = useState(false);
-  const [bagProduct, setBagProduct] = useState<{ id: string; name: string; price: number } | null>(null);
+  const [bagProduct, setBagProduct] = useState<{ id: string; name: string; price: number; vatPct?: number } | null>(null);
   const [eReceiptHint, setEReceiptHint] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [showDigits, setShowDigits] = useState(false);
@@ -187,6 +188,13 @@ export default function KassiPage() {
   }, []);
 
   const total = cart.reduce((s, l) => s + l.price * l.quantity, 0);
+  // VAT amount already included in the gross total (per-line rate; default 24%)
+  const vatAmount = Math.round(
+    cart.reduce((s, l) => {
+      const rate = l.vatPct ?? 24;
+      return s + (l.price * l.quantity * rate) / (100 + rate);
+    }, 0),
+  );
 
   // Keep hidden input focused so USB scanners (keyboard wedge) always land here
   useEffect(() => {
@@ -210,8 +218,8 @@ export default function KassiPage() {
         const res = await fetch(`/api/kassi/search?q=${encodeURIComponent(q)}`);
         const data = await res.json();
         setSearchResults(
-          (data.products ?? []).map((p: { id: string; name: string; price: number; stock?: number }) => ({
-            id: p.id, name: p.name, price: p.price, stock: p.stock,
+          (data.products ?? []).map((p: { id: string; name: string; price: number; vatPct?: number; stock?: number }) => ({
+            id: p.id, name: p.name, price: p.price, vatPct: p.vatPct, stock: p.stock,
           })),
         );
       } catch {
@@ -244,7 +252,7 @@ export default function KassiPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
 
-  const addProduct = useCallback((data: { id: string; name: string; price: number; stock?: number }) => {
+  const addProduct = useCallback((data: { id: string; name: string; price: number; vatPct?: number; stock?: number }) => {
     const existing = cart.find((l) => l.id === data.id);
     let added: CartLine;
     if (existing) {
@@ -259,7 +267,7 @@ export default function KassiPage() {
         setScanError(`${data.name} er ekki til á lager`);
         return;
       }
-      added = { id: data.id, name: data.name, price: data.price, stock: data.stock, quantity: 1 };
+      added = { id: data.id, name: data.name, price: data.price, vatPct: data.vatPct, stock: data.stock, quantity: 1 };
       setCart([...cart, added]);
     }
     // Stays visible in the product card until the next scan (like the real kiosk)
@@ -571,7 +579,7 @@ export default function KassiPage() {
                 <span className="text-lg font-bold text-gray-500">{t.totalLabel}</span>
                 <span className="text-4xl font-extrabold" style={{ color: RED }}>{total.toLocaleString("is-IS")} kr.</span>
               </div>
-              <p className="text-right text-[10px] text-gray-400 uppercase tracking-wide mt-1">{t.vatIncluded}</p>
+              <p className="text-right text-xs text-gray-400 mt-1">{t.vatIncluded}: {vatAmount.toLocaleString("is-IS")} kr.</p>
 
               <p className="mt-5 font-mono text-sm text-gray-400 text-center">
                 {t.receiptNo} {invoiceNumber}
@@ -744,7 +752,7 @@ export default function KassiPage() {
             <span className="text-xl font-bold text-gray-500">{t.totalLabel}</span>
             <div className="text-right">
               <p className="text-3xl font-extrabold" style={{ color: INK }}>{total.toLocaleString("is-IS")} kr.</p>
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide">{t.vatIncluded}</p>
+              <p className="text-xs text-gray-400">{t.vatIncluded}: {vatAmount.toLocaleString("is-IS")} kr.</p>
             </div>
           </div>
 

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getReglaToken, reglaPost, grossPrice } from "@/lib/regla";
+import { getReglaToken, reglaPost, grossPrice, vatPct } from "@/lib/regla";
 
 /** Returns the bag product (BURÐARPOKI) offered before payment. */
 export async function GET() {
@@ -16,6 +16,7 @@ export async function GET() {
       id: String(p.ProductNumber),
       name: p.Name ?? "Burðarpoki",
       price: grossPrice(p),
+      vatPct: vatPct(p),
     });
   } catch (err) {
     console.error("[Kassi] bag error:", err);

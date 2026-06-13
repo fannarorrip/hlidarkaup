@@ -41,6 +41,10 @@ export type ReglaProduct = any;
 /** Gross price (with VAT) in whole ISK for a Regla product. */
 export function grossPrice(p: ReglaProduct): number {
   const net = p.UnitPrice ?? 0;
-  const vatPct = p.VatDefinition?.Percentage ?? 24;
-  return Math.round(net * (1 + vatPct / 100));
+  return Math.round(net * (1 + vatPct(p) / 100));
+}
+
+/** VAT percentage for a Regla product (defaults to 24%). */
+export function vatPct(p: ReglaProduct): number {
+  return p.VatDefinition?.Percentage ?? 24;
 }

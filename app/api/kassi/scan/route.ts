@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getReglaToken, reglaPost, grossPrice } from "@/lib/regla";
+import { getReglaToken, reglaPost, grossPrice, vatPct } from "@/lib/regla";
 
 /** Look up a product by barcode (primary) or product number (fallback). */
 export async function GET(req: NextRequest) {
@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
       id: String(product.ProductNumber),
       name: product.Name ?? "",
       price: grossPrice(product),
+      vatPct: vatPct(product),
       stock,
     });
   } catch (err) {
