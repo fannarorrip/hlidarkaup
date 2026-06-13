@@ -813,7 +813,8 @@ export default function KassiPage() {
                         onClick={() => setSearchQuery(q.term)}
                         className="bg-white rounded-2xl p-3 flex flex-col items-center gap-1.5 shadow-sm active:scale-95 transition-transform"
                       >
-                        <span className="text-4xl">{q.emoji}</span>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={q.img} alt={q.label} className="w-16 h-16 object-contain" />
                         <span className="font-bold text-xs" style={{ color: INK }}>{q.label}</span>
                       </button>
                     ))}
@@ -971,18 +972,18 @@ export default function KassiPage() {
 
 // ── Kiosk constants ──────────────────────────────────────────────────────────
 const QUICK_PICKS = [
-  { emoji: "🍌", label: "Bananar", term: "bananar" },
-  { emoji: "🍎", label: "Epli", term: "epli" },
-  { emoji: "🍊", label: "Appelsínur", term: "appelsín" },
-  { emoji: "🍅", label: "Tómatar", term: "tómat" },
-  { emoji: "🫑", label: "Paprika", term: "paprika" },
-  { emoji: "🥒", label: "Agúrka", term: "agúrka" },
-  { emoji: "🍋", label: "Sítrónur", term: "sítrón" },
-  { emoji: "🥑", label: "Avókadó", term: "avókadó" },
-  { emoji: "🍄", label: "Sveppir", term: "sveppir" },
-  { emoji: "🧅", label: "Laukur", term: "laukur" },
-  { emoji: "🥔", label: "Kartöflur", term: "kartöflur" },
-  { emoji: "🍇", label: "Vínber", term: "vínber" },
+  { img: "/kassi/popular/bananar.jpg", label: "Bananar", term: "bananar" },
+  { img: "/kassi/popular/epli.jpg", label: "Epli", term: "epli" },
+  { img: "/kassi/popular/appelsinur.jpg", label: "Appelsínur", term: "appelsín" },
+  { img: "/kassi/popular/tomatar.jpg", label: "Tómatar", term: "tómat" },
+  { img: "/kassi/popular/paprika.jpg", label: "Paprika", term: "paprika" },
+  { img: "/kassi/popular/agurka.jpg", label: "Agúrka", term: "agúrka" },
+  { img: "/kassi/popular/sitronur.jpg", label: "Sítrónur", term: "sítrón" },
+  { img: "/kassi/popular/avokado.jpg", label: "Avókadó", term: "avókadó" },
+  { img: "/kassi/popular/sveppir.jpg", label: "Sveppir", term: "sveppir" },
+  { img: "/kassi/popular/laukur.jpg", label: "Laukur", term: "laukur" },
+  { img: "/kassi/popular/kartoflur.jpg", label: "Kartöflur", term: "kartöflur" },
+  { img: "/kassi/popular/vinber.jpg", label: "Vínber", term: "vínber" },
 ];
 
 const LETTER_ROWS = [
