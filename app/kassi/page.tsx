@@ -424,6 +424,17 @@ export default function KassiPage() {
     </span>
   );
 
+  const wandIcon = (cls: string) => (
+    <svg viewBox="0 0 24 24" className={cls} aria-hidden>
+      <line x1="5" y1="19" x2="17" y2="7" stroke={RED} strokeWidth="3.2" strokeLinecap="round" />
+      <g fill={RED}>
+        <path d="M14.5 2 Q15.1 4.4 17.5 5 Q15.1 5.6 14.5 8 Q13.9 5.6 11.5 5 Q13.9 4.4 14.5 2 Z" />
+        <path d="M5 6 Q5.4 7.6 7 8 Q5.4 8.4 5 10 Q4.6 8.4 3 8 Q4.6 7.6 5 6 Z" />
+        <path d="M18.5 14 Q18.9 15.6 20.5 16 Q18.9 16.4 18.5 18 Q18.1 16.4 16.5 16 Q18.1 15.6 18.5 14 Z" />
+      </g>
+    </svg>
+  );
+
   const helpButton = (
     <button
       onClick={() => setHelpOpen(true)}
@@ -797,7 +808,7 @@ export default function KassiPage() {
 
             <div className="bg-white/95 rounded-[2rem] shadow-sm flex-1 flex flex-col p-7 overflow-hidden" style={PATTERN_BG}>
               <div className="flex items-start gap-3 mb-5">
-                <span className="text-3xl">🪄</span>
+                {wandIcon("w-8 h-8 shrink-0")}
                 <p className="text-lg font-medium leading-snug" style={{ color: INK }}>
                   {t.searchPromptA}<br />{t.searchPromptB}
                 </p>
@@ -859,14 +870,17 @@ export default function KassiPage() {
               {langButton(true)}
             </div>
 
-            <input
-              ref={searchInputRef}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t.typeName}
-              className="w-full bg-white/95 rounded-2xl px-6 py-4 text-center text-lg font-bold tracking-widest uppercase outline-none placeholder:text-gray-400 shadow-inner mb-6"
-              style={{ color: INK }}
-            />
+            <div className="relative mb-6">
+              <span className="absolute left-5 top-1/2 -translate-y-1/2">{wandIcon("w-7 h-7")}</span>
+              <input
+                ref={searchInputRef}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t.typeName}
+                className="w-full bg-white/95 rounded-2xl pl-14 pr-6 py-4 text-center text-lg font-bold tracking-widest uppercase outline-none placeholder:text-gray-400 shadow-inner"
+                style={{ color: INK }}
+              />
+            </div>
 
             <div className="flex flex-col items-center gap-2">
               {(showDigits ? DIGIT_ROWS : LETTER_ROWS).map((row, i) => (
