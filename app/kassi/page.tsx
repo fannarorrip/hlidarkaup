@@ -9,6 +9,7 @@ interface CartLine {
   vatPct?: number;
   stock?: number;
   quantity: number;
+  image?: string | null;
 }
 
 type Screen = "idle" | "scan" | "paying" | "done" | "payError";
@@ -274,6 +275,20 @@ export default function KassiPage() {
     setLastScanned(added);
   }, [cart]);
 
+  /** Look up a product photo by barcode and attach it to its cart line + preview. */
+  const attachImage = useCallback(async (lineId: string, barcode: string) => {
+    if (!/^\d{8,14}$/.test(barcode)) return;
+    try {
+      const res = await fetch(`/api/kassi/image?barcode=${encodeURIComponent(barcode)}`);
+      const { image } = await res.json();
+      if (!image) return;
+      setCart((prev) => prev.map((l) => (l.id === lineId ? { ...l, image } : l)));
+      setLastScanned((prev) => (prev && prev.id === lineId ? { ...prev, image } : prev));
+    } catch {
+      /* no image — leave the placeholder */
+    }
+  }, []);
+
   const handleScan = useCallback(async (code: string) => {
     const trimmed = code.trim();
     if (!trimmed || busy) return;
@@ -289,12 +304,14 @@ export default function KassiPage() {
       }
       addProduct(data);
       setScreen("scan");
+      // Fetch a product photo in the background (Open Food Facts by EAN)
+      attachImage(data.id, trimmed);
     } catch {
       setScanError("Villa við að sækja vöru");
     } finally {
       setBusy(false);
     }
-  }, [busy, addProduct]);
+  }, [busy, addProduct, attachImage]);
 
   function changeQty(id: string, delta: number) {
     setCart((prev) =>
@@ -687,7 +704,12 @@ export default function KassiPage() {
             {lastScanned ? (
               <>
                 <div className="flex-1 flex items-center justify-center">
-                  <span className="text-9xl">🛒</span>
+                  {lastScanned.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={lastScanned.image} alt={lastScanned.name} className="max-h-56 max-w-full object-contain" />
+                  ) : (
+                    <span className="text-9xl">🛒</span>
+                  )}
                 </div>
                 <div className="flex items-end justify-between gap-4">
                   <p className="font-bold text-xl leading-snug" style={{ color: INK }}>{lastScanned.name}</p>
@@ -743,6 +765,18 @@ export default function KassiPage() {
                     disabled={l.stock !== undefined && l.quantity >= l.stock}
                     className="w-8 h-8 rounded-lg bg-white font-bold text-lg active:scale-90 transition-transform disabled:opacity-30"
                   >+</button>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-white shadow-sm flex items-center justify-center overflow-hidden shrink-0">
+                  {l.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={l.image} alt="" className="w-full h-full object-contain" />
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="#cbd5e1" strokeWidth={2} aria-hidden>
+                      <rect x="3" y="3" width="18" height="18" rx="3" />
+                      <path d="M3 16l5-5 4 4 3-3 6 6" strokeLinecap="round" strokeLinejoin="round" />
+                      <circle cx="9" cy="9" r="1.4" fill="#cbd5e1" stroke="none" />
+                    </svg>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0 text-center">
                   <p className="font-bold truncate" style={{ color: INK }}>{l.name}</p>
