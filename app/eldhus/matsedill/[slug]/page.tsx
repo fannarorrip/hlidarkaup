@@ -5,13 +5,13 @@ import { getWeekMeals, getMeal } from "../../meals";
 
 const serifStyle = { fontFamily: "var(--font-eldhus-serif)" } as const;
 
-export function generateStaticParams() {
-  return getWeekMeals().map((m) => ({ slug: m.slug }));
+export async function generateStaticParams() {
+  return (await getWeekMeals()).map((m) => ({ slug: m.slug }));
 }
 
 export default async function MealDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const meal = getMeal(slug);
+  const meal = await getMeal(slug);
   if (!meal) notFound();
 
   return (
@@ -23,7 +23,10 @@ export default async function MealDetailPage({ params }: { params: Promise<{ slu
       <div className="grid lg:grid-cols-2 gap-10">
         {/* Image */}
         <div className="rounded-[2rem] overflow-hidden shadow-md self-start">
-          <div className="aspect-[4/5] flex items-end p-6" style={{ background: `linear-gradient(150deg, ${meal.from}, ${meal.to})` }}>
+          <div
+            className="aspect-[4/5] flex items-end p-6 bg-cover bg-center"
+            style={meal.image ? { backgroundImage: `url(${meal.image})` } : { background: `linear-gradient(150deg, ${meal.from}, ${meal.to})` }}
+          >
             <span className="inline-block text-xs font-bold uppercase tracking-wide px-3 py-1.5 rounded-full bg-white/85" style={{ color: C.deep }}>
               {meal.tag}
             </span>

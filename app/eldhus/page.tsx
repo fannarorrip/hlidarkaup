@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { C } from "./theme";
-import { WEEK_MEALS } from "./meals";
+import { getWeekMeals } from "./meals";
 import { MealCard, MealTile } from "./MealCard";
 
 const serifStyle = { fontFamily: "var(--font-eldhus-serif)" } as const;
 
-export default function EldhusLanding() {
+export default async function EldhusLanding() {
+  const meals = await getWeekMeals();
   return (
     <main>
       {/* ── Hero ─────────────────────────────────────────────── */}
@@ -41,7 +42,7 @@ export default function EldhusLanding() {
 
         {/* Hero collage */}
         <div className="grid grid-cols-2 gap-4">
-          {WEEK_MEALS.slice(0, 2).map((m, i) => (
+          {meals.slice(0, 2).map((m, i) => (
             <div key={m.slug} className={i === 0 ? "mt-10" : ""}>
               <MealTile meal={m} />
             </div>
@@ -93,7 +94,7 @@ export default function EldhusLanding() {
           </Link>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {WEEK_MEALS.slice(0, 6).map((m) => (
+          {meals.slice(0, 6).map((m) => (
             <MealCard key={m.slug} meal={m} />
           ))}
         </div>

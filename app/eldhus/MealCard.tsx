@@ -8,7 +8,10 @@ const serifStyle = { fontFamily: "var(--font-eldhus-serif)" } as const;
 export function MealTile({ meal }: { meal: Meal }) {
   return (
     <Link href={`/eldhus/matsedill/${meal.slug}`} className="block rounded-3xl overflow-hidden shadow-md">
-      <div className="aspect-[4/5] flex items-end p-5" style={{ background: `linear-gradient(150deg, ${meal.from}, ${meal.to})` }}>
+      <div
+        className="aspect-[4/5] flex items-end p-5 bg-cover bg-center"
+        style={meal.image ? { backgroundImage: `url(${meal.image})` } : { background: `linear-gradient(150deg, ${meal.from}, ${meal.to})` }}
+      >
         <div>
           <span className="inline-block text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full mb-2 bg-white/85" style={{ color: C.deep }}>
             {meal.tag}
@@ -24,7 +27,10 @@ export function MealTile({ meal }: { meal: Meal }) {
 export function MealCard({ meal }: { meal: Meal }) {
   return (
     <Link href={`/eldhus/matsedill/${meal.slug}`} className="group block rounded-3xl overflow-hidden bg-white shadow-sm hover:shadow-lg transition-shadow">
-      <div className="aspect-[3/2] relative" style={{ background: `linear-gradient(150deg, ${meal.from}, ${meal.to})` }}>
+      <div
+        className="aspect-[3/2] relative bg-cover bg-center"
+        style={meal.image ? { backgroundImage: `url(${meal.image})` } : { background: `linear-gradient(150deg, ${meal.from}, ${meal.to})` }}
+      >
         <span className="absolute top-3 left-3 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-white/85" style={{ color: C.deep }}>
           {meal.tag}
         </span>
