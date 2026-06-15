@@ -2,12 +2,13 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Fraunces } from "next/font/google";
 import { C } from "./theme";
+import { Wordmark } from "./Brand";
 
 const serif = Fraunces({ subsets: ["latin"], weight: ["400", "600", "700"], variable: "--font-eldhus-serif" });
 
 export const metadata = {
-  title: "Hlíðarkaup Eldhús — ferskt hráefni heim að dyrum",
-  description: "Veldu uppskriftir vikunnar, við sendum nákvæmlega rétt hráefni og þú eldar ljúffenga máltíð á innan við 40 mínútum.",
+  title: "SVO GOTT — ferskt hráefni heim að dyrum",
+  description: "Veldu uppskriftir vikunnar, við sendum nákvæmlega rétt hráefni og þú eldar ljúffenga máltíð á innan við 40 mínútum. Svo gott, svo létt, svo rétt — frá Hlíðarkaup.",
 };
 
 const NAV = [
@@ -21,13 +22,8 @@ export default function EldhusLayout({ children }: { children: ReactNode }) {
     <div className={serif.variable} style={{ backgroundColor: C.cream, color: C.ink, minHeight: "100vh" }}>
       <header className="sticky top-0 z-40 backdrop-blur" style={{ backgroundColor: "rgba(255,246,246,0.85)", borderBottom: `1px solid ${C.tealSoft}` }}>
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/eldhus" className="flex items-baseline gap-2">
-            <span className="text-xl font-bold tracking-tight" style={{ fontFamily: "var(--font-eldhus-serif)", color: C.deep }}>
-              Hlíðarkaup
-            </span>
-            <span className="text-xl font-bold tracking-tight" style={{ fontFamily: "var(--font-eldhus-serif)", color: C.red }}>
-              Eldhús
-            </span>
+          <Link href="/eldhus" className="flex items-center">
+            <Wordmark slang />
           </Link>
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium" style={{ color: C.muted }}>
             {NAV.map((n) => (
@@ -54,7 +50,7 @@ export default function EldhusLayout({ children }: { children: ReactNode }) {
       <footer style={{ backgroundColor: C.deep, color: "#fff" }}>
         <div className="max-w-6xl mx-auto px-6 py-14 grid gap-10 md:grid-cols-4">
           <div className="md:col-span-2">
-            <p className="text-2xl font-bold mb-3" style={{ fontFamily: "var(--font-eldhus-serif)" }}>Hlíðarkaup Eldhús</p>
+            <div className="mb-3"><Wordmark size="lg" onDark slang /></div>
             <p className="max-w-sm text-sm leading-relaxed" style={{ color: C.teal }}>
               Ferskt hráefni og hugsaðar uppskriftir, sendar heim að dyrum eða tilbúnar til afhendingar í Hlíðarkaup.
             </p>
