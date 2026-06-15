@@ -5,7 +5,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 // Placeholder pricing — confirm real numbers before launch.
 export const PRICE_PER_SERVING = 1890; // kr per serving (household size × meals)
 export const PORTION_OPTIONS = [2, 4] as const;
-export const MEAL_OPTIONS = [3, 4, 5] as const;
+export const MEAL_OPTIONS = [1, 2, 3, 4, 5] as const;
 
 interface BoxState {
   portions: number; // people per meal (2 or 4)

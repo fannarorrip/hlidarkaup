@@ -19,7 +19,7 @@ export default function AddToBoxButton({ slug, large = false }: { slug: string; 
         className={`${base} transition-transform active:scale-95`}
         style={{ backgroundColor: C.deep, color: "#fff" }}
       >
-        ✓ Í kassanum
+        ✓ Í körfu
       </button>
     );
   }
@@ -28,11 +28,11 @@ export default function AddToBoxButton({ slug, large = false }: { slug: string; 
     <button
       onClick={() => addMeal(slug)}
       disabled={disabled}
-      title={disabled ? "Kassinn er fullur" : undefined}
+      title={disabled ? "Karfan er full" : undefined}
       className={`${base} transition-transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed`}
       style={{ backgroundColor: C.red, color: "#fff" }}
     >
-      {disabled ? "Kassinn fullur" : "Bæta í kassann"}
+      {disabled ? "Karfan full" : "Bæta við"}
     </button>
   );
 }

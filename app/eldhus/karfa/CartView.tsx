@@ -16,7 +16,7 @@ export default function CartView({ meals }: { meals: Meal[] }) {
 
   return (
     <main className="max-w-5xl mx-auto px-6 py-12">
-      <h1 className="text-4xl font-bold mb-8" style={{ ...serif, color: C.deep }}>Kassinn þinn</h1>
+      <h1 className="text-4xl font-bold mb-8" style={{ ...serif, color: C.deep }}>Karfan þín</h1>
 
       <div className="grid lg:grid-cols-3 gap-8 items-start">
         {/* Left: box config + selected meals */}
@@ -32,7 +32,7 @@ export default function CartView({ meals }: { meals: Meal[] }) {
             <h2 className="text-lg font-bold mb-4" style={{ ...serif, color: C.deep }}>Fjöldi rétta á viku</h2>
             <div className="flex gap-3">
               {MEAL_OPTIONS.map((n) => (
-                <Choice key={n} on={box.target === n} onClick={() => box.setTarget(n)} label={`${n} réttir`} />
+                <Choice key={n} on={box.target === n} onClick={() => box.setTarget(n)} label={`${n} ${n === 1 ? "réttur" : "réttir"}`} />
               ))}
             </div>
           </section>
@@ -90,16 +90,25 @@ export default function CartView({ meals }: { meals: Meal[] }) {
           </div>
           <p className="text-xs mb-5" style={{ color: C.muted }}>Afhending reiknuð í næsta skrefi.</p>
 
-          <button
-            disabled={!box.isFull}
-            className="w-full font-bold py-4 rounded-full text-white transition-transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ backgroundColor: C.red }}
-            title={!box.isFull ? "Veldu fleiri rétti fyrst" : undefined}
-          >
-            {box.isFull ? "Halda áfram að afhendingu" : `Veldu ${remaining} í viðbót`}
-          </button>
+          {box.isFull ? (
+            <Link
+              href="/eldhus/ganga-fra"
+              className="block w-full text-center font-bold py-4 rounded-full text-white transition-transform active:scale-95"
+              style={{ backgroundColor: C.red }}
+            >
+              Halda áfram að afhendingu
+            </Link>
+          ) : (
+            <button
+              disabled
+              className="w-full font-bold py-4 rounded-full text-white opacity-40 cursor-not-allowed"
+              style={{ backgroundColor: C.red }}
+            >
+              Veldu {remaining} í viðbót
+            </button>
+          )}
           <p className="text-[11px] text-center mt-3" style={{ color: C.muted }}>
-            Afhending, greiðsla og áskrift koma í næsta skrefi.
+            Afhending (sókn eða heimsending) og greiðsla á næstu síðu.
           </p>
         </aside>
       </div>

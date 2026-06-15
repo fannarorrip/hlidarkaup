@@ -66,7 +66,7 @@ export default async function MealDetailPage({ params }: { params: Promise<{ slu
           )}
 
           <AddToBoxButton slug={meal.slug} large />
-          <p className="text-xs mt-2" style={{ color: C.muted }}>Veldu skammtastærð og fjölda rétta í kassanum.</p>
+          <p className="text-xs mt-2" style={{ color: C.muted }}>Veldu skammtastærð og fjölda rétta í körfunni.</p>
         </div>
       </div>
     </main>
