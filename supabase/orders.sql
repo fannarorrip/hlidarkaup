@@ -17,8 +17,12 @@ create table if not exists public.orders (
   total         int  not null default 0,
   customer_name  text,
   customer_phone text,
+  customer_email text,
   status        text not null default 'new'          -- new | preparing | done
 );
+
+-- Add the email column if the table already existed from an earlier run.
+alter table public.orders add column if not exists customer_email text;
 
 alter table public.orders enable row level security;
 

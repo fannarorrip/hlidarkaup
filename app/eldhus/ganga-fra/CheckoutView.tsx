@@ -21,6 +21,7 @@ export default function CheckoutView({ meals }: { meals: Meal[] }) {
   const [plan, setPlan] = useState<"once" | "subscription">("once");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [time, setTime] = useState("");
   const [address, setAddress] = useState("");
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
@@ -100,12 +101,26 @@ export default function CheckoutView({ meals }: { meals: Meal[] }) {
       total: grandTotal,
       customer_name: name,
       customer_phone: phone,
+      customer_email: email.trim() || null,
       status: "new",
     };
 
     if (supabase) {
       const { error: err } = await supabase.from("orders").insert(order);
       if (err) { setError("Tókst ekki að skrá pöntun. Reyndu aftur."); setSaving(false); return; }
+    }
+
+    // Send a confirmation email if one was provided (don't block the order on it).
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      fetch("/api/eldhus/confirm", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(), ref, plan, deliveryType,
+          address: deliveryType === "delivery" ? address : null,
+          time, items: selectedMeals.map((m) => ({ title: m.title })), total: grandTotal,
+        }),
+      }).catch(() => { /* email is best-effort */ });
     }
 
     setSaving(false);
@@ -192,7 +207,8 @@ export default function CheckoutView({ meals }: { meals: Meal[] }) {
           {/* Contact */}
           <Card title="Upplýsingar">
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nafn" className={`${inp} mb-3`} />
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Símanúmer" type="tel" className={inp} />
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Símanúmer" type="tel" className={`${inp} mb-3`} />
+            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Netfang (fyrir staðfestingu)" type="email" inputMode="email" className={inp} />
           </Card>
 
           {/* Time */}
