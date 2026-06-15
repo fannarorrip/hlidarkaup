@@ -6,6 +6,7 @@ import Script from "next/script";
 import { C } from "../theme";
 import type { Meal } from "../meals";
 import { useBox } from "../box-context";
+import { supabase } from "@/lib/supabase/client";
 import { STORE, PICKUP_TIMES, DELIVERY_TIMES, formatTodayIcelandic, haversineKm, calcShipping, zoneLabel } from "@/lib/delivery";
 
 const serif = { fontFamily: "var(--font-eldhus-serif)" } as const;
@@ -25,6 +26,7 @@ export default function CheckoutView({ meals }: { meals: Meal[] }) {
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [mapsReady, setMapsReady] = useState(false);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [placed, setPlaced] = useState<{ ref: string } | null>(null);
 
   const addressRef = useRef<HTMLInputElement>(null);
@@ -68,8 +70,9 @@ export default function CheckoutView({ meals }: { meals: Meal[] }) {
     return () => clearTimeout(timer);
   }, [mapsReady, deliveryType]);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (saving) return;
     if (!box.isFull) { setError("Karfan er ekki tilbúin."); return; }
     if (!name.trim() || !phone.trim()) { setError("Fylltu út nafn og símanúmer."); return; }
     if (!time) { setError("Veldu tíma."); return; }
@@ -78,8 +81,35 @@ export default function CheckoutView({ meals }: { meals: Meal[] }) {
       if (outOfArea) { setError("Heimsending er ekki í boði á þetta svæði."); return; }
     }
     setError("");
-    // MOCK: real payment (Straumur) + order persistence comes next.
-    setPlaced({ ref: String(Date.now()).slice(-6) });
+    setSaving(true);
+
+    const ref = String(Date.now()).slice(-6);
+    // MOCK payment (Straumur next). Order is persisted to Supabase for the kitchen.
+    const order = {
+      ref,
+      plan,
+      delivery_type: deliveryType,
+      pickup_time: time,
+      address: deliveryType === "delivery" ? address : null,
+      distance_km: distanceKm,
+      shipping: shipping ?? 0,
+      portions: box.portions,
+      meals: box.target,
+      items: selectedMeals.map((m) => ({ slug: m.slug, title: m.title })),
+      subtotal: box.total,
+      total: grandTotal,
+      customer_name: name,
+      customer_phone: phone,
+      status: "new",
+    };
+
+    if (supabase) {
+      const { error: err } = await supabase.from("orders").insert(order);
+      if (err) { setError("Tókst ekki að skrá pöntun. Reyndu aftur."); setSaving(false); return; }
+    }
+
+    setSaving(false);
+    setPlaced({ ref });
     box.clear();
   }
 
@@ -207,8 +237,8 @@ export default function CheckoutView({ meals }: { meals: Meal[] }) {
 
           {error && <p className="text-sm font-semibold" style={{ color: C.red }}>{error}</p>}
 
-          <button type="submit" className="w-full font-bold py-4 rounded-full text-white transition-transform active:scale-95" style={{ backgroundColor: C.red }}>
-            {plan === "subscription" ? "Hefja áskrift" : "Greiða með korti"}
+          <button type="submit" disabled={saving} className="w-full font-bold py-4 rounded-full text-white transition-transform active:scale-95 disabled:opacity-50" style={{ backgroundColor: C.red }}>
+            {saving ? "Skrái pöntun…" : plan === "subscription" ? "Hefja áskrift" : "Greiða með korti"}
           </button>
           <p className="text-[11px] text-center" style={{ color: C.muted }}>Kortagreiðsla (Straumur) tengist í næsta skrefi.</p>
         </form>

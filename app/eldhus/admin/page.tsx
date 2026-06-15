@@ -47,6 +47,9 @@ export default function AdminPage() {
   const [editing, setEditing] = useState<MealRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [tab, setTab] = useState<"meals" | "orders">("meals");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [orders, setOrders] = useState<any[]>([]);
 
   const loadMeals = useCallback(async () => {
     if (!supabase) return;
@@ -54,19 +57,31 @@ export default function AdminPage() {
     setMeals((data as MealRow[]) ?? []);
   }, []);
 
+  const loadOrders = useCallback(async () => {
+    if (!supabase) return;
+    const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+    setOrders(data ?? []);
+  }, []);
+
+  async function setOrderStatus(id: string, status: string) {
+    if (!supabase) return;
+    await supabase.from("orders").update({ status }).eq("id", id);
+    loadOrders();
+  }
+
   useEffect(() => {
     if (!supabaseEnabled || !supabase) { setReady(true); return; }
     supabase.auth.getSession().then(({ data }) => {
       setAuthed(!!data.session);
       setReady(true);
-      if (data.session) loadMeals();
+      if (data.session) { loadMeals(); loadOrders(); }
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       setAuthed(!!session);
-      if (session) loadMeals();
+      if (session) { loadMeals(); loadOrders(); }
     });
     return () => sub.subscription.unsubscribe();
-  }, [loadMeals]);
+  }, [loadMeals, loadOrders]);
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
@@ -140,18 +155,70 @@ export default function AdminPage() {
     );
   }
 
+  const newOrders = orders.filter((o) => o.status === "new").length;
+  const ordersLabel = "Pantanir" + (newOrders ? ` (${newOrders})` : "");
+  const TABS: [("meals" | "orders"), string][] = [["meals", "Matseðill"], ["orders", ordersLabel]];
+
   return (
     <main className="max-w-5xl mx-auto px-6 py-10">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold" style={{ ...serif, color: C.deep }}>Matseðill — stjórnborð</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold" style={{ ...serif, color: C.deep }}>Stjórnborð</h1>
         <div className="flex gap-3">
-          <button onClick={() => setEditing({ ...BLANK, position: meals.length + 1 })}
-            className="font-bold px-5 py-2.5 rounded-full text-white" style={{ backgroundColor: C.red }}>+ Ný uppskrift</button>
+          {tab === "meals" && (
+            <button onClick={() => setEditing({ ...BLANK, position: meals.length + 1 })}
+              className="font-bold px-5 py-2.5 rounded-full text-white" style={{ backgroundColor: C.red }}>+ Ný uppskrift</button>
+          )}
           <button onClick={() => supabase!.auth.signOut()}
             className="font-semibold px-4 py-2.5 rounded-full" style={{ border: `1px solid ${C.tealSoft}`, color: C.deep }}>Útskrá</button>
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-2 mb-8">
+        {TABS.map(([key, label]) => (
+          <button key={key} onClick={() => setTab(key)}
+            className="px-5 py-2 rounded-full text-sm font-bold transition-colors"
+            style={tab === key ? { backgroundColor: C.deep, color: "#fff" } : { backgroundColor: "#fff", color: C.deep, border: `1px solid ${C.tealSoft}` }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "orders" && (
+        <div className="space-y-3">
+          {orders.length === 0 && <p style={{ color: C.muted }}>Engar pantanir enn.</p>}
+          {orders.map((o) => (
+            <div key={o.id} className="bg-white rounded-2xl p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="font-bold" style={{ color: C.ink }}>
+                    #{o.ref} · {o.customer_name || "—"}
+                    {o.plan === "subscription" && <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: C.tealSoft, color: C.deep }}>Áskrift</span>}
+                  </p>
+                  <p className="text-sm" style={{ color: C.muted }}>
+                    {o.delivery_type === "delivery" ? `Heimsending · ${o.address ?? ""}` : "Sókn í verslun"} · {o.pickup_time}
+                  </p>
+                  <p className="text-sm mt-1" style={{ color: C.ink }}>
+                    {(o.items ?? []).map((it: { title: string }) => it.title).join(", ")}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: C.muted }}>
+                    {o.meals} réttir × {o.portions} manna · {o.customer_phone} · {Number(o.total).toLocaleString("is-IS")} kr.
+                  </p>
+                </div>
+                <select value={o.status} onChange={(e) => setOrderStatus(o.id, e.target.value)}
+                  className="text-sm font-semibold rounded-lg border px-2 py-1.5 shrink-0"
+                  style={{ borderColor: C.tealSoft, color: C.deep }}>
+                  <option value="new">Ný</option>
+                  <option value="preparing">Í vinnslu</option>
+                  <option value="done">Tilbúin</option>
+                </select>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === "meals" && (
       <div className="space-y-3">
         {meals.map((m) => (
           <div key={m.id ?? m.slug} className="flex items-center gap-4 bg-white rounded-2xl p-3 shadow-sm">
@@ -171,6 +238,7 @@ export default function AdminPage() {
         ))}
         {meals.length === 0 && <p style={{ color: C.muted }}>Engar uppskriftir enn. Smelltu á „Ný uppskrift“.</p>}
       </div>
+      )}
 
       {editing && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-6 overflow-y-auto" onClick={() => setEditing(null)}>
