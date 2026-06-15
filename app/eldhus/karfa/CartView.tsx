@@ -24,13 +24,13 @@ export default function CartView({ meals }: { meals: Meal[] }) {
           {/* Box size */}
           <section className="bg-white rounded-3xl p-6 shadow-sm">
             <h2 className="text-lg font-bold mb-4" style={{ ...serif, color: C.deep }}>Skammtastærð</h2>
-            <div className="flex gap-3 mb-6">
+            <div className="flex flex-wrap gap-2.5 mb-6">
               {PORTION_OPTIONS.map((p) => (
                 <Choice key={p} on={box.portions === p} onClick={() => box.setPortions(p)} label={`${p} manna`} />
               ))}
             </div>
             <h2 className="text-lg font-bold mb-4" style={{ ...serif, color: C.deep }}>Fjöldi rétta á viku</h2>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2.5">
               {MEAL_OPTIONS.map((n) => (
                 <Choice key={n} on={box.target === n} onClick={() => box.setTarget(n)} label={`${n} ${n === 1 ? "réttur" : "réttir"}`} />
               ))}
@@ -81,7 +81,7 @@ export default function CartView({ meals }: { meals: Meal[] }) {
         {/* Right: summary */}
         <aside className="bg-white rounded-3xl p-6 shadow-sm lg:sticky lg:top-24">
           <h2 className="text-lg font-bold mb-4" style={{ ...serif, color: C.deep }}>Samantekt</h2>
-          <Row label={`${box.target} réttir × ${box.portions} manna`} value={`${(box.target * box.portions)} skammtar`} />
+          <Row label={`${box.target} ${box.target === 1 ? "réttur" : "réttir"} × ${box.portions} manna`} value={`${(box.target * box.portions)} skammtar`} />
           <Row label="Verð á skammt" value={`${box.pricePerServing.toLocaleString("is-IS")} kr.`} />
           <div className="border-t my-4" style={{ borderColor: C.tealSoft }} />
           <div className="flex justify-between items-end mb-1">
@@ -120,7 +120,7 @@ function Choice({ on, onClick, label }: { on: boolean; onClick: () => void; labe
   return (
     <button
       onClick={onClick}
-      className="px-5 py-2.5 rounded-full text-sm font-bold transition-colors"
+      className="px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-colors"
       style={on ? { backgroundColor: C.deep, color: "#fff" } : { backgroundColor: C.cream, color: C.deep, border: `1px solid ${C.tealSoft}` }}
     >
       {label}

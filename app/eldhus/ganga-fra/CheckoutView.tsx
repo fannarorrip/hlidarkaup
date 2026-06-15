@@ -190,7 +190,7 @@ export default function CheckoutView({ meals }: { meals: Meal[] }) {
             </div>
             <div className="border-t pt-3 space-y-1 text-sm" style={{ borderColor: C.tealSoft }}>
               <div className="flex justify-between" style={{ color: C.muted }}>
-                <span>{box.target} réttir × {box.portions} manna</span>
+                <span>{box.target} {box.target === 1 ? "réttur" : "réttir"} × {box.portions} manna</span>
                 <span>{box.total.toLocaleString("is-IS")} kr.</span>
               </div>
               {deliveryType === "delivery" && distanceKm !== null && !outOfArea && (
