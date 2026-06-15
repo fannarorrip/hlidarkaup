@@ -185,11 +185,14 @@ export default function KassiPage() {
   const [bagModalOpen, setBagModalOpen] = useState(false);
   const [bagProduct, setBagProduct] = useState<{ id: string; name: string; price: number; vatPct?: number } | null>(null);
   const [eReceiptHint, setEReceiptHint] = useState(false);
-  // E-receipt preview is a local/dev-only test for now (not shown on Netlify)
-  const eReceiptTest = process.env.NODE_ENV !== "production";
+  // E-receipt: enabled on local dev always, and in production only when the
+  // flag is set (so it stays off on Netlify until email is configured there).
+  const eReceiptEnabled = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_ERECEIPT_ENABLED === "true";
   const [eReceiptOpen, setEReceiptOpen] = useState(false);
   const [eReceiptEmail, setEReceiptEmail] = useState("");
   const [eReceiptSent, setEReceiptSent] = useState(false);
+  const [eReceiptSending, setEReceiptSending] = useState(false);
+  const [eReceiptError, setEReceiptError] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
   const [showDigits, setShowDigits] = useState(false);
   const [receiptWanted, setReceiptWanted] = useState(false);
@@ -413,12 +416,51 @@ export default function KassiPage() {
     setEReceiptOpen(false);
     setEReceiptEmail("");
     setEReceiptSent(false);
+    setEReceiptSending(false);
+    setEReceiptError("");
     setPayError("");
     setScanError("");
     setLastScanned(null);
     setBagModalOpen(false);
     setHelpOpen(false);
     setScreen("idle");
+  }
+
+  function openEReceipt() {
+    setEReceiptSent(false);
+    setEReceiptSending(false);
+    setEReceiptError("");
+    setEReceiptEmail("");
+    setEReceiptOpen(true);
+  }
+
+  async function sendEReceipt() {
+    if (eReceiptSending || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eReceiptEmail)) return;
+    setEReceiptSending(true);
+    setEReceiptError("");
+    try {
+      const res = await fetch("/api/kassi/receipt", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: eReceiptEmail,
+          items: cart.map(({ name, quantity, price }) => ({ name, quantity, price })),
+          total,
+          vat: vatAmount,
+          invoiceNumber,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setEReceiptError(d.error ?? "Tókst ekki að senda kvittun");
+        return;
+      }
+      setEReceiptSent(true);
+    } catch {
+      setEReceiptError("Samband rofnaði. Reyndu aftur.");
+    } finally {
+      setEReceiptSending(false);
+    }
   }
 
   /* Hidden scanner input — rendered on every screen that accepts scans */
@@ -464,10 +506,9 @@ export default function KassiPage() {
   // E-receipt preview modal — LOCAL/DEV ONLY (gated by eReceiptTest at the call site)
   const eReceiptModal = eReceiptOpen && (
     <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-6" onClick={() => setEReceiptOpen(false)}>
-      <div className="bg-white rounded-[1.75rem] shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="px-7 pt-6 pb-5 flex items-center justify-between" style={{ backgroundColor: RED }}>
+      <div className="bg-white rounded-[1.75rem] shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="px-7 pt-6 pb-5 text-center" style={{ backgroundColor: RED }}>
           <span className="text-white font-extrabold text-lg">{t.eReceiptTitle}</span>
-          <span className="text-[10px] font-bold bg-white/25 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">Test</span>
         </div>
         <div className="px-7 py-6">
           <div className="rounded-2xl border border-gray-200 p-5" style={PATTERN_BG}>
@@ -509,23 +550,47 @@ export default function KassiPage() {
             </div>
           ) : (
             <div className="mt-5">
-              <input
-                value={eReceiptEmail}
-                onChange={(e) => setEReceiptEmail(e.target.value)}
-                placeholder={t.enterEmail}
-                inputMode="email"
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-center outline-none mb-3"
-                style={{ color: INK }}
-              />
-              <div className="flex gap-3">
+              {/* Email display (typed via the on-screen keyboard) */}
+              <div className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-center text-lg font-bold mb-1 min-h-[3rem]" style={{ color: INK }}>
+                {eReceiptEmail || <span className="text-gray-300">{t.enterEmail}</span>}
+              </div>
+              {eReceiptError && <p className="text-center text-sm font-bold mb-2" style={{ color: RED }}>{eReceiptError}</p>}
+
+              {/* On-screen touch keyboard */}
+              <div className="mt-3 select-none">
+                {EMAIL_ROWS.map((row, i) => (
+                  <div key={i} className="flex justify-center gap-1.5 mb-1.5">
+                    {row.map((k) => (
+                      <button
+                        key={k}
+                        onClick={() => setEReceiptEmail((v) => v + k)}
+                        className="flex-1 max-w-[2.6rem] h-11 rounded-lg bg-gray-100 font-bold text-gray-800 active:scale-90 transition-transform"
+                      >
+                        {k}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+                <div className="flex justify-center gap-1.5 mb-1.5">
+                  {["@", ".", "-", "_"].map((k) => (
+                    <button key={k} onClick={() => setEReceiptEmail((v) => v + k)}
+                      className="w-11 h-11 rounded-lg font-bold active:scale-90 transition-transform" style={{ backgroundColor: PINK, color: RED_DARK }}>{k}</button>
+                  ))}
+                  <button onClick={() => setEReceiptEmail((v) => v + ".is")} className="px-3 h-11 rounded-lg font-bold text-sm active:scale-90 transition-transform" style={{ backgroundColor: PINK, color: RED_DARK }}>.is</button>
+                  <button onClick={() => setEReceiptEmail((v) => v + ".com")} className="px-3 h-11 rounded-lg font-bold text-sm active:scale-90 transition-transform" style={{ backgroundColor: PINK, color: RED_DARK }}>.com</button>
+                  <button onClick={() => setEReceiptEmail((v) => v.slice(0, -1))} className="px-3 h-11 rounded-lg bg-gray-200 font-bold text-lg active:scale-90 transition-transform">⌫</button>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-4">
                 <button onClick={() => setEReceiptOpen(false)} className="flex-1 border-2 border-gray-200 text-gray-500 font-bold py-3 rounded-xl">{t.close}</button>
                 <button
-                  onClick={() => eReceiptEmail.includes("@") && setEReceiptSent(true)}
-                  disabled={!eReceiptEmail.includes("@")}
+                  onClick={sendEReceipt}
+                  disabled={eReceiptSending || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eReceiptEmail)}
                   className="flex-1 font-extrabold py-3 rounded-xl active:scale-95 transition-transform disabled:opacity-30"
                   style={{ backgroundColor: RED, color: "#fff" }}
                 >
-                  {t.send}
+                  {eReceiptSending ? "…" : t.send}
                 </button>
               </div>
             </div>
@@ -733,7 +798,7 @@ export default function KassiPage() {
             </button>
             <div className="flex gap-3">
               <button
-                onClick={() => (eReceiptTest ? (setEReceiptSent(false), setEReceiptEmail(""), setEReceiptOpen(true)) : setEReceiptHint(true))}
+                onClick={() => (eReceiptEnabled ? openEReceipt() : setEReceiptHint(true))}
                 className="flex-1 bg-white rounded-2xl py-4 text-base font-bold shadow-md active:scale-[0.98] transition-transform"
                 style={{ color: INK }}
               >
@@ -1168,4 +1233,12 @@ const LETTER_ROWS = [
 
 const DIGIT_ROWS = [
   ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+];
+
+// On-screen keyboard for the e-receipt email (ASCII; @ . - _ live in a separate row)
+const EMAIL_ROWS = [
+  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+  ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
+  ["a", "s", "d", "f", "g", "h", "j", "k", "l"],
+  ["z", "x", "c", "v", "b", "n", "m"],
 ];
