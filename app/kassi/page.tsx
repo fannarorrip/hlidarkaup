@@ -71,6 +71,12 @@ const STR = {
     eReceipt: "Rafræn kvittun",
     newCheckout: "Ný afgreiðsla",
     comingSoon: "Kemur fljótlega",
+    eReceiptTitle: "Rafræn kvittun",
+    enterEmail: "Sláðu inn netfang",
+    send: "Senda",
+    sentTo: "Kvittun send á",
+    paidCard: "Greitt með korti",
+    storeAddress: "Akurhlíð 1 · Sauðárkrókur",
   },
   en: {
     langName: "English",
@@ -127,6 +133,12 @@ const STR = {
     eReceipt: "E-receipt",
     newCheckout: "New checkout",
     comingSoon: "Coming soon",
+    eReceiptTitle: "E-receipt",
+    enterEmail: "Enter your email",
+    send: "Send",
+    sentTo: "Receipt sent to",
+    paidCard: "Paid by card",
+    storeAddress: "Akurhlíð 1 · Sauðárkrókur",
   },
 } as const;
 
@@ -173,6 +185,11 @@ export default function KassiPage() {
   const [bagModalOpen, setBagModalOpen] = useState(false);
   const [bagProduct, setBagProduct] = useState<{ id: string; name: string; price: number; vatPct?: number } | null>(null);
   const [eReceiptHint, setEReceiptHint] = useState(false);
+  // E-receipt preview is a local/dev-only test for now (not shown on Netlify)
+  const eReceiptTest = process.env.NODE_ENV !== "production";
+  const [eReceiptOpen, setEReceiptOpen] = useState(false);
+  const [eReceiptEmail, setEReceiptEmail] = useState("");
+  const [eReceiptSent, setEReceiptSent] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [showDigits, setShowDigits] = useState(false);
   const [receiptWanted, setReceiptWanted] = useState(false);
@@ -393,6 +410,9 @@ export default function KassiPage() {
     setInvoiceNumber("");
     setReceiptWanted(false);
     setEReceiptHint(false);
+    setEReceiptOpen(false);
+    setEReceiptEmail("");
+    setEReceiptSent(false);
     setPayError("");
     setScanError("");
     setLastScanned(null);
@@ -439,6 +459,80 @@ export default function KassiPage() {
         <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8z" />
       </svg>
     </span>
+  );
+
+  // E-receipt preview modal — LOCAL/DEV ONLY (gated by eReceiptTest at the call site)
+  const eReceiptModal = eReceiptOpen && (
+    <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-6" onClick={() => setEReceiptOpen(false)}>
+      <div className="bg-white rounded-[1.75rem] shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="px-7 pt-6 pb-5 flex items-center justify-between" style={{ backgroundColor: RED }}>
+          <span className="text-white font-extrabold text-lg">{t.eReceiptTitle}</span>
+          <span className="text-[10px] font-bold bg-white/25 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">Test</span>
+        </div>
+        <div className="px-7 py-6">
+          <div className="rounded-2xl border border-gray-200 p-5" style={PATTERN_BG}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Hlíðarkaup" className="h-7 w-auto mx-auto mb-1" />
+            <p className="text-center text-xs text-gray-400 mb-4">{t.storeAddress}</p>
+            <div className="space-y-1.5 text-sm">
+              {cart.map((l) => (
+                <div key={l.id} className="flex justify-between gap-2">
+                  <span className="truncate" style={{ color: INK }}>
+                    {l.quantity > 1 && <span className="text-gray-400">{l.quantity}× </span>}{l.name}
+                  </span>
+                  <span className="font-bold whitespace-nowrap" style={{ color: INK }}>
+                    {(l.price * l.quantity).toLocaleString("is-IS")} kr.
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="my-3 border-t border-dashed border-gray-300" />
+            <div className="flex justify-between text-sm text-gray-500">
+              <span>{t.vatIncluded}</span>
+              <span>{vatAmount.toLocaleString("is-IS")} kr.</span>
+            </div>
+            <div className="flex justify-between items-end mt-1">
+              <span className="font-bold" style={{ color: INK }}>{t.totalLabel}</span>
+              <span className="text-2xl font-extrabold" style={{ color: RED }}>{total.toLocaleString("is-IS")} kr.</span>
+            </div>
+            <p className="text-center text-xs text-gray-400 mt-3">{t.paidCard}</p>
+            <p className="text-center font-mono text-xs text-gray-400">{t.receiptNo} {invoiceNumber || "—"}</p>
+          </div>
+
+          {eReceiptSent ? (
+            <div className="mt-5 text-center">
+              <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-2" style={{ backgroundColor: RED }}>
+                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+              </div>
+              <p className="font-bold" style={{ color: INK }}>{t.sentTo}</p>
+              <p className="text-gray-500">{eReceiptEmail}</p>
+            </div>
+          ) : (
+            <div className="mt-5">
+              <input
+                value={eReceiptEmail}
+                onChange={(e) => setEReceiptEmail(e.target.value)}
+                placeholder={t.enterEmail}
+                inputMode="email"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-center outline-none mb-3"
+                style={{ color: INK }}
+              />
+              <div className="flex gap-3">
+                <button onClick={() => setEReceiptOpen(false)} className="flex-1 border-2 border-gray-200 text-gray-500 font-bold py-3 rounded-xl">{t.close}</button>
+                <button
+                  onClick={() => eReceiptEmail.includes("@") && setEReceiptSent(true)}
+                  disabled={!eReceiptEmail.includes("@")}
+                  className="flex-1 font-extrabold py-3 rounded-xl active:scale-95 transition-transform disabled:opacity-30"
+                  style={{ backgroundColor: RED, color: "#fff" }}
+                >
+                  {t.send}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 
   const wandIcon = (cls: string) => {
@@ -639,7 +733,7 @@ export default function KassiPage() {
             </button>
             <div className="flex gap-3">
               <button
-                onClick={() => setEReceiptHint(true)}
+                onClick={() => (eReceiptTest ? (setEReceiptSent(false), setEReceiptEmail(""), setEReceiptOpen(true)) : setEReceiptHint(true))}
                 className="flex-1 bg-white rounded-2xl py-4 text-base font-bold shadow-md active:scale-[0.98] transition-transform"
                 style={{ color: INK }}
               >
@@ -655,6 +749,7 @@ export default function KassiPage() {
             </div>
           </div>
         </div>
+        {eReceiptModal}
       </div>
     );
   }
