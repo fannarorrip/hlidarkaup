@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { C } from "../theme";
 import type { Meal } from "../meals";
 import { MealCard } from "../MealCard";
+import AddToBoxButton from "../AddToBoxButton";
 
 export default function MenuBrowser({ meals }: { meals: Meal[] }) {
   const tags = useMemo(() => ["Allt", ...Array.from(new Set(meals.map((m) => m.tag)))], [meals]);
@@ -34,7 +35,7 @@ export default function MenuBrowser({ meals }: { meals: Meal[] }) {
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {shown.map((m) => (
-          <MealCard key={m.slug} meal={m} />
+          <MealCard key={m.slug} meal={m} action={<AddToBoxButton slug={m.slug} />} />
         ))}
       </div>
     </>

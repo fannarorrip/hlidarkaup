@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Fraunces } from "next/font/google";
 import { C } from "./theme";
 import { Wordmark } from "./Brand";
+import { BoxProvider } from "./box-context";
+import BoxBar from "./BoxBar";
 
 const serif = Fraunces({ subsets: ["latin"], weight: ["400", "600", "700"], variable: "--font-eldhus-serif" });
 
@@ -20,6 +22,7 @@ const NAV = [
 export default function EldhusLayout({ children }: { children: ReactNode }) {
   return (
     <div className={serif.variable} style={{ backgroundColor: C.cream, color: C.ink, minHeight: "100vh" }}>
+      <BoxProvider>
       <header className="sticky top-0 z-40 backdrop-blur" style={{ backgroundColor: "rgba(255,246,246,0.85)", borderBottom: `1px solid ${C.tealSoft}` }}>
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/eldhus" className="flex items-center">
@@ -76,6 +79,8 @@ export default function EldhusLayout({ children }: { children: ReactNode }) {
           © {new Date().getFullYear()} Hlíðarkaup
         </div>
       </footer>
+      <BoxBar />
+      </BoxProvider>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { C } from "../../theme";
 import { getWeekMeals, getMeal } from "../../meals";
+import AddToBoxButton from "../../AddToBoxButton";
 
 const serifStyle = { fontFamily: "var(--font-eldhus-serif)" } as const;
 
@@ -64,17 +65,8 @@ export default async function MealDetailPage({ params }: { params: Promise<{ slu
             </div>
           )}
 
-          {/* Add-to-box CTA (wired up in Phase 2) */}
-          <button
-            type="button"
-            disabled
-            className="w-full sm:w-auto font-bold px-8 py-4 rounded-full shadow-sm opacity-60 cursor-not-allowed"
-            style={{ backgroundColor: C.red, color: "#fff" }}
-            title="Kemur með pöntunarkerfinu"
-          >
-            Bæta í kassann
-          </button>
-          <p className="text-xs mt-2" style={{ color: C.muted }}>Pöntun opnar fljótlega.</p>
+          <AddToBoxButton slug={meal.slug} large />
+          <p className="text-xs mt-2" style={{ color: C.muted }}>Veldu skammtastærð og fjölda rétta í kassanum.</p>
         </div>
       </div>
     </main>
