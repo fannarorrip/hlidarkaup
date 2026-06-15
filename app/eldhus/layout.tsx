@@ -5,6 +5,7 @@ import { C } from "./theme";
 import { Wordmark } from "./Brand";
 import { BoxProvider } from "./box-context";
 import BoxBar from "./BoxBar";
+import HeaderCart from "./HeaderCart";
 
 const serif = Fraunces({ subsets: ["latin"], weight: ["400", "600", "700"], variable: "--font-eldhus-serif" });
 
@@ -37,9 +38,10 @@ export default function EldhusLayout({ children }: { children: ReactNode }) {
             <Link href="/eldhus/innskra" className="hidden sm:block text-sm font-semibold hover:opacity-70" style={{ color: C.deep }}>
               Innskrá
             </Link>
+            <HeaderCart />
             <Link
               href="/eldhus/matsedill"
-              className="text-sm font-bold px-5 py-2.5 rounded-full transition-transform active:scale-95"
+              className="hidden sm:block text-sm font-bold px-5 py-2.5 rounded-full transition-transform active:scale-95"
               style={{ backgroundColor: C.red, color: "#fff" }}
             >
               Panta núna
