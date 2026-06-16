@@ -7,7 +7,7 @@ import { C } from "../theme";
 import type { Meal } from "../meals";
 import { useBox } from "../box-context";
 import { supabase } from "@/lib/supabase/client";
-import { STORE, PICKUP_TIMES, DELIVERY_TIMES, formatTodayIcelandic, haversineKm, calcShipping, zoneLabel } from "@/lib/delivery";
+import { STORE, formatTodayIcelandic, haversineKm, calcShipping, zoneLabel, upcomingDays, dayChipLabel, slotsForDay } from "@/lib/delivery";
 
 const serif = { fontFamily: "var(--font-eldhus-serif)" } as const;
 
@@ -22,6 +22,9 @@ export default function CheckoutView({ meals }: { meals: Meal[] }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const days = useMemo(() => upcomingDays(14), []);
+  const [dayIdx, setDayIdx] = useState(0);
+  const selectedDay = days[dayIdx];
   const [time, setTime] = useState("");
   const [address, setAddress] = useState("");
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
@@ -38,20 +41,11 @@ export default function CheckoutView({ meals }: { meals: Meal[] }) {
   const outOfArea = deliveryType === "delivery" && distanceKm !== null && calcShipping(distanceKm) === null;
   const grandTotal = box.total + (shipping ?? 0);
 
-  const { todayLabel, availableTimes } = useMemo(() => {
-    const now = new Date();
-    const nowMin = now.getHours() * 60 + now.getMinutes();
-    const openMin = now.getDay() === 0 ? 600 : 540;
-    const all = deliveryType === "delivery" ? DELIVERY_TIMES : PICKUP_TIMES;
-    return {
-      todayLabel: formatTodayIcelandic(now),
-      availableTimes: all.map((t) => {
-        const [h, m] = t.split(":").map(Number);
-        const slot = h * 60 + m;
-        return { time: t, past: slot <= nowMin + 30 || slot < openMin };
-      }),
-    };
-  }, [deliveryType]);
+  const availableTimes = useMemo(() => slotsForDay(selectedDay, deliveryType), [selectedDay, deliveryType]);
+  const dayLabel = formatTodayIcelandic(selectedDay);
+
+  // Reset the chosen time whenever the day or delivery type changes.
+  useEffect(() => { setTime(""); }, [dayIdx, deliveryType]);
 
   useEffect(() => {
     if (!mapsReady || deliveryType !== "delivery") return;
@@ -91,6 +85,7 @@ export default function CheckoutView({ meals }: { meals: Meal[] }) {
       plan,
       delivery_type: deliveryType,
       pickup_time: time,
+      delivery_date: selectedDay.toISOString().slice(0, 10),
       address: deliveryType === "delivery" ? address : null,
       distance_km: distanceKm,
       shipping: shipping ?? 0,
@@ -118,7 +113,7 @@ export default function CheckoutView({ meals }: { meals: Meal[] }) {
         body: JSON.stringify({
           email: email.trim(), ref, plan, deliveryType,
           address: deliveryType === "delivery" ? address : null,
-          time, items: selectedMeals.map((m) => ({ title: m.title })), total: grandTotal,
+          time, date: dayLabel, items: selectedMeals.map((m) => ({ title: m.title })), total: grandTotal,
         }),
       }).catch(() => { /* email is best-effort */ });
     }
@@ -140,7 +135,7 @@ export default function CheckoutView({ meals }: { meals: Meal[] }) {
           {plan === "subscription" ? "Áskriftin þín er virk." : "Pöntunin þín er staðfest."} Pöntunarnúmer <strong>#{placed.ref}</strong>.
         </p>
         <p className="mb-8" style={{ color: C.muted }}>
-          {deliveryType === "delivery" ? "Heimsending" : "Sókn í Hlíðarkaup"} · {time} · {todayLabel}
+          {deliveryType === "delivery" ? "Heimsending" : "Sókn í Hlíðarkaup"} · {dayLabel} · {time}
         </p>
         <Link href="/eldhus" className="inline-block font-bold px-8 py-4 rounded-full text-white" style={{ backgroundColor: C.red }}>
           Til baka á forsíðu
@@ -211,10 +206,26 @@ export default function CheckoutView({ meals }: { meals: Meal[] }) {
             <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Netfang (fyrir staðfestingu)" type="email" inputMode="email" className={inp} />
           </Card>
 
-          {/* Time */}
+          {/* Day + time */}
           <Card title={deliveryType === "pickup" ? "Hvenær viltu sækja?" : "Hvenær á að afhenda?"}>
-            <p className="text-sm mb-3" style={{ color: C.muted }}>{todayLabel}</p>
+            {/* Day picker */}
+            <div className="flex gap-2 overflow-x-auto pb-2 mb-4 -mx-1 px-1">
+              {days.map((d, i) => {
+                const on = i === dayIdx;
+                return (
+                  <button key={i} type="button" onClick={() => setDayIdx(i)}
+                    className="shrink-0 px-3 py-2 rounded-xl text-sm font-semibold border transition-colors text-center"
+                    style={on ? { backgroundColor: C.deep, color: "#fff", borderColor: C.deep } : { borderColor: C.tealSoft, color: C.deep }}>
+                    {dayChipLabel(d)}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-sm mb-3" style={{ color: C.muted }}>{dayLabel}</p>
             <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+              {availableTimes.every((s) => s.past) && (
+                <p className="col-span-full text-sm" style={{ color: C.muted }}>Enginn laus tími þennan dag — veldu annan dag.</p>
+              )}
               {availableTimes.map(({ time: t, past }) => (
                 <button key={t} type="button" disabled={past} onClick={() => setTime(t)}
                   className="py-2 rounded-lg text-sm font-medium border transition-colors disabled:line-through disabled:opacity-40"

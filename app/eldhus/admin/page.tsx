@@ -196,7 +196,7 @@ export default function AdminPage() {
                     {o.plan === "subscription" && <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: C.tealSoft, color: C.deep }}>Áskrift</span>}
                   </p>
                   <p className="text-sm" style={{ color: C.muted }}>
-                    {o.delivery_type === "delivery" ? `Heimsending · ${o.address ?? ""}` : "Sókn í verslun"} · {o.pickup_time}
+                    {o.delivery_type === "delivery" ? `Heimsending · ${o.address ?? ""}` : "Sókn í verslun"} · {o.delivery_date ? `${o.delivery_date} ` : ""}{o.pickup_time}
                   </p>
                   <p className="text-sm mt-1" style={{ color: C.ink }}>
                     {(o.items ?? []).map((it: { title: string }) => it.title).join(", ")}

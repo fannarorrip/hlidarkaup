@@ -40,6 +40,38 @@ export function calcShipping(km: number): number | null {
   return null;
 }
 
+const IS_WEEKDAYS_SHORT = ["Sun", "Mán", "Þri", "Mið", "Fim", "Fös", "Lau"];
+
+/** Next `count` days starting today (midnight-normalised). */
+export function upcomingDays(count: number): Date[] {
+  const base = new Date();
+  base.setHours(0, 0, 0, 0);
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(base);
+    d.setDate(base.getDate() + i);
+    return d;
+  });
+}
+
+/** Short chip label, e.g. "Mán 17.". */
+export function dayChipLabel(d: Date) {
+  return `${IS_WEEKDAYS_SHORT[d.getDay()]} ${d.getDate()}.`;
+}
+
+/** Time slots for a specific day; future days open fully, today filters past slots. */
+export function slotsForDay(date: Date, deliveryType: "pickup" | "delivery") {
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const openMin = date.getDay() === 0 ? 600 : 540; // Sunday opens 10:00
+  const all = deliveryType === "delivery" ? DELIVERY_TIMES : PICKUP_TIMES;
+  return all.map((t) => {
+    const [h, m] = t.split(":").map(Number);
+    const slot = h * 60 + m;
+    return { time: t, past: slot < openMin || (isToday && slot <= nowMin + 30) };
+  });
+}
+
 export function zoneLabel(km: number): string {
   return km <= 3 ? "Innan Sauðárkróks (0–3 km)"
     : km <= 10 ? "Svæði 1 (3–10 km)"

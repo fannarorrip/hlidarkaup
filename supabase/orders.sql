@@ -7,6 +7,7 @@ create table if not exists public.orders (
   plan          text not null default 'once',        -- once | subscription
   delivery_type text not null default 'pickup',      -- pickup | delivery
   pickup_time   text,
+  delivery_date date,
   address       text,
   distance_km   numeric,
   shipping      int  not null default 0,
@@ -21,8 +22,9 @@ create table if not exists public.orders (
   status        text not null default 'new'          -- new | preparing | done
 );
 
--- Add the email column if the table already existed from an earlier run.
+-- Add columns if the table already existed from an earlier run.
 alter table public.orders add column if not exists customer_email text;
+alter table public.orders add column if not exists delivery_date date;
 
 alter table public.orders enable row level security;
 

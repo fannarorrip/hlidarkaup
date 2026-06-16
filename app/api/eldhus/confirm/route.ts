@@ -8,6 +8,7 @@ interface Body {
   deliveryType?: "pickup" | "delivery";
   address?: string | null;
   time?: string;
+  date?: string;
   items?: Item[];
   total?: number;
 }
@@ -84,6 +85,7 @@ function confirmHtml(b: Body) {
         </p>
         <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:16px">
           <tr><td style="padding:4px 0;color:#5C6B72">Afhending</td><td style="padding:4px 0;text-align:right">${fulfilment}</td></tr>
+          <tr><td style="padding:4px 0;color:#5C6B72">Dagur</td><td style="padding:4px 0;text-align:right">${esc(b.date ?? "")}</td></tr>
           <tr><td style="padding:4px 0;color:#5C6B72">Tími</td><td style="padding:4px 0;text-align:right">${esc(b.time ?? "")}</td></tr>
         </table>
         <p style="font-weight:700;margin:0 0 4px">Réttir</p>
