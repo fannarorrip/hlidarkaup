@@ -35,9 +35,6 @@ export default function EldhusLayout({ children }: { children: ReactNode }) {
             ))}
           </nav>
           <div className="flex items-center gap-3">
-            <Link href="/eldhus/innskra" className="hidden sm:block text-sm font-semibold hover:opacity-70" style={{ color: C.deep }}>
-              Innskrá
-            </Link>
             <HeaderCart />
             <Link
               href="/eldhus/matsedill"
