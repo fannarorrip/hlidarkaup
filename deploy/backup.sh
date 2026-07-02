@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Nightly PostgreSQL backup for the Hlíðarkaup accounting DB (run on the Proxmox VM).
+# Nightly PostgreSQL backup for the Hlíðarkaup accounting DB (run on the Rocky Linux server).
 # Schedule with cron, e.g.:   0 2 * * *  /opt/hlidarkaup/deploy/backup.sh >> /var/log/hlidarkaup-backup.log 2>&1
 #
 # Bookkeeping records must be retained 7 years (Lög 145/1994 gr. 20). This keeps
 # daily backups for KEEP_DAYS and a monthly archive long-term; pair with an
-# OFFSITE copy and Proxmox vzdump of the whole VM.
+# OFFSITE copy (external disk or cloud sync) — see deploy/DEPLOYMENT.md §6.
 set -euo pipefail
 
 DB="${PGDATABASE:-hlidarkaup}"

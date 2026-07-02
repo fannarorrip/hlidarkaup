@@ -1,6 +1,6 @@
 # Hlíðarkaup — Accounting system (bókhald)
 
-Self-built double-entry accounting system replacing Regla. Runs on **PostgreSQL** (self-hosted on Proxmox).
+Self-built double-entry accounting system replacing Regla. Runs on **PostgreSQL** (self-hosted on the on-prem Rocky Linux server).
 
 ## Design principles (Icelandic compliance)
 
@@ -12,7 +12,7 @@ Self-built double-entry accounting system replacing Regla. Runs on **PostgreSQL*
 | Two-way audit trail (source doc ↔ entry), user + time + ref per entry | Lög 145/1994 gr. 7; Rgl. 505/2013 | `acc.audit_log`, `posted_by`/`posted_at`, voucher↔entry FKs |
 | Four VAT control accounts (útskattur/innskattur/uppgjör/bið) | Rgl. 50/1993 gr. 24 | Seeded in `003_seed.sql` (placeholders → replace from Regla export) |
 | ISK + Icelandic | Lög 145/1994 gr. 10A/25 | `numeric(18,2)`; Icelandic naming |
-| 7-year retention | Lög 145/1994 gr. 20 | Operational: Proxmox backups + nightly `pg_dump` offsite |
+| 7-year retention | Lög 145/1994 gr. 20 | Operational: nightly `pg_dump` offsite |
 
 ## Files (apply in order)
 

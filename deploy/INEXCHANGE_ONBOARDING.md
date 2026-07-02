@@ -20,7 +20,7 @@ Kerfið getur líka **sent** sölureikninga rafrænt til viðskiptamanna sem mer
    - `INEXCHANGE_PASSWORD=` ← **fylltu inn**
    - `INEXCHANGE_STANDARD=` (tómt = öll snið; e.t.v. `TS236`)  ·  `INEXCHANGE_TRANSACTION_TYPE=` (tómt = allt; e.t.v. `invoice`)
    - `INEXCHANGE_ACK_STATUS=` (staða til að kvitta fyrir sóttan reikning — **staðfestu rétt gildi hjá inExchange**; tómt = kvitta ekki, tvítekning varin af UUID)
-3. Endurræstu appið. Sókn: **Móttaka → „Sækja frá inExchange"** (eða `POST /api/inexchange/poll`); síðar cron á Proxmox eins og email-poll.
+3. Endurræstu appið. Sókn: **Móttaka → „Sækja frá inExchange"** (eða `POST /api/inexchange/poll`); síðar cron á þjóninum eins og email-poll.
 
 ## Flæði — MÓTTAKA (útfært)
 `inexchangePoll()` (lib/inexchange.ts): `GetTransactionList` → fyrir hvert nýtt UUID (ekki þegar í `acc.email_invoices` með `message_id = inexchange:<uuid>`) → `GetTransaction` → `payload` lesið (TS-236/UBL gegnum `lib/peppol.ts`) → **Skráningardrög í Pósthólf** (`createSkraningDraftFromParsed`, lib/einvoice-inbound.ts) → ef `INEXCHANGE_ACK_STATUS` er sett, `UpdateTransactionStatus`. Sótt með hnappnum **„Sækja frá inExchange"** í Pósthólfi (eða `POST /api/inexchange/poll`). Webhook-leiðin (`/api/inexchange/webhook`) skilar líka Skráningardrögum.

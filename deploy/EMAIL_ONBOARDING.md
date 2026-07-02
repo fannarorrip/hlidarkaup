@@ -58,7 +58,7 @@ Síðan: **Bókhald → Pósthólf → „Sækja núna"**. Borðinn efst sýnir 
 
 ---
 
-## Sjálfvirk sókn (cron á Proxmox)
+## Sjálfvirk sókn (cron á þjóninum)
 Endapunktur `/api/cron/email-poll` er varinn með `EMAIL_POLL_SECRET` (utan staðfestingar-
 middleware). Bættu við crontab á þjóninum (á 15 mín fresti):
 ```cron

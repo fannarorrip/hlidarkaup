@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runEmailPoll } from "@/lib/email-invoices";
 
-// Unattended inbox poll for a scheduler (Proxmox cron). Intentionally OUTSIDE the
+// Unattended inbox poll for a scheduler (server cron). Intentionally OUTSIDE the
 // middleware matcher — it carries its own shared-secret guard instead of a staff
 // session. Example: */15 * * * * curl -fsS -H "x-cron-secret: …" https://…/api/cron/email-poll
 export const runtime = "nodejs";

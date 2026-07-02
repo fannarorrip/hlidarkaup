@@ -5,7 +5,7 @@
 order storage already uses Netlify Blobs in production (`lib/order-store.ts`), and the storefront
 is live at `hlidarkaup.netlify.app`. The plugin turns Next 16 route handlers into serverless
 functions and runs `middleware.ts` at the edge. So the whole app — including the bókhald — can run
-on Netlify. The **data still lives on your Proxmox Postgres**; only the app runs on Netlify.
+on Netlify. The **data still lives on your on-prem Postgres**; only the app runs on Netlify.
 
 ### 4 caveats to handle for the bókhald (the rest "just works")
 
@@ -14,11 +14,11 @@ on Netlify. The **data still lives on your Proxmox Postgres**; only the app runs
    Postgres — a **Cloudflare Tunnel (TCP)** to the DB, and `DATABASE_URL` pointed at that hostname.
    Keep the pool small (serverless opens a pool per warm function); add **PgBouncer** later if you
    ever see connection pressure. For a single small store this is fine. (Data residency is
-   preserved: the books stay on Proxmox.)
+   preserved: the books stay on-prem.)
 
 2. **Cron — use Netlify Scheduled Functions.** `/api/cron/email-poll` (M365 invoice polling) and
    the inExchange poll are built for an external scheduler. On Netlify, add **Scheduled Functions**
-   that call those endpoints (with their secret headers), or keep a cron on the Proxmox box hitting
+   that call those endpoints (with their secret headers), or keep a cron on the on-prem server hitting
    the Netlify URLs. `netlify.toml` has none configured yet — ask me and I'll add them.
 
 3. **Two file reads in serverless.**
@@ -53,7 +53,7 @@ fresh value before prod ·  **SKIP** = don't set on Netlify.
 ### Core (required)
 | Key | Notes |
 |---|---|
-| `DATABASE_URL` | **REQ · PROD** — Cloudflare-tunnel URL to the Proxmox Postgres (dev is `127.0.0.1:5455`). |
+| `DATABASE_URL` | **REQ · PROD** — Cloudflare-tunnel URL to the on-prem Postgres (dev is `127.0.0.1:5455`). |
 | `STAFF_SESSION_SECRET` | **REQ · ROTATE** — HMAC key signing staff cookies. Generate fresh (`openssl rand -hex 32`). |
 | `STAFF_PASSWORD` | break-glass staff login. **ROTATE** — set a fresh strong value (or rely on Supabase staff accounts). |
 
@@ -106,7 +106,7 @@ fresh value before prod ·  **SKIP** = don't set on Netlify.
 | Key | Notes |
 |---|---|
 | `ARION_USERNAME` · `ARION_PASSWORD` · `ARION_CERT_PASSWORD` | netbank user (client_id/secret) + cert password. |
-| `ARION_CERT_PATH` | ⚠️ **won't work on Netlify as a path** — needs base64-in-env + write-to-`/tmp`. Fine on Proxmox. |
+| `ARION_CERT_PATH` | ⚠️ **won't work on Netlify as a path** — needs base64-in-env + write-to-`/tmp`. Fine on the on-prem server. |
 | `ARION_SUBSCRIPTION_KEY` · `ARION_PSD2_SUBSCRIPTION_KEY` · `ARION_CLAIMS_SUBSCRIPTION_KEY` | **three separate products** (Cards / PSD2 / Claims) — one key each. ⚠️ ROTATE the sandbox-era keys before go-live. |
 | `ARION_REDIRECT_URI` · `ARION_PSU_ID` | **REQUIRED in production** for PSD2 (registered SCA URL + netbank-user kennitala). |
 | `ARION_PAYMENT_PRODUCT` · `ARION_CLAIMS_API_PATH` | defaults are guesses — confirm with Arion before live payments/claims. |
