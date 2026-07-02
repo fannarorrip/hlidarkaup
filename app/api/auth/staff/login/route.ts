@@ -41,8 +41,11 @@ export async function POST(req: NextRequest) {
 
   const token = await createStaffSession({ email: authedEmail, sub, role });
   const res = NextResponse.json({ ok: true, role });
+  // secure follows the ACTUAL protocol, not NODE_ENV: staff in the store log in over plain-HTTP
+  // LAN/VPN (http://<lan-ip>:3000) where a Secure cookie would silently never be stored.
+  const isHttps = req.headers.get("x-forwarded-proto") === "https" || req.nextUrl.protocol === "https:";
   res.cookies.set(STAFF_COOKIE, token, {
-    httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 12,
+    httpOnly: true, secure: isHttps, sameSite: "lax", path: "/", maxAge: 60 * 60 * 12,
   });
   return res;
 }

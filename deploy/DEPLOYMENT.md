@@ -108,13 +108,44 @@ cloudflared tunnel route dns hlidarkaup hlidarkaup.is
 # config.yml: ingress → service: http://127.0.0.1:3000
 sudo cloudflared service install
 ```
-HTTPS with **no inbound firewall ports opened**. Add **Cloudflare Access** in front of
-`/bokhald` and `/kassi/starf` for an extra gate if desired.
+HTTPS with **no inbound firewall ports opened**. The tunnel serves the PUBLIC surfaces only
+(web shop, SVO GOTT, self-checkout APIs) — the back office is blocked from it, see §5b.
 
-**Optional — tills on the LAN without internet dependency:** open the port to the local
-network only: `sudo firewall-cmd --permanent --add-port=3000/tcp && sudo firewall-cmd --reload`
-and point the tills at `http://<lan-ip>:3000`. Skip this if the tills can use the public
-hostname (simpler, one TLS story).
+## 5b. Back office = LAN-only (accountant via VPN)
+The bókhald and all admin surfaces are **never reachable from the internet**. Two layers:
+
+1. **App enforcement** — set `ADMIN_LAN_ONLY=true` in `.env.local`. The middleware 404s every
+   staff-gated route (bókhald, kassi/starf, admin APIs, even the staff login page) for requests
+   that arrived through Cloudflare (they carry the edge-added `cf-ray` header, which a public
+   client cannot remove). Direct LAN/VPN requests to `:3000` don't have it and pass normally.
+2. **Tunnel enforcement (belt + suspenders)** — in the cloudflared `config.yml`, 404 the admin
+   paths before the catch-all:
+   ```yaml
+   ingress:
+     - hostname: hlidarkaup.is
+       path: ^/(bokhald|starf|admin|kassi/starf|eldhus/admin|api/(auth/staff|staff|bankatenging|laun|skraning|afstemming|kassauppgjor|profjofnudur|rekstur|efnahagur|arsreikningur|vsk|hreyfingar|reikningur|suppliers|innkaup|purchases|customers|pantanir|einvoice|manaduppgjor|manadarreikningur|birgdaskyrsla)).*
+       service: http_status:404
+     - hostname: hlidarkaup.is
+       service: http://127.0.0.1:3000
+   ```
+
+**In-store access** (tills, office PC): open the app port to the LAN —
+`sudo firewall-cmd --permanent --add-port=3000/tcp && sudo firewall-cmd --reload` — and browse
+`http://<lan-ip>:3000`. (Login over plain-HTTP LAN works: the session cookie sets `secure`
+by actual protocol, not by NODE_ENV.)
+
+**Remote access (accountant, you from home): VPN into the store.** Easiest: **Tailscale**
+(WireGuard-based, no inbound ports, free tier is plenty):
+```bash
+sudo dnf -y config-manager --add-repo https://pkgs.tailscale.com/stable/rhel/9/tailscale.repo
+sudo dnf -y install tailscale
+sudo systemctl enable --now tailscaled
+sudo tailscale up
+```
+The accountant installs Tailscale, you **share the machine** with their account in the
+Tailscale admin, and they browse `http://<tailscale-ip>:3000/bokhald` — then log in with
+their own staff account (bokari role) as usual. Self-hosted alternative: plain **WireGuard**
+on the box with one forwarded UDP port (51820) on the router — more manual, zero third parties.
 
 ## 6. Backups (legally required — 7-year retention)
 No hypervisor snapshots on bare metal — the backup surface is exactly two things:
@@ -139,7 +170,9 @@ Also add the app crons (same crontab):
 - [ ] `KASSI_IGNORE_STOCK` removed (stock limits enforced).
 - [ ] Secrets rotated (everything shared during development) and only on the box (`chmod 600`).
 - [ ] `NEXT_PUBLIC_BASE_URL` + Kenni `KENNI_REDIRECT_URI` point at the production domain.
-- [ ] Postgres bound to localhost; firewalld: only SSH (+ optional LAN :3000); SELinux Enforcing.
+- [ ] Postgres bound to localhost; firewalld: SSH + LAN :3000 only; SELinux Enforcing.
+- [ ] `ADMIN_LAN_ONLY=true` + cloudflared ingress 404 rules — verify `/bokhald` 404s via the public URL but works on LAN/VPN.
+- [ ] VPN (Tailscale/WireGuard) tested with the accountant's account (bokari role).
 - [ ] `dnf-automatic` security updates on.
 - [ ] Nightly DB backup verified, offsite copy confirmed, **one restore tested**, secrets archive stored.
 - [ ] Rgl. 505/2013 self-declaration reviewed with your accountant/endurskoðandi.

@@ -42,9 +42,26 @@ function rolesFor(pathname: string): string[] | null {
   return null;
 }
 
+// Staff-auth endpoints + login page need no session (they ARE the way in) — but they still fall
+// under the LAN-only block below, so the login screen isn't even visible from the internet.
+const PUBLIC_STAFF = ["/starf/login", "/api/auth/staff/login", "/api/auth/staff/logout"];
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isApi = pathname.startsWith("/api/");
+
+  // ADMIN_LAN_ONLY=true (production): the back office is reachable ONLY from the store LAN / VPN.
+  // Tunnel traffic always carries Cloudflare's cf-ray header (added at the edge — a public client
+  // cannot remove it); direct LAN/VPN requests to :3000 never have it. Everything this middleware
+  // matches (bókhald, kassi/starf, admin APIs, staff login) 404s from the internet.
+  if (process.env.ADMIN_LAN_ONLY === "true" && req.headers.get("cf-ray") !== null) {
+    return isApi
+      ? NextResponse.json({ error: "Not found" }, { status: 404 })
+      : new NextResponse("Not found", { status: 404 });
+  }
+
+  if (PUBLIC_STAFF.some((p) => pathname === p || pathname.startsWith(p + "/"))) return NextResponse.next();
+
   const token = req.cookies.get(STAFF_COOKIE)?.value;
   const session = token ? await verifyStaffSession(token) : null;
 
@@ -68,7 +85,8 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/starf",
+    "/starf", "/starf/:path*",
+    "/api/auth/staff/:path*",
     "/bokhald/:path*",
     "/kassi/starf", "/kassi/starf/:path*",
     "/admin/:path*",
