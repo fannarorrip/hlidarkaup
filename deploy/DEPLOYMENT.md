@@ -74,6 +74,7 @@ Keep Postgres on `127.0.0.1:5432` (default). Never expose 5432. (Standard port �
 ```bash
 sudo useradd --system --home /opt/hlidarkaup --shell /sbin/nologin hlidarkaup
 sudo git clone https://github.com/fannarorrip/hlidarkaup.git /opt/hlidarkaup
+sudo chown -R hlidarkaup: /opt/hlidarkaup   # the service user owns the tree (git pull/npm/build)
 cd /opt/hlidarkaup && sudo -u hlidarkaup npm ci
 # .env.local (chmod 600, owner hlidarkaup) — see .env.example for every variable:
 #   DATABASE_URL=postgres://hlidar:PASS@127.0.0.1:5432/hlidarkaup
@@ -182,7 +183,7 @@ Also add the app crons (same crontab):
 ```
 
 ## 7. Go-live checklist
-- [ ] **Auth on** — staff login required for `/bokhald` and `/kassi/starf` (see §8).
+- [ ] **Auth on** — staff login required for `/bokhald` and `/kassi/starf` (see §10).
 - [ ] `KASSI_IGNORE_STOCK` removed (stock limits enforced).
 - [ ] Secrets rotated (everything shared during development) and only on the box (`chmod 600`).
 - [ ] `NEXT_PUBLIC_BASE_URL` + Kenni `KENNI_REDIRECT_URI` point at the production domain.
@@ -193,7 +194,24 @@ Also add the app crons (same crontab):
 - [ ] Nightly DB backup verified, offsite copy confirmed, **one restore tested**, secrets archive stored.
 - [ ] Rgl. 505/2013 self-declaration reviewed with your accountant/endurskoðandi.
 
-## 8. Authentication (built)
+## 9. Updates & maintenance — what actually needs attention
+**Nothing needs daily checking.** The cadence:
+
+- **OS security patches: automatic** — `dnf-automatic` (§1) applies them nightly, unattended.
+- **App code: only when we ship something.** The app is your own software — there's no vendor
+  pushing updates. When a new feature/fix lands on GitHub, run **one command** on the server:
+  ```bash
+  sudo PGPASSWORD=… ./deploy/update.sh     # pull → build → new migrations → restart (~2 min)
+  ```
+  ⚠️ On an EXISTING database, baseline the migration tracker ONCE before the first update:
+  `BASELINE=1 PGDATABASE=hlidarkaup ./deploy/apply-migrations.sh`
+- **Monthly, ~10 minutes:** `sudo dnf needs-restarting -r || sudo reboot` (kernel updates need a
+  reboot — do it at a quiet time; everything auto-starts), glance at `systemctl --failed`,
+  confirm last night's backup file exists offsite.
+- **Occasionally** (e.g. when updating the app anyway): `npm audit` for dependency advisories.
+- **Rocky 9 is supported to 2032** — no OS upgrade treadmill.
+
+## 10. Authentication (built)
 Staff routes (`/bokhald`, `/kassi/starf`, `/admin/*`, `/eldhus/admin`) and staff-only APIs are
 protected **server-side** by `middleware.ts` using a signed httpOnly cookie (`lib/staff-session.ts`).
 
