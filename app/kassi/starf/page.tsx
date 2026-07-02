@@ -265,9 +265,9 @@ export default function StaffTill() {
                 <button key={p.id} onClick={() => addItem(p)}
                   className="text-left rounded-xl overflow-hidden min-h-[112px] bg-white border border-gray-200 flex flex-col active:scale-[0.97] transition hover:border-[#8CC7C4] hover:shadow-sm">
                   {p.image && (
-                    <div className="w-full h-24 bg-white bg-contain bg-center bg-no-repeat shrink-0 border-b border-gray-100" style={{ backgroundImage: `url(${p.image})` }} aria-hidden />
+                    <div className="w-full h-32 bg-white bg-contain bg-center bg-no-repeat shrink-0 border-b border-gray-100" style={{ backgroundImage: `url(${p.image})` }} aria-hidden />
                   )}
-                  <div className="flex-1 flex flex-col justify-between p-3">
+                  <div className={`flex-1 flex flex-col justify-between ${p.image ? "px-3 pt-1.5 pb-2" : "p-3"}`}>
                     <p className={`font-semibold leading-snug text-[#21323A] ${p.image ? "text-[13px] line-clamp-2" : "text-[15px] line-clamp-3"}`}>{p.name}</p>
                     <p className="text-lg font-bold text-[#2C687B]">{kr(p.price)}</p>
                   </div>
