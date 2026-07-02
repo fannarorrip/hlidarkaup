@@ -36,12 +36,12 @@ Setup-day checklist for this specific box:
 - Optional Postgres tuning for 32 GB (`/var/lib/pgsql/16/data/postgresql.conf`):
   `shared_buffers = 4GB`, `effective_cache_size = 16GB`. Defaults also work — this is polish.
 
-## 1. Base system (Rocky Linux 9)
+## 1. Base system (Rocky Linux 10 — installed 10.2; "Server" without GUI)
 ```bash
 sudo dnf -y update
 sudo dnf -y install git curl tar policycoreutils-python-utils
-# Node 20 LTS (module stream; 22 works too):
-sudo dnf -y module enable nodejs:20 && sudo dnf -y install nodejs
+# Node 22 (Rocky 10's AppStream default — fine for Next 16):
+sudo dnf -y install nodejs npm
 node -v
 # Automatic security updates:
 sudo dnf -y install dnf-automatic
@@ -54,9 +54,9 @@ sudo systemctl enable --now dnf-automatic.timer
   is outbound-only). Note: `next start` listens on all interfaces — firewalld keeping :3000
   closed is what keeps it private.
 
-## 2. PostgreSQL 16 (PGDG repo — Rocky's default stream is older)
+## 2. PostgreSQL 16 (PGDG repo — same major version as the dev DB)
 ```bash
-sudo dnf -y install https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+sudo dnf -y install https://download.postgresql.org/pub/repos/yum/reporpms/EL-10-x86_64/pgdg-redhat-repo-latest.noarch.rpm
 sudo dnf -qy module disable postgresql
 sudo dnf -y install postgresql16-server
 sudo /usr/pgsql-16/bin/postgresql-16-setup initdb
@@ -154,7 +154,7 @@ by actual protocol, not by NODE_ENV.)
 **Remote access (accountant, you from home): VPN into the store.** Easiest: **Tailscale**
 (WireGuard-based, no inbound ports, free tier is plenty):
 ```bash
-sudo dnf -y config-manager --add-repo https://pkgs.tailscale.com/stable/rhel/9/tailscale.repo
+sudo dnf -y config-manager --add-repo https://pkgs.tailscale.com/stable/rhel/10/tailscale.repo
 sudo dnf -y install tailscale
 sudo systemctl enable --now tailscaled
 sudo tailscale up
