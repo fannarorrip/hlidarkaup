@@ -164,6 +164,24 @@ Tailscale admin, and they browse `http://<tailscale-ip>:3000/bokhald` — then l
 their own staff account (bokari role) as usual. Self-hosted alternative: plain **WireGuard**
 on the box with one forwarded UDP port (51820) on the router — more manual, zero third parties.
 
+## 5c. Network segmentation (UniFi VLANs)
+Five segments, default **all inter-VLAN traffic blocked**; the server sits on the office VLAN
+with a **fixed IP** (DHCP reservation). Allowed flows — the complete list:
+
+| # | From → To | Port | Why |
+|---|---|---|---|
+| 1 | Kassar (20) → server | :3000 | tills + self-checkouts run the app |
+| 2 | Skrifstofa (30) → server | :3000, :22 | bókhald + SSH admin |
+| 3 | Server → UniFi console | :443 | sjálfsali door unlock (UNIFI_HOST) |
+| 4 | Server → till print agent | agent port | cash-drawer kick (DRAWER_KICK_URL) |
+| 5 | Server → internet | 443/outbound | tunnel, Arion, posar cloud, Graph, Resend, Tailscale |
+
+Everything else: **Gestir (10)** internet-only + client isolation; **Hillumiðar/ESL (40)**
+vendor-cloud only; **Myndavélar (50)** → NVR/console only, no internet if the NVR is local.
+Card terminals are CLOUD terminals — they only need outbound internet from the tills VLAN;
+the server never talks to them on the LAN. The accountant's Tailscale lands on the server
+directly (outbound mesh), unaffected by VLANs.
+
 ## 6. Backups (legally required — 7-year retention)
 No hypervisor snapshots on bare metal — the backup surface is exactly two things:
 1. **The database** — nightly dump: cron `0 2 * * * /opt/hlidarkaup/deploy/backup.sh` with
