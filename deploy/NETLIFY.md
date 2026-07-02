@@ -102,12 +102,16 @@ fresh value before prod ·  **SKIP** = don't set on Netlify.
 | `INEXCHANGE_SEND_URL` · `INEXCHANGE_SUBACCOUNT` | send config. |
 | `INEXCHANGE_SEND_ENABLED` | `false` until you're ready to transmit live (no sandbox exists). |
 
-### Arion B2B (on hold — see caveat #3)
+### Arion bankatenging (full var list + go-live steps: deploy/ARION_ONBOARDING.md + .env.example)
 | Key | Notes |
 |---|---|
-| `ARION_USERNAME` · `ARION_PASSWORD` · `ARION_SUBSCRIPTION_KEY` · `ARION_CERT_PASSWORD` | bank creds. |
-| `ARION_CERT_PATH` | ⚠️ **won't work on Netlify as a path** — needs base64-in-env + write-to-`/tmp`. |
-| `ARION_BASE_URL` · `ARION_TOKEN_URL` · `ARION_SCOPE` · `ARION_SANDBOX` · `ARION_CLAIMS_ENABLED` | optional/feature flags. |
+| `ARION_USERNAME` · `ARION_PASSWORD` · `ARION_CERT_PASSWORD` | netbank user (client_id/secret) + cert password. |
+| `ARION_CERT_PATH` | ⚠️ **won't work on Netlify as a path** — needs base64-in-env + write-to-`/tmp`. Fine on Proxmox. |
+| `ARION_SUBSCRIPTION_KEY` · `ARION_PSD2_SUBSCRIPTION_KEY` · `ARION_CLAIMS_SUBSCRIPTION_KEY` | **three separate products** (Cards / PSD2 / Claims) — one key each. ⚠️ ROTATE the sandbox-era keys before go-live. |
+| `ARION_REDIRECT_URI` · `ARION_PSU_ID` | **REQUIRED in production** for PSD2 (registered SCA URL + netbank-user kennitala). |
+| `ARION_PAYMENT_PRODUCT` · `ARION_CLAIMS_API_PATH` | defaults are guesses — confirm with Arion before live payments/claims. |
+| `ARION_SANDBOX` · `ARION_ACCESS_TOKEN` | sandbox only (portal token is ignored in production). |
+| `ARION_BASE_URL` · `ARION_TOKEN_URL` · `ARION_SCOPE` · `ARION_CLAIMS_ENABLED` | optional/feature flags. |
 
 ### Adyen / Straumur cloud card terminal
 | Key | Notes |

@@ -118,11 +118,28 @@ export async function settlePayable(
   }
 }
 
-/** Mark a payable as pending (PSD2 payment initiated, awaiting SCA/settlement). */
+/** Atomically claim a payable for payment initiation (open → pending/'initiating') BEFORE the
+ *  bank call, so a crash or a double-click can never initiate the same payment twice.
+ *  Returns false when the payable wasn't open (already claimed/paid). */
+export async function claimPayableForPayment(payableId: string): Promise<boolean> {
+  const r = await query<{ id: string }>(
+    `update acc.payables set status='pending', payment_status='initiating'
+     where id=$1 and status='open' returning id`, [payableId]);
+  return r.length > 0;
+}
+
+/** Roll a claimed-but-failed initiation back to open (only while no paymentId was recorded). */
+export async function revertPayableInitiation(payableId: string) {
+  await query(
+    `update acc.payables set status='open', payment_status=null
+     where id=$1 and status='pending' and payment_ref is null`, [payableId]);
+}
+
+/** Record the bank's paymentId on an initiation-claimed payable (awaiting SCA/settlement). */
 export async function markPayablePending(payableId: string, paymentRef: string, paymentStatus?: string) {
   await query(
     `update acc.payables set status='pending', payment_ref=$2, payment_status=$3
-     where id=$1 and status='open'`, [payableId, paymentRef, paymentStatus ?? "RCVD"]);
+     where id=$1 and status in ('open','pending') and payment_ref is null`, [payableId, paymentRef, paymentStatus ?? "RCVD"]);
 }
 
 /** Import open items from the ledger for supplier-tagged posted vouchers that still carry a net

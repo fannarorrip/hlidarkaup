@@ -9,11 +9,12 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
-  const token = typeof body.token === "string" ? body.token.trim() : "";
   const st = arionStatus();
+  // Pasted token = sandbox-only affordance; production runs on env (OAuth over mTLS).
+  const token = st.sandbox && typeof body.token === "string" ? body.token.trim() : "";
 
   if (!st.have.subscriptionKey) return NextResponse.json({ ok: false, reason: "not_configured", message: "Vantar áskriftarlykil (ARION_SUBSCRIPTION_KEY)." });
-  if (!token && !st.have.accessToken && !st.ready) return NextResponse.json({ ok: false, reason: "no_token", message: "Límdu Arion aðgangslykil (Generate Token) í reitinn." });
+  if (!token && !st.readyCards) return NextResponse.json({ ok: false, reason: st.sandbox ? "no_token" : "not_configured", message: st.sandbox ? "Límdu Arion aðgangslykil (Generate Token) í reitinn." : "Kortatenging ekki tilbúin — athugaðu skilríki og lykla í .env." });
 
   const bearer = token || undefined;
   try {

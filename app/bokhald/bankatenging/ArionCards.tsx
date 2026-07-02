@@ -4,10 +4,11 @@ import { useState, useEffect } from "react";
 interface Card { id: string; name?: string; maskedNumber?: string; holder?: string; available?: number }
 interface Tx { id: string; date: string; amount: number; currency?: string; description?: string; merchant?: string }
 
-export default function ArionCards({ defaultLiability = "9310", defaultExpense }: { defaultLiability?: string; defaultExpense?: string }) {
+export default function ArionCards({ defaultLiability = "9310", defaultExpense, sandbox = false, serverReady = false }: { defaultLiability?: string; defaultExpense?: string; sandbox?: boolean; serverReady?: boolean }) {
   const [token, setToken] = useState("");
-  useEffect(() => { try { const t = window.localStorage.getItem("arion_cards_token"); if (t) setToken(t); } catch { /* */ } }, []);
-  useEffect(() => { try { window.localStorage.setItem("arion_cards_token", token); } catch { /* */ } }, [token]);
+  // Token paste + persistence are SANDBOX affordances; production runs on server env (mTLS OAuth).
+  useEffect(() => { if (!sandbox) return; try { const t = window.localStorage.getItem("arion_cards_token"); if (t) setToken(t); } catch { /* */ } }, [sandbox]);
+  useEffect(() => { if (sandbox) try { window.localStorage.setItem("arion_cards_token", token); } catch { /* */ } }, [token, sandbox]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [cards, setCards] = useState<Card[]>([]);
@@ -55,13 +56,23 @@ export default function ArionCards({ defaultLiability = "9310", defaultExpense }
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-5">
-      <p className="font-semibold text-sm mb-1">Kortafærslur (Cards API) — prófun</p>
+      <p className="font-semibold text-sm mb-1">Kortafærslur (Cards API)</p>
       <p className="text-xs text-gray-500 mb-3">
-        Sæktu aðgangslykil í <a href="https://developer.arionbanki.is" target="_blank" rel="noopener" className="text-red-700 hover:underline">Arion þróunargátt</a> (Sandbox → „Generate Token“), límdu hann hér og sæktu kortin. Lykillinn rennur út eftir ~1 klst.
+        Sækir fyrirtækjakortin og færslur þeirra frá Arion og bókar þær í bókhaldið.
       </p>
-      <textarea value={token} onChange={(e) => setToken(e.target.value)} rows={3} placeholder="Límdu Arion aðgangslykil (Generate Token)…"
-        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-red-400 mb-3" />
-      <button onClick={() => load()} disabled={busy || !token.trim()}
+      {sandbox && (
+        <>
+          <p className="text-[11px] text-amber-600 mb-2">SANDKASSI · Sæktu aðgangslykil í <a href="https://developer.arionbanki.is" target="_blank" rel="noopener" className="underline">þróunargáttinni</a> („Generate Token“, rennur út eftir ~1 klst.).</p>
+          <textarea value={token} onChange={(e) => setToken(e.target.value)} rows={3} placeholder="Límdu Arion aðgangslykil (Generate Token)…"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-red-400 mb-3" />
+        </>
+      )}
+      {!sandbox && !serverReady && (
+        <div className="mb-3 text-xs rounded-lg px-3 py-2 bg-amber-50 text-amber-700">
+          Kortatenging ekki tilbúin — vantar skilríki eða lykla á þjóninum (sjá Tengingar-flipann).
+        </div>
+      )}
+      <button onClick={() => load()} disabled={busy || (sandbox ? !token.trim() : !serverReady)}
         className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50">
         {busy ? "Sæki…" : "Sækja kortafærslur"}
       </button>

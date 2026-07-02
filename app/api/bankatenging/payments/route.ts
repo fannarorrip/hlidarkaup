@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { arionStatus, createArionPayment, getArionPaymentStatus } from "@/lib/arion";
 import { query } from "@/lib/db";
-import { markPayablePending, settlePayable } from "@/lib/payables";
+import { claimPayableForPayment, revertPayableInitiation, markPayablePending, settlePayable } from "@/lib/payables";
 
 // PSD2 Payment Initiation (PIS) to pay a supplier invoice. `initiate` creates the payment (amount
 // + creditor come from the payable server-side, not the client) and returns the scaRedirect; the
@@ -28,11 +28,12 @@ async function loadPayable(id: string) {
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const action = String(body.action || "");
-  const token = typeof body.token === "string" ? body.token.trim() : "";
-  const subKey = typeof body.subscriptionKey === "string" ? body.subscriptionKey.trim() : "";
   const st = arionStatus();
-  if (!subKey && !st.have.subscriptionKey) return NextResponse.json({ ok: false, message: "Vantar áskriftarlykil (PSD2)." });
-  if (!token && !st.have.accessToken && !st.ready) return NextResponse.json({ ok: false, message: "Límdu Arion aðgangslykil." });
+  // Pasted credentials are a SANDBOX affordance only — production runs on server env (mTLS OAuth).
+  const token = st.sandbox && typeof body.token === "string" ? body.token.trim() : "";
+  const subKey = st.sandbox && typeof body.subscriptionKey === "string" ? body.subscriptionKey.trim() : "";
+  if (!subKey && !st.have.psd2Key) return NextResponse.json({ ok: false, reason: "not_configured", message: "Vantar PSD2 áskriftarlykil (ARION_PSD2_SUBSCRIPTION_KEY)." });
+  if (!token && !st.readyPsd2) return NextResponse.json({ ok: false, reason: "not_configured", message: st.sandbox ? "Límdu Arion aðgangslykil." : "PSD2 tenging ekki tilbúin — athugaðu skilríki og lykla í .env." });
   const bearer = token || undefined;
   const key = subKey || undefined;
 
@@ -41,12 +42,13 @@ export async function POST(req: NextRequest) {
       const payableId = String(body.payableId || "").trim();
       const debtorIban = String(body.debtorIban || "").replace(/\s/g, "");
       const creditorIban = String(body.creditorIban || "").replace(/\s/g, "");
-      const psuId = String(body.psuId || "").replace(/\D/g, "") || undefined;
+      // PSU-ID (netbank user kt): server env in production; the sandbox tester value only in sandbox.
+      const psuId = (process.env.ARION_PSU_ID || "").replace(/\D/g, "")
+        || (st.sandbox ? String(body.psuId || "").replace(/\D/g, "") : "") || undefined;
       if (!UUID_RE.test(payableId)) return NextResponse.json({ ok: false, message: "Ógildur reikningur." });
       if (!debtorIban || !creditorIban) return NextResponse.json({ ok: false, message: "Vantar IBAN (greiðandi/móttakandi)." });
       const p = await loadPayable(payableId);
       if (!p) return NextResponse.json({ ok: false, message: "Reikningur fannst ekki." });
-      if (p.status !== "open") return NextResponse.json({ ok: false, message: "Reikningur er ekki opinn." });
       const amount = Math.round(Math.abs(Number(p.amount) || 0) * 100) / 100;
       if (!amount) return NextResponse.json({ ok: false, message: "Upphæð er 0." });
 
@@ -61,14 +63,27 @@ export async function POST(req: NextRequest) {
       }
       const e2e = (p.invoice_number || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 35) || undefined;
 
-      const pay = await createArionPayment({
-        debtorIban, creditorIban: payeeIban, creditorName: p.supplier_name || "Birgir", amount,
-        remittance: p.invoice_number || undefined, endToEndId: e2e,
-        psuId, bearerToken: bearer, subscriptionKey: key,
-      });
-      if (!pay.paymentId) return NextResponse.json({ ok: false, message: "Ekkert greiðslunúmer frá Arion." });
-      await markPayablePending(payableId, pay.paymentId, pay.status);
-      return NextResponse.json({ ok: true, paymentId: pay.paymentId, status: pay.status, scaRedirect: pay.scaRedirect });
+      // Claim the payable BEFORE the bank call — a crash/double-click after this point can never
+      // initiate a second payment for the same invoice (status is no longer 'open').
+      if (!(await claimPayableForPayment(payableId))) {
+        return NextResponse.json({ ok: false, message: "Reikningur er ekki opinn (greiðsla þegar hafin eða frágengin)." });
+      }
+      try {
+        const pay = await createArionPayment({
+          debtorIban, creditorIban: payeeIban, creditorName: p.supplier_name || "Birgir", amount,
+          remittance: p.invoice_number || undefined, endToEndId: e2e,
+          psuId, bearerToken: bearer, subscriptionKey: key,
+        });
+        if (!pay.paymentId) {
+          await revertPayableInitiation(payableId);
+          return NextResponse.json({ ok: false, message: "Ekkert greiðslunúmer frá Arion." });
+        }
+        await markPayablePending(payableId, pay.paymentId, pay.status);
+        return NextResponse.json({ ok: true, paymentId: pay.paymentId, status: pay.status, scaRedirect: pay.scaRedirect });
+      } catch (e) {
+        await revertPayableInitiation(payableId); // never reached the bank (or bank rejected) → reopen
+        throw e;
+      }
     }
 
     if (action === "status") {

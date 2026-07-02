@@ -1,55 +1,46 @@
-# Arion bankatenging — onboarding
+# Arion bankatenging — onboarding og go-live
 
-Það sem þarf til að tengja bókhaldskerfið við Arion (B2B/Business API). Þegar þessu
-er lokið fyllir þú út `ARION_*` breyturnar í `.env.local` og prófar tenginguna á
-**Bókhald → Stjórnun → Bankatenging → „Prófa tengingu“**.
+Það sem þarf til að tengja bókhaldskerfið við Arion. Þegar þessu er lokið fyllir þú út
+`ARION_*` breyturnar í `.env.local` (sjá **.env.example** — allar breytur skjalfestar þar)
+og prófar á **Bókhald → Stjórnun → Bankatenging**.
 
-## Gátlisti
+Kerfið notar **þrjár aðskildar API-vörur** í þróunargáttinni — hver með SÍNUM áskriftarlykli:
 
-1. **Þróunargátt Arion — [developer.arionbanki.is](https://developer.arionbanki.is)** — skráðu þig og fáðu
-   **áskriftarlykil (API subscription key)** fyrir þær REST-þjónustur sem á að nota (Claims, Cards).
-   Framleiðslu-auðkenning (skref fyrir skref): https://arionbanki.gitbook.io/arion-banki/business-apis/authentication/production
-   → `ARION_SUBSCRIPTION_KEY`.
-2. **Búnaðarskilríki** — sæktu **fyrirtækjaskilríki** (`.pfx`, PKCS#12) frá **Auðkenni**:
-   https://www.audkenni.is/upplysingar/fyrirtaekjaskilriki/um-bunadarskilriki  (kostar ~44.800 kr/ár).
-   Settu skrána á þjóninn (t.d. `/etc/hlidarkaup/arion.pfx`, læst skrá, eingöngu lesanleg af þjónustunni).
-   → `ARION_CERT_PATH` = slóðin, `ARION_CERT_PASSWORD` = lykilorð skilríkis.
-   **Sama skilríki gildir fyrir REST (Claims/Cards) OG SOAP (hreyfingaryfirlit/millifærslur)** — staðfest af Arion.
-3. **Sérstakur netbankanotandi** — stofnaðu nýjan netbankanotanda í Arion netbanka með
-   **takmarkaðan aðgang** að aðeins þeim reikningum/vörum sem þjónustan þarf (ekki aðaleiganda­
-   aðgang). → `ARION_USERNAME` / `ARION_PASSWORD` (notandanafn = client_id, lykilorð = client_secret).
-4. **„Go Live“** — kláraðu Go-Live ferlið í þróunargáttinni (hlaða upp skilríki) fyrir
-   raunumhverfi. Fyrir prófanir má nota sandkassa (`ARION_SANDBOX=true` + sandkassa-slóðir).
-5. **Fylla `.env.local`** á þjóninum og **endurræsa** appið. Prófaðu svo tenginguna í UI.
+| Vara | Notkun í kerfinu | Env-lykill |
+|---|---|---|
+| **Cards** (REST) | Kortafærslur + bókun (Kreditkort-flipi) | `ARION_SUBSCRIPTION_KEY` |
+| **PSD2 — Accounts & Payments** (REST) | Reikningar/samþykki, bankayfirlit → bókhald, greiðslur á birgja | `ARION_PSD2_SUBSCRIPTION_KEY` |
+| **Claims** (REST) | Innheimtukröfur (greiðsluseðlar) + greiðsluskrá | `ARION_CLAIMS_SUBSCRIPTION_KEY` |
 
-## Þjónustur og staða
+Auðkenning (öll REST): OAuth2 `client_credentials` yfir **mTLS** með búnaðarskilríki.
+Sandkassi: `ARION_SANDBOX=true` + „Generate Token“ úr gáttinni (`ARION_ACCESS_TOKEN` — virkar EKKI í framleiðslu).
 
-| Þjónusta | Tegund | Notkun í kerfinu | Staða |
-|---|---|---|---|
-| Innheimtukröfur (Claims) | REST | Kröfur — gefa út greiðsluseðla, fylgjast með greiðslu | REST tilbúin · **sandkassi væntanlegur haust 2026** |
-| Kreditkortahreyfingar (Cards) | REST | Afstemming á kortafærslum (lykill 7716) | REST tilbúin · **sandkassi til NÚNA** |
-| Hreyfingaryfirlit reikninga | SOAP | Bankaafstemming (sjálfvirk innlesning) | SOAP — ekkert sérstakt að virkja, sama skilríki · REST á næsta ári |
-| Útgreiðslur/millifærslur | SOAP | Greiða birgjum úr Innkaupum (9300) | SOAP — ekkert sérstakt að virkja, sama skilríki · REST á næsta ári |
+## Go-live gátlisti
 
-Auðkenning REST-þjónusta: OAuth2 `client_credentials` yfir **mTLS** með búnaðarskilríki.
-Token-slóð: `https://apigw.arionbanki.is/oauth/v2/oauth-token`. API-slóð: `https://apigw.arionbanki.is/{claims,cards}`.
-**SOAP** (hreyfingaryfirlit + millifærslur): þarf **engan sérstakan aðgang** — skjölun á https://ws.b2b.is/services/, sama búnaðarskilríki og REST.
-
----
+1. **Þróunargátt** — [developer.arionbanki.is](https://developer.arionbanki.is): skráðu forritið á
+   allar þrjár vörurnar og fáðu áskriftarlyklana þrjá. **Endurnýjaðu sandkassa-lyklana** sem
+   notaðir voru í prófunum (þeir sáust í skjámyndum).
+2. **Búnaðarskilríki** — fyrirtækjaskilríki (`.pfx`) frá [Auðkenni](https://www.audkenni.is/upplysingar/fyrirtaekjaskilriki/um-bunadarskilriki) (~44.800 kr/ár).
+   Á þjóninum UTAN við repo-ið (t.d. `/etc/hlidarkaup/arion.pfx`) → `ARION_CERT_PATH` + `ARION_CERT_PASSWORD`.
+3. **Sérstakur netbankanotandi** með takmarkaðan aðgang (ekki aðaleigandi!) →
+   `ARION_USERNAME`/`ARION_PASSWORD` (client_id/client_secret) og kennitala hans → `ARION_PSU_ID`.
+4. **SCA redirect-slóð** — láttu Arion skrá `https://<framleiðslu-lén>/bokhald/bankatenging` →
+   `ARION_REDIRECT_URI`. Án hennar neitar kerfið að búa til samþykki/greiðslur í framleiðslu.
+5. **PSD2 greiðslur** — biddu um **openbanking.readwrite** scope og **staðfestu ISK-greiðsluvöruna**
+   (sjálfgefið `sepa-credit-transfers` er ágiskun → `ARION_PAYMENT_PRODUCT`).
+6. **Innheimta (Claims)** — undirritaðu **innheimtusamning**, fáðu **kröfusnið + ráðstöfunarreikning**
+   (skráð í Innheimtuþjónustur-flipann) og **staðfestu API-sniðið** (body/svar — sjá
+   `deploy/ARION_CLAIMS_EMAIL.md`). Svo fyrst `ARION_CLAIMS_ENABLED=true`.
+7. **„Go Live“** í gáttinni (hlaða upp skilríki), fylla `.env.local`, fjarlægja
+   `ARION_SANDBOX`/`ARION_ACCESS_TOKEN`, endurræsa.
+8. **Prófun með lágum upphæðum**: sækja kort → eitt samþykki + SCA → sækja yfirlit →
+   greiða einn lítinn reikning → senda eina prufu-kröfu.
 
 ## Svör frá Arion (Kristján Theodór, 2026-06-23)
 
-Staðfest af Arion:
-- **REST-þjónustur (Claims, Cards):** skráning í gegnum **developer.arionbanki.is**.
-  Auðkenning í raunumhverfi: https://arionbanki.gitbook.io/arion-banki/business-apis/authentication/production
-- **Búnaðarskilríki:** sótt hjá **Auðkenni** — https://www.audkenni.is/upplysingar/fyrirtaekjaskilriki/um-bunadarskilriki
-- **SOAP:** þarf **engan sérstakan aðgang**; nánari upplýsingar á https://ws.b2b.is/services/
-- **Sandkassi:** til fyrir **Cards núna**; sandkassi fyrir **Claims væntanlegur haust 2026**.
-- **Hreyfingaryfirlit:** þarf **ekkert sérstakt að virkja** — **sama búnaðarskilríki** og aðrar þjónustur.
-
-## Næstu skref (þegar tekin er ákvörðun um að halda áfram)
-1. Sækja fyrirtækjaskilríki hjá Auðkenni (~44.800 kr/ár) — **bíður ákvörðunar**.
-2. Skrá sig á developer.arionbanki.is og fá áskriftarlykil fyrir Cards (+ Claims þegar sandkassi opnar).
-3. Stofna sérstakan netbankanotanda með takmarkaðan aðgang.
-4. **Byrja á Cards** (sandkassi til núna) til að prófa mTLS-tenginguna; Claims þegar sandkassi opnar í haust.
-5. Fylla `ARION_*` í `.env.local`, endurræsa, prófa á Bókhald → Stjórnun → Bankatenging.
+- **REST-þjónustur:** skráning í gegnum **developer.arionbanki.is**.
+  Framleiðslu-auðkenning: https://arionbanki.gitbook.io/arion-banki/business-apis/authentication/production
+- **Búnaðarskilríki:** frá Auðkenni; sama skilríki gildir fyrir allar þjónustur.
+- **Sandkassi:** Cards til núna; **Claims-sandkassi væntanlegur haust 2026**.
+- **SOAP** (eldri hreyfingaryfirlit/millifærslur á ws.b2b.is): þarf engan sérstakan aðgang —
+  kerfið notar hins vegar **PSD2 REST** fyrir yfirlit og greiðslur, ekki SOAP.

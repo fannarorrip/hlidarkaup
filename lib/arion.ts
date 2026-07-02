@@ -18,7 +18,8 @@ import { randomUUID, createHash } from "crypto";
 
 interface ArionConfig {
   sandbox: boolean; baseUrl: string; tokenUrl: string; username: string; password: string;
-  subscriptionKey: string; accessToken: string; certPath: string; certPassword: string; scope: string;
+  subscriptionKey: string; psd2Key: string; claimsKey: string; accessToken: string;
+  certPath: string; certPassword: string; scope: string; redirectUri: string; psuId: string;
 }
 
 function cfg(): ArionConfig {
@@ -29,30 +30,49 @@ function cfg(): ArionConfig {
     tokenUrl: process.env.ARION_TOKEN_URL || "https://apigw.arionbanki.is/oauth/v2/oauth-token",
     username: process.env.ARION_USERNAME || "",
     password: process.env.ARION_PASSWORD || "",
-    subscriptionKey: process.env.ARION_SUBSCRIPTION_KEY || "",
-    accessToken: process.env.ARION_ACCESS_TOKEN || "",
+    subscriptionKey: process.env.ARION_SUBSCRIPTION_KEY || "",          // Cards product
+    psd2Key: process.env.ARION_PSD2_SUBSCRIPTION_KEY || "",             // PSD2 product (separate!)
+    claimsKey: process.env.ARION_CLAIMS_SUBSCRIPTION_KEY || "",         // Claims product (separate!)
+    accessToken: process.env.ARION_ACCESS_TOKEN || "",                  // SANDBOX ONLY (portal token)
     certPath: process.env.ARION_CERT_PATH || "",
     certPassword: process.env.ARION_CERT_PASSWORD || "",
     scope: process.env.ARION_SCOPE || "openid b2b",
+    redirectUri: process.env.ARION_REDIRECT_URI || "",                  // REQUIRED in production
+    psuId: process.env.ARION_PSU_ID || "",                              // netbank user kt (payments)
   };
 }
 
 export interface ArionStatus {
   sandbox: boolean; baseUrl: string; tokenUrl: string;
-  have: { username: boolean; password: boolean; subscriptionKey: boolean; accessToken: boolean; certPath: boolean; certPassword: boolean; certFileFound: boolean };
+  have: {
+    username: boolean; password: boolean; subscriptionKey: boolean; psd2Key: boolean; claimsKey: boolean;
+    accessToken: boolean; certPath: boolean; certPassword: boolean; certFileFound: boolean; redirectUri: boolean;
+  };
+  /** Cards-family readiness (back-compat alias of readyCards). */
   ready: boolean;
+  readyCards: boolean;
+  readyPsd2: boolean;
+  readyClaims: boolean;
 }
 export function arionStatus(): ArionStatus {
   const c = cfg();
   const has = (v: string) => v.length > 0;
   const certFileFound = c.certPath ? (() => { try { return fs.existsSync(c.certPath); } catch { return false; } })() : false;
-  const ready = c.sandbox
-    ? has(c.subscriptionKey) && has(c.accessToken)
-    : has(c.username) && has(c.password) && has(c.subscriptionKey) && has(c.certPath) && certFileFound;
+  // Base auth: sandbox = portal token; production = OAuth client creds over mTLS.
+  const authReady = c.sandbox
+    ? has(c.accessToken)
+    : has(c.username) && has(c.password) && has(c.certPath) && certFileFound;
+  const readyCards = authReady && has(c.subscriptionKey);
+  const readyPsd2 = authReady && has(c.psd2Key) && (c.sandbox || has(c.redirectUri));
+  const readyClaims = authReady && has(c.claimsKey);
   return {
     sandbox: c.sandbox, baseUrl: c.baseUrl, tokenUrl: c.tokenUrl,
-    have: { username: has(c.username), password: has(c.password), subscriptionKey: has(c.subscriptionKey), accessToken: has(c.accessToken), certPath: has(c.certPath), certPassword: has(c.certPassword), certFileFound },
-    ready,
+    have: {
+      username: has(c.username), password: has(c.password), subscriptionKey: has(c.subscriptionKey),
+      psd2Key: has(c.psd2Key), claimsKey: has(c.claimsKey), accessToken: has(c.accessToken),
+      certPath: has(c.certPath), certPassword: has(c.certPassword), certFileFound, redirectUri: has(c.redirectUri),
+    },
+    ready: readyCards, readyCards, readyPsd2, readyClaims,
   };
 }
 
@@ -71,7 +91,12 @@ let _token: { value: string; exp: number } | null = null;
 
 export async function arionAccessToken(force = false): Promise<string> {
   const c = cfg();
-  if (c.accessToken) return c.accessToken; // sandbox / manual portal token
+  // Portal tokens are a SANDBOX convenience only — in production a leftover ARION_ACCESS_TOKEN
+  // must never bypass OAuth/mTLS (it expires in ~1h and would 401 everything).
+  if (c.sandbox && c.accessToken) return c.accessToken;
+  if (!c.sandbox && (!c.certPath || !fs.existsSync(c.certPath))) {
+    throw new Error("Búnaðarskilríki vantar (ARION_CERT_PATH) — framleiðsla notar OAuth yfir mTLS.");
+  }
   if (!force && _token && Date.now() < _token.exp - 30_000) return _token.value;
   const u = new URL(c.tokenUrl);
   const body = new URLSearchParams({ grant_type: "client_credentials", client_id: c.username, client_secret: c.password, scope: c.scope }).toString();
@@ -201,9 +226,21 @@ export async function getArionCardTransactions(cardId: string, dateFrom?: string
 // POST /consents → open _links.scaRedirect (browser SCA approval) → GET /accounts with the
 // Consent-ID header. Same bearer token as Cards (openbanking scopes). Host by sandbox flag.
 const PSD2_BASE = process.env.ARION_PSD2_PATH || "/psd2/api/v1";
-// PSD2 is a SEPARATE product subscription from Cards. Default to its own env key so env-driven
-// (production) calls don't silently send the Cards key; per-request override still wins.
-const psd2Sub = (k?: string) => k || process.env.ARION_PSD2_SUBSCRIPTION_KEY || undefined;
+// PSD2 is a SEPARATE product subscription from Cards. NO silent fallback to the Cards key —
+// that produced opaque gateway 401s. Missing key = loud, fixable error.
+const psd2Sub = (k?: string): string => {
+  const key = k || process.env.ARION_PSD2_SUBSCRIPTION_KEY || "";
+  if (!key) throw new Error("Vantar PSD2 áskriftarlykil (ARION_PSD2_SUBSCRIPTION_KEY) — sér vara, ekki sami lykill og Cards.");
+  return key;
+};
+// SCA redirect: sandbox may fall back to localhost; production MUST have a registered URI.
+function redirectUriOrThrow(override?: string): string {
+  const c = cfg();
+  const uri = override || c.redirectUri;
+  if (uri) return uri;
+  if (c.sandbox) return "http://localhost:3000/bokhald/bankatenging";
+  throw new Error("Vantar ARION_REDIRECT_URI — skráða framleiðslu-slóð fyrir SCA-staðfestingu.");
+}
 
 export interface ArionConsent { consentId: string; status?: string; scaRedirect?: string }
 export interface ArionAccount { id: string; iban?: string; name?: string; currency?: string; balance?: number }
@@ -225,7 +262,7 @@ export async function createArionConsent(opts: { psuId: string; ibans?: string[]
   const body = JSON.stringify({ access, recurringIndicator: true, validUntil, frequencyPerDay: 4, combinedServiceIndicator: false });
   // Redirect SCA: the bank builds the scaRedirect with this URL and sends the PSU back here
   // after approval. Must match a Redirect URI registered on the app.
-  const redirectUri = opts.redirectUri || process.env.ARION_REDIRECT_URI || "http://localhost:3000/bokhald/bankatenging";
+  const redirectUri = redirectUriOrThrow(opts.redirectUri);
   const r = await arionRequest(`${PSD2_BASE}/consents`, {
     method: "POST", body, bearerToken: opts.bearerToken, subscriptionKey: psd2Sub(opts.subscriptionKey),
     headers: {
@@ -309,6 +346,7 @@ export async function getArionAccountTransactions(
     bearerToken, subscriptionKey: psd2Sub(subscriptionKey), headers: { "Consent-ID": consentId, consentID: consentId },
   });
   if (r.status < 200 || r.status >= 300) throw new Error(`Hreyfingar — Arion svaraði ${r.status}: ${r.text.slice(0, 220)}`);
+  const seen = new Map<string, number>(); // occurrence counter: identical lines must NOT collapse
   return accountTxRows(JSON.parse(r.text || "{}")).map((t) => {
     const amtObj = t.transactionAmount && typeof t.transactionAmount === "object" ? (t.transactionAmount as Raw) : t;
     const amount = pickNum(amtObj, "amount", "value") || pickNum(t, "amount", "value");
@@ -321,10 +359,16 @@ export async function getArionAccountTransactions(
     const rem = remittance(t);
     // Identity: stable bank ids only. endToEndId is often the shared literal "NOTPROVIDED", so it is
     // NOT used as identity (it would collapse distinct lines). When no stable id exists, synthesise a
-    // deterministic key from the line's own fields so re-fetches dedup but distinct lines don't collide.
+    // deterministic key from the line's own fields; an occurrence suffix keeps two IDENTICAL lines
+    // (same day, merchant, amount — e.g. two coffees) distinct instead of silently dropping one.
     const stableId = pickStr(t, "transactionId", "entryReference", "internalTransactionId");
-    const id = stableId
-      || "syn_" + createHash("sha1").update(`${accountId}|${bookingDate}|${amount}|${counterparty || ""}|${rem || ""}`).digest("hex").slice(0, 20);
+    let id = stableId;
+    if (!id) {
+      const base = "syn_" + createHash("sha1").update(`${accountId}|${bookingDate}|${amount}|${counterparty || ""}|${rem || ""}`).digest("hex").slice(0, 20);
+      const n = seen.get(base) ?? 0;
+      seen.set(base, n + 1);
+      id = n === 0 ? base : `${base}_${n}`;
+    }
     return {
       id,
       bookingDate,
@@ -361,7 +405,7 @@ export async function createArionPayment(opts: {
     ...(opts.remittance ? { remittanceInformationUnstructured: opts.remittance.slice(0, 140) } : {}),
     ...(opts.endToEndId ? { endToEndIdentification: opts.endToEndId.slice(0, 35) } : {}),
   });
-  const redirectUri = opts.redirectUri || process.env.ARION_REDIRECT_URI || "http://localhost:3000/bokhald/bankatenging";
+  const redirectUri = redirectUriOrThrow(opts.redirectUri);
   const r = await arionRequest(`${PSD2_BASE}/payments/${encodeURIComponent(PAYMENT_PRODUCT)}`, {
     method: "POST", body, bearerToken: opts.bearerToken, subscriptionKey: psd2Sub(opts.subscriptionKey),
     headers: {
@@ -398,7 +442,11 @@ export async function getArionPaymentStatus(paymentId: string, bearerToken?: str
 // confirmed against the live Arion Claims reference; fields below map the RB IK claim record and
 // parsing is defensive. Gated by ARION_CLAIMS_ENABLED so this never fires before it's confirmed.
 const CLAIMS_BASE = process.env.ARION_CLAIMS_API_PATH || "/claims/api/v1";
-const claimsSub = (k?: string) => k || process.env.ARION_CLAIMS_SUBSCRIPTION_KEY || undefined;
+const claimsSub = (k?: string): string => {
+  const key = k || process.env.ARION_CLAIMS_SUBSCRIPTION_KEY || "";
+  if (!key) throw new Error("Vantar Claims áskriftarlykil (ARION_CLAIMS_SUBSCRIPTION_KEY) — sér vara, ekki sami lykill og Cards.");
+  return key;
+};
 
 export interface ArionClaimInput {
   profileCode: string;        // kröfusnið / innheimtuauðkenni

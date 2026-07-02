@@ -16,6 +16,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const action = String(body.action || "");
+  try {
 
   if (action === "backfill") {
     const res = await backfillPayables();
@@ -32,4 +33,8 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ ok: false, message: "Óþekkt aðgerð." });
+  } catch (e) {
+    console.error("bankatenging/payables failed:", e);
+    return NextResponse.json({ ok: false, message: "Aðgerð mistókst. Reyndu aftur." });
+  }
 }

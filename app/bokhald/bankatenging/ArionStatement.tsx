@@ -11,7 +11,7 @@ interface BankAcct { account_number: string; name: string }
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
-export default function ArionStatement({ bankAccounts, defaultBank, contraIn, contraOut }: { bankAccounts: BankAcct[]; defaultBank?: string; contraIn?: string; contraOut?: string }) {
+export default function ArionStatement({ bankAccounts, defaultBank, contraIn, contraOut, sandbox = false, serverReady = false }: { bankAccounts: BankAcct[]; defaultBank?: string; contraIn?: string; contraOut?: string; sandbox?: boolean; serverReady?: boolean }) {
   const [token, setToken] = useState("");
   const [subKey, setSubKey] = useState("");
   const [consentId, setConsentId] = useState("");
@@ -29,10 +29,10 @@ export default function ArionStatement({ bankAccounts, defaultBank, contraIn, co
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
 
-  // Reuse the PSD2 credentials + approved consent created in the Bankareikningar tab. All tabs are
-  // mounted at once, so re-read whenever ArionPsd2 broadcasts an update (or the window regains focus)
-  // — otherwise a consent created after page load wouldn't be seen here until a reload.
+  // SANDBOX: reuse the tester credentials + consent from the Bankareikningar tab (localStorage).
+  // PRODUCTION: nothing to read — the server uses its own env credentials + the stored consent.
   useEffect(() => {
+    if (!sandbox) return;
     const read = () => {
       try {
         const s = window.localStorage;
@@ -45,11 +45,18 @@ export default function ArionStatement({ bankAccounts, defaultBank, contraIn, co
     window.addEventListener("arion-psd2-updated", read);
     window.addEventListener("focus", read);
     return () => { window.removeEventListener("arion-psd2-updated", read); window.removeEventListener("focus", read); };
-  }, []);
+  }, [sandbox]);
 
   async function post(payload: Record<string, unknown>) {
-    // Read the freshest credentials straight from localStorage so a consent created moments ago in
-    // another tab is used even if React state hasn't caught up yet.
+    if (!sandbox) {
+      // Production: server env credentials + newest stored consent (no consentId sent).
+      const r = await fetch("/api/bankatenging/psd2", {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
+      });
+      return r.json();
+    }
+    // Sandbox: read the freshest tester credentials straight from localStorage so a consent created
+    // moments ago in another tab is used even if React state hasn't caught up yet.
     let t = token.trim(), k = subKey.trim(), cid = consentId.trim();
     try {
       const s = window.localStorage;
@@ -116,14 +123,19 @@ export default function ArionStatement({ bankAccounts, defaultBank, contraIn, co
         Sækir raunverulegar hreyfingar bankareiknings og bókar þær í bókhaldið. Notar PSD2-samþykkið sem búið var til í <b>Bankareikningar</b>-flipanum (aðgangslykill + áskriftarlykill sóttir sjálfkrafa).
       </p>
 
-      {!consentId && (
+      {sandbox && !consentId && (
         <div className="mb-3 text-xs rounded-lg px-3 py-2 bg-amber-50 text-amber-700">
           Ekkert PSD2-samþykki fannst. Farðu í <b>Bankareikningar</b>, búðu til samþykki og staðfestu það (SCA), komdu svo hingað.
         </div>
       )}
+      {!sandbox && !serverReady && (
+        <div className="mb-3 text-xs rounded-lg px-3 py-2 bg-amber-50 text-amber-700">
+          PSD2 tenging ekki tilbúin — vantar skilríki eða lykla á þjóninum (sjá Tengingar-flipann).
+        </div>
+      )}
 
       <div className="flex flex-wrap items-end gap-2 mb-3">
-        <button onClick={loadAccounts} disabled={busy || !token.trim() || !subKey.trim() || !consentId.trim()}
+        <button onClick={loadAccounts} disabled={busy || (sandbox ? !(token.trim() && subKey.trim() && consentId.trim()) : !serverReady)}
           className="px-3 py-1.5 rounded-lg bg-gray-800 text-white text-sm font-semibold hover:bg-gray-900 disabled:opacity-40">
           Sækja reikninga
         </button>

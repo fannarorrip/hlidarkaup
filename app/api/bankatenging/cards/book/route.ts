@@ -13,6 +13,11 @@ export async function POST(req: NextRequest) {
   const txns = Array.isArray(body.transactions) ? body.transactions : [];
   if (!debitAccount) return NextResponse.json({ ok: false, message: "Veldu gjaldalykil (debet)." });
   if (!txns.length) return NextResponse.json({ ok: false, message: "Engar færslur til að bóka." });
-  const res = await bookArionCardTransactions(txns, debitAccount, liabilityAccount, typeof body.maskedPan === "string" ? body.maskedPan : undefined);
-  return NextResponse.json({ ok: true, ...res });
+  try {
+    const res = await bookArionCardTransactions(txns, debitAccount, liabilityAccount, typeof body.maskedPan === "string" ? body.maskedPan : undefined);
+    return NextResponse.json({ ok: true, ...res });
+  } catch (e) {
+    console.error("cards/book failed:", e);
+    return NextResponse.json({ ok: false, message: "Bókun mistókst. Reyndu aftur." });
+  }
 }

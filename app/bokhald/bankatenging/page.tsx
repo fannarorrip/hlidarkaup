@@ -117,7 +117,7 @@ export default async function BankatengingPage() {
         )}
         <p className="mt-3 text-[11px] text-gray-400">Til að bæta við reikningi: stofnaðu bókhaldslykil í kaflanum Bókhaldslyklar, eða sæktu IBAN beint úr Arion með PSD2 hér til hliðar.</p>
       </div>
-      <ArionPsd2 />
+      <ArionPsd2 sandbox={st.sandbox} serverReady={st.readyPsd2} />
     </div>
   );
 
@@ -155,7 +155,7 @@ export default async function BankatengingPage() {
   // ── Bankayfirlit ─────────────────────────────────────────────────────────────
   const bankayfirlit = (
     <div className="max-w-4xl space-y-3">
-      <ArionStatement bankAccounts={bankAccounts} defaultBank={settings.default_bank_ledger ?? undefined} contraIn={settings.statement_contra_in ?? undefined} contraOut={settings.statement_contra_out ?? undefined} />
+      <ArionStatement bankAccounts={bankAccounts} defaultBank={settings.default_bank_ledger ?? undefined} contraIn={settings.statement_contra_in ?? undefined} contraOut={settings.statement_contra_out ?? undefined} sandbox={st.sandbox} serverReady={st.readyPsd2} />
       <p className="text-xs text-gray-500">Handvirk bankaafstemming (án PSD2) er einnig til: <Link href="/bokhald/afstemming/banki" className="text-red-700 hover:underline">Afstemming → Banki</Link>.</p>
     </div>
   );
@@ -163,20 +163,20 @@ export default async function BankatengingPage() {
   // ── Ógreiddir reikningar ─────────────────────────────────────────────────────
   const ogreiddir = (
     <div className="max-w-4xl space-y-3">
-      <Payables payables={payables} bankAccounts={bankAccounts} defaultBank={settings.default_bank_ledger ?? undefined} />
+      <Payables payables={payables} bankAccounts={bankAccounts} defaultBank={settings.default_bank_ledger ?? undefined} sandbox={st.sandbox} psd2Ready={st.readyPsd2} />
       <p className="text-xs text-gray-500">Heildarstaða lánardrottna per birgja: <Link href="/bokhald/afstemming/lanadrottnar" className="text-red-700 hover:underline">Afstemming → Lánardrottnar</Link>.</p>
     </div>
   );
 
   // ── Kreditkort ───────────────────────────────────────────────────────────────
-  const kreditkort = <div className="max-w-3xl"><ArionCards defaultLiability={settings.card_liability_account} defaultExpense={settings.card_expense_account ?? undefined} /></div>;
+  const kreditkort = <div className="max-w-3xl"><ArionCards defaultLiability={settings.card_liability_account} defaultExpense={settings.card_expense_account ?? undefined} sandbox={st.sandbox} serverReady={st.readyCards} /></div>;
 
   // ── Samstillingar ────────────────────────────────────────────────────────────
   const samstillingar = (
     <BankSettings
       settings={settings}
       accounts={postableAccounts}
-      envStatus={{ sandbox: st.sandbox, baseUrl: st.baseUrl, hasCards: st.have.subscriptionKey, hasPsd2: !!process.env.ARION_PSD2_SUBSCRIPTION_KEY }}
+      envStatus={{ sandbox: st.sandbox, baseUrl: st.baseUrl, hasCards: st.have.subscriptionKey, hasPsd2: st.have.psd2Key }}
     />
   );
 

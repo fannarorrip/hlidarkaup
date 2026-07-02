@@ -8,25 +8,41 @@ import { getDefaultProfile } from "@/lib/collection";
 
 interface Auth { bearerToken?: string; subscriptionKey?: string }
 
-export interface SendResult { sent: number; failed: number; skipped: number; reason?: string }
+export interface SendResult { sent: number; failed: number; skipped: number; requeued: number; reason?: string }
+
+// Auth/transport failures (creds, gateway, network) must NOT burn claims to 'failed' —
+// they stay retriable. Only a real 4xx validation rejection is terminal.
+const isTransient = (msg: string) =>
+  /HTTP (401|403|408|429|5\d\d)|áskriftarlykil|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|socket|network/i.test(msg);
 
 /** Push all 'queued' claims to Arion. Each becomes a real greiðsluseðill in the Kröfupottur.
- *  Requires ARION_CLAIMS_ENABLED and a default kröfusnið (collection profile). */
+ *  Two-phase per claim: atomically flip queued→sending (claims the row), call the bank, then
+ *  sending→created/failed — or BACK to queued on transient errors. A crash mid-send leaves the
+ *  row in 'sending' for manual review instead of silently re-sending a possibly-registered claim. */
 export async function sendQueuedClaims(auth: Auth = {}): Promise<SendResult> {
-  if (!claimsEnabled()) return { sent: 0, failed: 0, skipped: 0, reason: "disabled" };
+  if (!claimsEnabled()) return { sent: 0, failed: 0, skipped: 0, requeued: 0, reason: "disabled" };
+  // Readiness guard: a pure config problem must not touch (and mass-fail) the queue at all.
+  if (!auth.subscriptionKey && !process.env.ARION_CLAIMS_SUBSCRIPTION_KEY) {
+    return { sent: 0, failed: 0, skipped: 0, requeued: 0, reason: "no_key" };
+  }
   const profile = await getDefaultProfile();
-  if (!profile) return { sent: 0, failed: 0, skipped: 0, reason: "no_profile" };
+  if (!profile) return { sent: 0, failed: 0, skipped: 0, requeued: 0, reason: "no_profile" };
 
   const rows = await query<{ id: string; kennitala: string | null; amount: string; due_date: string | null; series_code: string | null; voucher_number: string | null }>(
     `select cl.id, cl.kennitala, cl.amount::text as amount, cl.due_date::text as due_date, v.series_code, v.voucher_number::text as voucher_number
      from acc.claims cl left join acc.vouchers v on v.id = cl.voucher_id
      where cl.status = 'queued' order by cl.created_at asc limit 200`);
 
-  let sent = 0, failed = 0, skipped = 0;
+  let sent = 0, failed = 0, skipped = 0, requeued = 0;
   for (const c of rows) {
     const kt = (c.kennitala || "").replace(/\D/g, "");
     const amount = Math.round(Number(c.amount) || 0);
     if (!kt || amount <= 0 || !c.due_date) { skipped++; continue; }
+    // Phase 1: claim the row. 0 rows = another worker already took it.
+    const took = await query<{ id: string }>(
+      `update acc.claims set status='sending', sent_at=now() where id=$1 and status='queued' returning id`, [c.id]);
+    if (!took.length) { skipped++; continue; }
+
     // tilvísun = the invoice number; omit rather than send a meaningless truncated UUID.
     const reference = c.series_code && c.voucher_number ? `${c.series_code}-${c.voucher_number}` : undefined;
     try {
@@ -34,27 +50,33 @@ export async function sendQueuedClaims(auth: Auth = {}): Promise<SendResult> {
         profileCode: profile.code, debtorKennitala: kt, amount, dueDate: c.due_date, reference,
       }, auth);
       if (res.claimRef) {
-        await query(`update acc.claims set status='created', arion_ref=$2, profile_id=$3, sent_at=now(), last_error=null where id=$1 and status='queued'`,
+        await query(`update acc.claims set status='created', arion_ref=$2, profile_id=$3, last_error=null where id=$1 and status='sending'`,
           [c.id, res.claimRef, profile.id]);
         sent++;
       } else if (res.ok) {
         // HTTP succeeded but no kröfunúmer in the response → the claim MAY have been created at the
         // bank. Flag for review (not auto-retried) rather than burying it as a plain failure.
-        await query(`update acc.claims set status='failed', profile_id=$3, sent_at=now(), last_error=$2 where id=$1 and status='queued'`,
+        await query(`update acc.claims set status='failed', profile_id=$3, last_error=$2 where id=$1 and status='sending'`,
           [c.id, "Svar 2xx en kröfunúmer vantar — yfirfara hjá Arion (möguleg skráning).", profile.id]);
         failed++;
+      } else if (isTransient(res.error || "")) {
+        await query(`update acc.claims set status='queued', last_error=$2 where id=$1 and status='sending'`,
+          [c.id, ("Tímabundin villa (endursent næst): " + (res.error || "")).slice(0, 300)]);
+        requeued++;
       } else {
-        await query(`update acc.claims set status='failed', last_error=$2, sent_at=now() where id=$1 and status='queued'`,
+        await query(`update acc.claims set status='failed', last_error=$2 where id=$1 and status='sending'`,
           [c.id, (res.error || "Óþekkt villa").slice(0, 300)]);
         failed++;
       }
     } catch (e) {
-      await query(`update acc.claims set status='failed', last_error=$2, sent_at=now() where id=$1 and status='queued'`,
-        [c.id, (e instanceof Error ? e.message : String(e)).slice(0, 300)]);
-      failed++;
+      const msg = e instanceof Error ? e.message : String(e);
+      // Thrown = never reached the bank (missing key, network) → always safe to requeue.
+      await query(`update acc.claims set status='queued', last_error=$2 where id=$1 and status='sending'`,
+        [c.id, ("Tímabundin villa (endursent næst): " + msg).slice(0, 300)]);
+      requeued++;
     }
   }
-  return { sent, failed, skipped };
+  return { sent, failed, skipped, requeued };
 }
 
 export interface SyncResult { settled: number; checked: number; errors: string[]; reason?: string }

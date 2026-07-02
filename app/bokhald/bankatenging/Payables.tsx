@@ -18,7 +18,7 @@ function Aging({ d }: { d: number | null }) {
   return <span className="text-gray-500">eftir {-d} d.</span>;
 }
 
-export default function Payables({ payables, bankAccounts, defaultBank }: { payables: Payable[]; bankAccounts: BankAcct[]; defaultBank?: string }) {
+export default function Payables({ payables, bankAccounts, defaultBank, sandbox = false, psd2Ready = false }: { payables: Payable[]; bankAccounts: BankAcct[]; defaultBank?: string; sandbox?: boolean; psd2Ready?: boolean }) {
   const router = useRouter();
   const [bankAccount, setBankAccount] = useState(defaultBank || bankAccounts[0]?.account_number || "");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -32,7 +32,10 @@ export default function Payables({ payables, bankAccounts, defaultBank }: { paya
   const [psd2, setPsd2] = useState<{ paymentId: string; scaRedirect?: string } | null>(null);
   const [creds, setCreds] = useState<{ token: string; subKey: string; psuId: string }>({ token: "", subKey: "", psuId: "" });
 
+  // SANDBOX ONLY: tester credentials from the Bankareikningar tab. Production sends nothing —
+  // the server runs on env credentials and its own PSU-ID.
   useEffect(() => {
+    if (!sandbox) return;
     const read = () => {
       try {
         const s = window.localStorage;
@@ -45,7 +48,7 @@ export default function Payables({ payables, bankAccounts, defaultBank }: { paya
     window.addEventListener("arion-psd2-updated", read);
     window.addEventListener("focus", read);
     return () => { window.removeEventListener("arion-psd2-updated", read); window.removeEventListener("focus", read); };
-  }, []);
+  }, [sandbox]);
 
   const total = payables.reduce((a, p) => a + (Number(p.amount) || 0), 0);
   const overdue = payables.filter((p) => (p.days_overdue ?? -1) > 0);
@@ -172,7 +175,9 @@ export default function Payables({ payables, bankAccounts, defaultBank }: { paya
                       <>
                         <div className="flex gap-1">
                           <button onClick={() => settle(p)} disabled={busyId !== null} className="px-2.5 py-1 rounded-lg bg-gray-800 text-white text-xs font-semibold hover:bg-gray-900 disabled:opacity-40">{busyId === p.id ? "…" : "Merkja greitt"}</button>
-                          <button onClick={() => (payId === p.id ? setPayId(null) : openPsd2(p))} disabled={busyId !== null} className="px-2.5 py-1 rounded-lg border border-red-300 text-red-700 text-xs font-semibold hover:bg-red-50 disabled:opacity-40">PSD2</button>
+                          {(sandbox || psd2Ready) && (
+                            <button onClick={() => (payId === p.id ? setPayId(null) : openPsd2(p))} disabled={busyId !== null} className="px-2.5 py-1 rounded-lg border border-red-300 text-red-700 text-xs font-semibold hover:bg-red-50 disabled:opacity-40">Greiða (PSD2)</button>
+                          )}
                         </div>
                         {payId === p.id && (
                           <div className="mt-1 w-72 border border-gray-200 rounded-lg p-2 bg-gray-50 text-left">
