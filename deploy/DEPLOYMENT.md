@@ -58,7 +58,7 @@ sudo systemctl enable --now dnf-automatic.timer
 ```bash
 sudo dnf -y install https://download.postgresql.org/pub/repos/yum/reporpms/EL-10-x86_64/pgdg-redhat-repo-latest.noarch.rpm
 sudo dnf -qy module disable postgresql
-sudo dnf -y install postgresql16-server
+sudo dnf -y install postgresql16-server postgresql16-contrib   # contrib = pg_trgm + unaccent (migrations need both)
 sudo /usr/pgsql-16/bin/postgresql-16-setup initdb
 sudo systemctl enable --now postgresql-16
 
