@@ -4,7 +4,7 @@ import { TouchKeyboard, NumPad } from "./Keyboard";
 
 interface Line { id: string; name: string; price: number; vatPct?: number; quantity: number; priceOverride?: number; discount?: number; }
 interface Customer { id: string; name: string; kennitala: string | null; is_account: boolean; }
-interface SItem { id: string; name: string; price: number; vatPct?: number; }
+interface SItem { id: string; name: string; price: number; vatPct?: number; image?: string; }
 interface Category { group: string; name: string; count: number; }
 interface HeldSale { id: string; label: string | null; customer_id: string | null; customer_name: string | null; customer_is_account: boolean | null; total: string; cart: Line[]; created_at: string; }
 type Mode = "card" | "cash" | "account" | "transfer";
@@ -263,9 +263,14 @@ export default function StaffTill() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
               {gridItems.map((p) => (
                 <button key={p.id} onClick={() => addItem(p)}
-                  className="text-left rounded-xl p-4 min-h-[112px] bg-white border border-gray-200 flex flex-col justify-between active:scale-[0.97] transition hover:border-[#8CC7C4] hover:shadow-sm">
-                  <p className="text-[15px] font-semibold leading-snug line-clamp-3 text-[#21323A]">{p.name}</p>
-                  <p className="text-lg font-bold text-[#2C687B]">{kr(p.price)}</p>
+                  className="text-left rounded-xl overflow-hidden min-h-[112px] bg-white border border-gray-200 flex flex-col active:scale-[0.97] transition hover:border-[#8CC7C4] hover:shadow-sm">
+                  {p.image && (
+                    <div className="w-full h-20 bg-gray-50 bg-cover bg-center shrink-0" style={{ backgroundImage: `url(${p.image})` }} aria-hidden />
+                  )}
+                  <div className="flex-1 flex flex-col justify-between p-3">
+                    <p className={`font-semibold leading-snug text-[#21323A] ${p.image ? "text-[13px] line-clamp-2" : "text-[15px] line-clamp-3"}`}>{p.name}</p>
+                    <p className="text-lg font-bold text-[#2C687B]">{kr(p.price)}</p>
+                  </div>
                 </button>
               ))}
             </div>

@@ -51,6 +51,10 @@ export default function ProductForm({ product, barcodes: initialBarcodes, salesH
   const [newBarcode, setNewBarcode] = useState("");
   const [bcError, setBcError] = useState("");
 
+  const [imageUrl, setImageUrl] = useState(product.image_url ?? null);
+  const [uploading, setUploading] = useState(false);
+  const [imgError, setImgError] = useState("");
+
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -76,6 +80,24 @@ export default function ProductForm({ product, barcodes: initialBarcodes, salesH
       setSaved(true);
       router.refresh();
     } catch { setError("Samband rofnaði"); } finally { setSaving(false); }
+  }
+
+  async function uploadPhoto(file: File) {
+    setUploading(true); setImgError("");
+    try {
+      const fd = new FormData();
+      fd.set("file", file);
+      const res = await fetch(`/api/products/${product.product_number}/photo`, { method: "POST", body: fd });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { setImgError(d.error ?? "Upphleðsla mistókst"); return; }
+      setImageUrl(d.image_url);
+    } catch { setImgError("Samband rofnaði"); } finally { setUploading(false); }
+  }
+  async function removePhoto() {
+    setImgError("");
+    const res = await fetch(`/api/products/${product.product_number}/photo`, { method: "DELETE" });
+    if (res.ok) setImageUrl(null);
+    else setImgError("Tókst ekki að fjarlægja mynd");
   }
 
   async function addBarcode() {
@@ -148,6 +170,26 @@ export default function ProductForm({ product, barcodes: initialBarcodes, salesH
           </p>
         )}
         <div className="mt-3"><Check checked={stockControlled} onChange={setStockControlled} label="Birgðastýring virk (fylgjast með lager)" /></div>
+      </Section>
+
+      <Section title="Mynd (birtist á kassa- og sjálfsafgreiðslu-flísum)">
+        <div className="flex items-center gap-4">
+          {imageUrl ? (
+            <div className="w-24 h-24 rounded-xl bg-gray-50 bg-cover bg-center border border-gray-200 shrink-0" style={{ backgroundImage: `url(${imageUrl})` }} />
+          ) : (
+            <div className="w-24 h-24 rounded-xl bg-gray-50 border border-dashed border-gray-300 shrink-0 flex items-center justify-center text-gray-300 text-xs text-center px-2">Engin mynd</div>
+          )}
+          <div className="space-y-2">
+            <input type="file" accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => e.target.files?.[0] && uploadPhoto(e.target.files[0])} className="text-sm" />
+            <div className="flex items-center gap-3 text-sm">
+              {uploading && <span className="text-gray-500">Hleð upp…</span>}
+              {imageUrl && !uploading && <button type="button" onClick={removePhoto} className="text-red-600 hover:underline">Fjarlægja mynd</button>}
+              {imgError && <span className="text-red-600">{imgError}</span>}
+            </div>
+            <p className="text-xs text-gray-400">JPG/PNG/WebP, hámark 6MB. Sérstaklega gagnlegt fyrir ávexti og grænmeti (vörur án strikamerkis).</p>
+          </div>
+        </div>
       </Section>
 
       <Section title="Eiginleikar">

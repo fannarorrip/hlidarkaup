@@ -469,6 +469,7 @@ export interface ProductDetail {
   unit_code: string | null; use_scale: boolean; allow_discount: boolean; is_active: boolean;
   regla_id: string | null; synced_at: string | null;
   reorder_point: string | null; reorder_qty: string | null;
+  image_url: string | null;
 }
 export interface SaleLine {
   line_no: number; product_number: string | null; name: string;
@@ -516,7 +517,7 @@ export async function getProductDetail(productNumber: string) {
   const p = (await query<ProductDetail>(`
     select product_number, name, description, unit_price_net, vat_key, vat_rate, price_gross,
            stock_quantity, is_stock_controlled, product_group, unit_code, use_scale, allow_discount, is_active,
-           regla_id, synced_at::text, reorder_point, reorder_qty
+           regla_id, synced_at::text, reorder_point, reorder_qty, image_url
     from shop.products where product_number = $1`, [productNumber]))[0];
   if (!p) return null;
   const bc = await query<{ barcode: string }>(
