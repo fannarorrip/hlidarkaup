@@ -20,6 +20,22 @@ this runbook, restore the dump.
         Tills / staff browse via the Cloudflare hostname (or LAN, see §5).
 ```
 
+## 0. The machine (HP ProDesk Mini — i7 / 32 GB / 1 TB)
+Far more than this workload needs (app + Postgres would be comfortable in 4 GB) — headroom for years.
+Setup-day checklist for this specific box:
+
+- **BIOS (F10 at boot): Power → After Power Loss → "Power On"** — the server must come back
+  by itself after an outage, unattended. Also disable sleep/hibernate states.
+- **Wired ethernet** to the router — never Wi-Fi for a server.
+- **Confirm the 1 TB disk is SSD/NVMe** (not a spinning disk) — Postgres wants SSD. Default
+  Rocky partitioning (LVM, one big `/`) is fine at this scale.
+- **Small UPS strongly recommended** (even ~600 VA, with the router on it too): power blips
+  cause unclean Postgres shutdowns and kill the tunnel. Cheap insurance.
+- No ECC RAM / no RAID on this class of hardware — the **nightly dump + offsite copy is the
+  safety net** (§6); that's fine for this scale, but actually test the restore.
+- Optional Postgres tuning for 32 GB (`/var/lib/pgsql/16/data/postgresql.conf`):
+  `shared_buffers = 4GB`, `effective_cache_size = 16GB`. Defaults also work — this is polish.
+
 ## 1. Base system (Rocky Linux 9)
 ```bash
 sudo dnf -y update
