@@ -1,96 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
+import { query } from "@/lib/db";
 
-const REGLA_BASE = process.env.REGLA_BASE_URL ?? "https://www.regla.is/fibs/RestAPI2019";
-const REGLA_USER = process.env.REGLA_USERNAME ?? "";
-const REGLA_PASS = process.env.REGLA_PASSWORD ?? "";
-
-// ── Token cache ───────────────────────────────────────────────────────────────
-let cachedToken: string | null = null;
-let tokenExpiry = 0;
-
-async function getToken(): Promise<string> {
-  if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
-  const res = await fetch(`${REGLA_BASE}/Login`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ username: REGLA_USER, password: REGLA_PASS }),
-  });
-  const data = await res.json();
-  if (!data?.Result?.Success) throw new Error("Regla login failed");
-  const token = data.Result.Messages?.[0];
-  if (!token || token.startsWith("INFO_")) throw new Error("No token");
-  cachedToken = token;
-  tokenExpiry = Date.now() + 20 * 60 * 1000;
-  return token;
-}
-
-// ── Product cache (5 min TTL per query) ───────────────────────────────────────
-interface CacheEntry {
-  products: ReturnType<typeof mapProduct>[];
-  total: number;
-  expiresAt: number;
-}
-const productCache = new Map<string, CacheEntry>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapProduct(p: any) {
-  const netPrice = p.UnitPrice ?? 0;
-  const vatPct = p.VatDefinition?.Percentage ?? 24;
-  const grossPrice = Math.round(netPrice * (1 + vatPct / 100));
-  return {
-    id: String(p.ProductNumber ?? p.ID ?? ""),
-    name: p.Name ?? "",
-    description: p.DescriptionShort || p.DescriptionLong || p.Name || "",
-    price: grossPrice,
-    category: p.ProductGroupNumber ?? p.ProductGroup?.Name ?? "",
-    stock: p.IsInStockControl ? Math.max(0, Math.floor(p.StockQuantity ?? 0)) : undefined,
-    image: p.ImageUrl ?? undefined,
-  };
-}
+// Public web-shop product list — served from the local Postgres catalog (no Regla).
+// Search by name / product number / barcode, paginated, with a total count.
+const CAT_NAMES: Record<string, string> = { "10": "Aðalvalmynd", "20": "Ávextir", "30": "Grænmeti", "40": "Kál", "50": "Bakarí" };
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const search  = searchParams.get("search") ?? "";
-  const page    = parseInt(searchParams.get("page") ?? "0", 10);
-  const limit   = parseInt(searchParams.get("limit") ?? "48", 10);
-  const indexFrom = page * limit;
+  const sp = new URL(req.url).searchParams;
+  const search = (sp.get("search") ?? "").trim();
+  const page = Math.max(0, parseInt(sp.get("page") ?? "0", 10) || 0);
+  const limit = Math.min(Math.max(1, parseInt(sp.get("limit") ?? "48", 10) || 48), 100);
+  const offset = page * limit;
 
-  if (!REGLA_USER || !REGLA_PASS) {
-    return NextResponse.json({ products: [], total: 0, page, limit });
-  }
+  const rows = await query<{
+    product_number: string; name: string; description: string | null; price_gross: number;
+    product_group: string | null; stock_quantity: string; is_stock_controlled: boolean; total: string;
+  }>(`
+    select p.product_number, p.name, p.description, p.price_gross, p.product_group, p.stock_quantity, p.is_stock_controlled,
+           count(*) over() as total
+    from shop.products p
+    where p.is_active and p.price_gross > 0
+      and ($1 = '' or unaccent(p.name) ilike unaccent('%'||$1||'%') or p.product_number ilike $1||'%'
+           or exists (select 1 from shop.product_barcodes b where b.product_number = p.product_number and b.barcode like $1||'%'))
+    order by p.name limit $2 offset $3`, [search, limit, offset]);
 
-  const cacheKey = `${search}|${page}|${limit}`;
-  const cached = productCache.get(cacheKey);
-  if (cached && Date.now() < cached.expiresAt) {
-    return NextResponse.json({ products: cached.products, total: cached.total, page, limit });
-  }
+  const total = rows[0] ? Number(rows[0].total) : 0;
+  const products = rows.map((r) => ({
+    id: r.product_number,
+    name: r.name,
+    description: r.description ?? r.name,
+    price: Number(r.price_gross),
+    category: r.product_group ? (CAT_NAMES[r.product_group] ?? r.product_group) : "",
+    stock: r.is_stock_controlled ? Math.max(0, Math.floor(Number(r.stock_quantity))) : undefined,
+    image: undefined as string | undefined,
+  }));
 
-  try {
-    const token = await getToken();
-
-    const res = await fetch(`${REGLA_BASE}/SearchProducts`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ token, search, indexFrom, maxRecordCount: limit }),
-    });
-
-    const data = await res.json();
-
-    if (!data?.Result?.Success) {
-      console.error("Regla SearchProducts error:", data?.Result?.Messages);
-      return NextResponse.json({ products: [], total: 0, page, limit });
-    }
-
-    const countMsg = data.Result.Messages?.find((m: string) => m.includes("INFO_SEARCH_TOTAL_COUNT"));
-    const total = countMsg ? parseInt(countMsg.split(";")[1], 10) : 0;
-    const products = (data.Returned ?? []).map(mapProduct).filter((p: { price: number }) => p.price > 0);
-
-    productCache.set(cacheKey, { products, total, expiresAt: Date.now() + CACHE_TTL });
-
-    return NextResponse.json({ products, total, page, limit });
-  } catch (err) {
-    console.error("Regla products error:", err);
-    return NextResponse.json({ error: "Could not fetch products" }, { status: 500 });
-  }
+  return NextResponse.json({ products, total, page, limit });
 }

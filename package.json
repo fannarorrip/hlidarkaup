@@ -14,9 +14,13 @@
     "@netlify/blobs": "^10.7.9",
     "@netlify/plugin-nextjs": "^5.15.11",
     "@supabase/supabase-js": "^2.108.2",
+    "fast-xml-parser": "^5.9.3",
     "next": "^16.2.7",
+    "pdf-lib": "^1.17.1",
+    "pg": "^8.22.0",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^20",

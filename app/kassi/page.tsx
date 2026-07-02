@@ -171,6 +171,7 @@ export default function KassiPage() {
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [payError, setPayError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [terminalEnabled, setTerminalEnabled] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const [buffer, setBuffer] = useState("");
 
@@ -206,6 +207,11 @@ export default function KassiPage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setBagProduct(d))
       .catch(() => null);
+  }, []);
+
+  // Is the card terminal connected? (if not, fall back to the mock so dev/demo still works)
+  useEffect(() => {
+    fetch("/api/kassi/terminal/status").then((r) => r.json()).then((d) => setTerminalEnabled(!!d.enabled)).catch(() => {});
   }, []);
 
   const total = cart.reduce((s, l) => s + l.price * l.quantity, 0);
@@ -378,15 +384,22 @@ export default function KassiPage() {
     setScreen("paying");
     setPayError("");
 
-    // MOCK terminal: replace this block with the Straumur terminal call.
-    await new Promise((r) => setTimeout(r, 2500));
-    const payment = {
-      approved: true,
-      processor: "MOCK",
-      stan: String(Date.now()).slice(-6),
-      last4: "0000",
-      verification: "contactless",
-    };
+    const payTotal = finalCart.reduce((s, l) => s + l.price * l.quantity, 0);
+    let payment: { approved: boolean; processor: string; stan: string; last4?: string; verification?: string; poiTxId?: string };
+
+    if (terminalEnabled) {
+      // Real Straumur/Adyen terminal
+      try {
+        const tr = await fetch("/api/kassi/terminal/pay", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount: payTotal, ref: `kiosk-${Date.now()}` }) });
+        const td = await tr.json().catch(() => ({}));
+        if (!td.approved) { setPayError(td.error ? `Posi: ${td.error}` : "Greiðslu hafnað"); setScreen("payError"); return; }
+        payment = { approved: true, processor: "ADYEN", stan: String(Date.now()).slice(-6), poiTxId: td.poiTxId };
+      } catch { setPayError("Náði ekki sambandi við posann. Reyndu aftur."); setScreen("payError"); return; }
+    } else {
+      // MOCK fallback (no terminal configured — dev/demo)
+      await new Promise((r) => setTimeout(r, 2500));
+      payment = { approved: true, processor: "MOCK", stan: String(Date.now()).slice(-6), last4: "0000", verification: "contactless" };
+    }
 
     try {
       const res = await fetch("/api/kassi/checkout", {

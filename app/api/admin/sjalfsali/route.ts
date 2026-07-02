@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { getStaffSession } from "@/lib/staff-auth-server";
 
 const FILE = path.join(process.cwd(), "sjalfsali-applications.json");
+
+// GET/PATCH expose applicant PII and must be staff-only. POST is the PUBLIC application form,
+// so it stays open (can't blanket-gate this path in middleware without breaking submissions).
+const STAFF_ROLES = ["stjornandi", "afgreidsla", "eldhus"];
+async function requireStaff() {
+  const s = await getStaffSession();
+  return s && STAFF_ROLES.includes(s.role);
+}
 
 function readApps() {
   try {
@@ -18,6 +27,7 @@ function saveApp(app: object) {
 }
 
 export async function GET() {
+  if (!(await requireStaff())) return NextResponse.json({ error: "Innskráning starfsmanns krafist" }, { status: 401 });
   const apps = readApps();
   apps.sort((a: { createdAt: string }, b: { createdAt: string }) =>
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -34,6 +44,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  if (!(await requireStaff())) return NextResponse.json({ error: "Innskráning starfsmanns krafist" }, { status: 401 });
   const { id, status } = await req.json();
   const apps = readApps() as Array<{ id: string; status: string }>;
   const idx = apps.findIndex((a) => a.id === id);

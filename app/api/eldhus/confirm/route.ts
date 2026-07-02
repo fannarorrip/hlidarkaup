@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { postSale } from "@/lib/sales";
+import { query } from "@/lib/db";
 
-interface Item { title: string }
+interface Item { title: string; price?: number; quantity?: number; vat_rate?: number }
 interface Body {
   email?: string;
   ref?: string;
@@ -10,10 +12,42 @@ interface Body {
   time?: string;
   date?: string;
   items?: Item[];
+  shipping?: number;
   total?: number;
 }
 
-/** Send the SVO GOTT order confirmation email via Resend. */
+/** Book an SVO GOTT (eldhús) online order to the accounting ledger.
+ *  Best-effort: never throws, so a ledger hiccup can't block the customer's order.
+ *  Itemises when per-item prices are sent; otherwise books the order total at 11% VSK (matur). */
+async function bookEldhusSale(b: Body): Promise<void> {
+  try {
+    const items = b.items ?? [];
+    const total = Math.round(Number(b.total ?? 0));
+    if (!items.length || !(total > 0)) return;
+
+    const havePrices = items.every((i) => typeof i.price === "number" && (i.price ?? 0) > 0);
+    const extraLines = havePrices
+      ? items.map((i) => ({ description: i.title, gross: Math.round((i.price ?? 0) * (i.quantity ?? 1)), vat_rate: i.vat_rate ?? 11 }))
+      : [{ description: `SVO GOTT pöntun${b.ref ? ` #${b.ref}` : ""}${b.plan === "subscription" ? " (áskrift/viku)" : ""}`, gross: total, vat_rate: 11 }];
+    // Delivery is a separate 24% service line, so the itemised total still matches grandTotal.
+    const shipping = Math.round(Number(b.shipping ?? 0));
+    if (havePrices && shipping > 0) extraLines.push({ description: "Heimsending", gross: shipping, vat_rate: 24 });
+
+    let customerId: string | null = null;
+    try { customerId = (await query<{ id: string }>(`select id from shop.customers where is_generic limit 1`))[0]?.id ?? null; } catch { /* ignore */ }
+
+    await postSale([], {
+      mode: "card", customerId, source: "eldhus", voucherType: "eldhus_sale",
+      description: `Eldhússala${b.ref ? ` – #${b.ref}` : ""}`,
+      reference: b.ref ? `ELDHUS-${b.ref}` : `ELDHUS-${Date.now()}`,
+      extraLines, decrementStock: false,
+    });
+  } catch (err) {
+    console.warn("[SVO GOTT] ledger post failed:", err instanceof Error ? err.message : err);
+  }
+}
+
+/** Book the order to the ledger, then send the SVO GOTT confirmation email via Resend. */
 export async function POST(req: NextRequest) {
   let body: Body;
   try {
@@ -21,6 +55,9 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Ógild beiðni" }, { status: 400 });
   }
+
+  // Record the sale in the books first (independent of email delivery).
+  await bookEldhusSale(body);
 
   const email = (body.email ?? "").trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

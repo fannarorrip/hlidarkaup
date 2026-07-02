@@ -1,25 +1,23 @@
 import { NextResponse } from "next/server";
-import { getReglaToken, reglaPost, grossPrice, vatPct } from "@/lib/regla";
+import { query } from "@/lib/db";
 
 /** Returns the bag product (BURÐARPOKI) offered before payment. */
 export async function GET() {
   const productNumber = process.env.KASSI_BAG_PRODUCT ?? "";
   if (!productNumber) return NextResponse.json({ error: "No bag product configured" }, { status: 404 });
 
-  try {
-    const token = await getReglaToken();
-    const data = await reglaPost("GetProduct", { token, productNumber });
-    const p = data?.Returned;
-    if (!p) return NextResponse.json({ error: "Bag product not found" }, { status: 404 });
+  const rows = await query<{ product_number: string; name: string; price_gross: number; vat_rate: string }>(
+    `select product_number, name, price_gross, vat_rate
+       from shop.products where product_number = $1 and is_active`,
+    [productNumber],
+  );
+  if (!rows.length) return NextResponse.json({ error: "Bag product not found" }, { status: 404 });
 
-    return NextResponse.json({
-      id: String(p.ProductNumber),
-      name: p.Name ?? "Burðarpoki",
-      price: grossPrice(p),
-      vatPct: vatPct(p),
-    });
-  } catch (err) {
-    console.error("[Kassi] bag error:", err);
-    return NextResponse.json({ error: "Villa" }, { status: 500 });
-  }
+  const p = rows[0];
+  return NextResponse.json({
+    id: p.product_number,
+    name: p.name,
+    price: p.price_gross,
+    vatPct: Number(p.vat_rate),
+  });
 }

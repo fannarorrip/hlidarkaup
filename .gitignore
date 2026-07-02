@@ -9,3 +9,7 @@ orders.json
 tsconfig.tsbuildinfo
 ReglaWebService.2019.pdf
 hlidarkaup-signature.pdf
+
+# Local Netlify folder
+.netlify
+sjalfsali-applications.json

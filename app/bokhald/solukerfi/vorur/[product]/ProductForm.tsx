@@ -1,0 +1,196 @@
+"use client";
+import { useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import type { ProductDetail } from "@/lib/accounting-queries";
+import { kr } from "@/lib/format";
+
+const inp = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-red-400";
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">{title}</p>
+      {children}
+    </div>
+  );
+}
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="block">
+      <span className="block text-sm text-gray-500 mb-1">{label}</span>
+      {children}
+    </label>
+  );
+}
+function Check({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <label className="flex items-center gap-2 text-sm cursor-pointer py-1">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="w-4 h-4 accent-red-600" />
+      {label}
+    </label>
+  );
+}
+
+export default function ProductForm({ product, barcodes: initialBarcodes, salesHint }: { product: ProductDetail; barcodes: string[]; salesHint?: { sold30: number; monthly: number; suggested: number; basis: "sales" | "manual" } }) {
+  const router = useRouter();
+  const [name, setName] = useState(product.name);
+  const [group, setGroup] = useState(product.product_group ?? "");
+  const [unit, setUnit] = useState(product.unit_code ?? "");
+  const [desc, setDesc] = useState(product.description ?? "");
+  const [vat, setVat] = useState(String(Number(product.vat_rate)));
+  const [gross, setGross] = useState(String(product.price_gross));
+  const [stockControlled, setStockControlled] = useState(product.is_stock_controlled);
+  const [stock, setStock] = useState(String(Math.floor(Number(product.stock_quantity))));
+  const [reorderPoint, setReorderPoint] = useState(product.reorder_point != null ? String(Math.round(Number(product.reorder_point))) : "");
+  const [reorderQty, setReorderQty] = useState(product.reorder_qty != null ? String(Math.round(Number(product.reorder_qty))) : "");
+  const [useScale, setUseScale] = useState(product.use_scale);
+  const [allowDiscount, setAllowDiscount] = useState(product.allow_discount);
+  const [isActive, setIsActive] = useState(product.is_active);
+
+  const [barcodes, setBarcodes] = useState<string[]>(initialBarcodes);
+  const [newBarcode, setNewBarcode] = useState("");
+  const [bcError, setBcError] = useState("");
+
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+
+  const vatNum = Number(vat);
+  const grossNum = Number(gross) || 0;
+  const net = vatNum >= 0 ? grossNum / (1 + vatNum / 100) : grossNum;
+
+  async function save() {
+    setSaving(true); setError(""); setSaved(false);
+    try {
+      const res = await fetch(`/api/products/${product.product_number}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name, product_group: group, unit_code: unit, description: desc, vat_rate: vatNum, price_gross: grossNum,
+          is_stock_controlled: stockControlled, stock_quantity: Number(stock),
+          use_scale: useScale, allow_discount: allowDiscount, is_active: isActive,
+          reorder_point: reorderPoint, reorder_qty: reorderQty,
+        }),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.error ?? "Vistun mistókst"); return; }
+      setSaved(true);
+      router.refresh();
+    } catch { setError("Samband rofnaði"); } finally { setSaving(false); }
+  }
+
+  async function addBarcode() {
+    const bc = newBarcode.trim();
+    if (!bc) return;
+    setBcError("");
+    const res = await fetch(`/api/products/${product.product_number}/barcode`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ barcode: bc }),
+    });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); setBcError(d.error ?? "Mistókst"); return; }
+    setBarcodes((p) => [...p, bc].sort()); setNewBarcode("");
+  }
+  async function removeBarcode(bc: string) {
+    await fetch(`/api/products/${product.product_number}/barcode?barcode=${encodeURIComponent(bc)}`, { method: "DELETE" });
+    setBarcodes((p) => p.filter((x) => x !== bc));
+  }
+
+  return (
+    <div className="space-y-4 max-w-4xl pb-24">
+      <Section title="Vara">
+        <div className="grid md:grid-cols-3 gap-4">
+          <Field label="Vörunúmer">
+            <input value={product.product_number} disabled className={`${inp} bg-gray-50 text-gray-500`} />
+          </Field>
+          <Field label="Heiti *"><input value={name} onChange={(e) => setName(e.target.value)} className={inp} /></Field>
+          <Field label="Vöruflokkur"><input value={group} onChange={(e) => setGroup(e.target.value)} placeholder="—" className={inp} /></Field>
+          <Field label="Magneining"><input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="t.d. C62 / kg / l" className={inp} /></Field>
+          <div className="md:col-span-3">
+            <Field label="Lýsing"><textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} className={inp} /></Field>
+          </div>
+        </div>
+      </Section>
+
+      <Section title="Verðlagning">
+        <div className="grid md:grid-cols-3 gap-4 items-end">
+          <Field label="Söluverð m/VSK (kr.)">
+            <input type="number" value={gross} onChange={(e) => setGross(e.target.value)} className={inp} />
+          </Field>
+          <Field label="VSK þrep">
+            <select value={vat} onChange={(e) => setVat(e.target.value)} className={`${inp} bg-white`}>
+              <option value="24">24%</option>
+              <option value="11">11%</option>
+              <option value="0">0% / undanþegið</option>
+            </select>
+          </Field>
+          <div className="text-sm text-gray-500">
+            <p>Verð án VSK: <span className="font-medium text-gray-800">{kr(net)}</span></p>
+            <p>VSK: <span className="font-medium text-gray-800">{kr(grossNum - net)}</span></p>
+          </div>
+        </div>
+      </Section>
+
+      <Section title="Birgðir">
+        <div className="grid md:grid-cols-3 gap-4 items-end">
+          <Field label="Birgðastaða (stk.)">
+            <input type="number" value={stock} onChange={(e) => setStock(e.target.value)} className={inp} />
+          </Field>
+          <Field label="Öryggisbirgðir (panta við stöðu ≤)">
+            <input type="number" value={reorderPoint} onChange={(e) => setReorderPoint(e.target.value)} placeholder="—" className={inp} />
+          </Field>
+          <Field label="Tillaga að pöntunarmagni">
+            <input type="number" value={reorderQty} onChange={(e) => setReorderQty(e.target.value)} placeholder="—" className={inp} />
+          </Field>
+        </div>
+        {salesHint && salesHint.basis === "sales" && (
+          <p className="mt-2 text-xs text-gray-500">
+            Selt síðustu 30 daga: <b className="text-gray-700">{salesHint.sold30}</b> · ≈ {salesHint.monthly}/mán ·{" "}
+            Tillaga skv. sölu: <b className="text-gray-700">{salesHint.suggested}</b>
+            <button type="button" onClick={() => setReorderQty(String(salesHint.suggested))} className="ml-2 text-red-600 hover:underline">Nota</button>
+          </p>
+        )}
+        <div className="mt-3"><Check checked={stockControlled} onChange={setStockControlled} label="Birgðastýring virk (fylgjast með lager)" /></div>
+      </Section>
+
+      <Section title="Eiginleikar">
+        <Check checked={useScale} onChange={setUseScale} label="Vigtarvara (vog)" />
+        <Check checked={allowDiscount} onChange={setAllowDiscount} label="Afsláttur leyfður" />
+        <Check checked={isActive} onChange={setIsActive} label="Virk vara (sýnileg í kassa og sölu)" />
+      </Section>
+
+      <Section title="Strikamerki">
+        <div className="flex gap-2 mb-3">
+          <input
+            value={newBarcode}
+            onChange={(e) => setNewBarcode(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addBarcode()}
+            placeholder="Sláðu inn strikamerki…"
+            className={inp}
+          />
+          <button onClick={addBarcode} className="shrink-0 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700">+ Bæta við</button>
+        </div>
+        {bcError && <p className="text-sm text-red-600 mb-2">{bcError}</p>}
+        <div className="space-y-1.5">
+          {barcodes.length === 0 ? (
+            <p className="text-sm text-gray-400">Engin strikamerki skráð</p>
+          ) : barcodes.map((bc) => (
+            <div key={bc} className="flex items-center justify-between border border-gray-200 rounded-lg px-3 py-2">
+              <span className="font-mono text-sm">{bc}</span>
+              <button onClick={() => removeBarcode(bc)} className="text-gray-300 hover:text-red-600 text-lg leading-none" aria-label="Fjarlægja">×</button>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <div className="fixed bottom-0 left-60 right-0 bg-white/90 backdrop-blur border-t border-gray-200 px-8 py-3 flex items-center gap-4">
+        <button
+          onClick={save}
+          disabled={saving}
+          className="px-5 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
+        >
+          {saving ? "Vista…" : "Vista breytingar"}
+        </button>
+        {saved && <span className="text-sm text-green-700">✓ Vistað</span>}
+        {error && <span className="text-sm text-red-600">{error}</span>}
+      </div>
+    </div>
+  );
+}

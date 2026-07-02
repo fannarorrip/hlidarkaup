@@ -1,0 +1,133 @@
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+⚠ Failed to reload dynamic routes: Error: EBUSY: resource busy or locked, open 'C:\Projects\hlidarkaup\.next\dev\types\validator.ts'
+    at ignore-listed frames {
+  errno: -4082,
+  code: 'EBUSY',
+  syscall: 'open',
+  path: 'C:\\Projects\\hlidarkaup\\.next\\dev\\types\\validator.ts'
+}
+⚠ Failed to reload dynamic routes: Error: EBUSY: resource busy or locked, open 'C:\Projects\hlidarkaup\.next\dev\types\validator.ts'
+    at ignore-listed frames {
+  errno: -4082,
+  code: 'EBUSY',
+  syscall: 'open',
+  path: 'C:\\Projects\\hlidarkaup\\.next\\dev\\types\\validator.ts'
+}
+⨯ TypeError: Cannot read properties of undefined (reading 'filter')
+    at ReiknivelPage (app\bokhald\laun\reiknivel\page.tsx:16:27)
+  14 |     <Reiknivel
+  15 |       cfg={cfg}
+> 16 |       unions={unions.rows.filter((u) => u.is_active).map((u) => ({ id: u.id, name: u.name ...
+     |                           ^
+  17 |       funds={funds.rows
+  18 |         .filter((f) => f.rate_pct != null)
+  19 |         .map((f) => ({ union_id: f.union_id, payer: f.payer, fund_type: f.fund_type, rate_... {
+  digest: '2510612643'
+}
+⨯ TypeError: Cannot read properties of undefined (reading 'filter')
+    at ReiknivelPage (app\bokhald\laun\reiknivel\page.tsx:16:27)
+  14 |     <Reiknivel
+  15 |       cfg={cfg}
+> 16 |       unions={unions.rows.filter((u) => u.is_active).map((u) => ({ id: u.id, name: u.name ...
+     |                           ^
+  17 |       funds={funds.rows
+  18 |         .filter((f) => f.rate_pct != null)
+  19 |         .map((f) => ({ union_id: f.union_id, payer: f.payer, fund_type: f.fund_type, rate_... {
+  digest: '2510612643'
+}
+[browser] Uncaught TypeError: Cannot read properties of undefined (reading 'filter')
+    at ReiknivelPage (app\bokhald\laun\reiknivel\page.tsx:16:27)
+  14 |     <Reiknivel
+  15 |       cfg={cfg}
+> 16 |       unions={unions.rows.filter((u) => u.is_active).map((u) => ({ id: u.id, name: u.name ...
+     |                           ^
+  17 |       funds={funds.rows
+  18 |         .filter((f) => f.rate_pct != null)
+  19 |         .map((f) => ({ union_id: f.union_id, payer: f.payer, fund_type: f.fund_type, rate_...
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ TypeError: Cannot read properties of undefined (reading 'filter')
+    at ReiknivelPage (app\bokhald\laun\reiknivel\page.tsx:16:27)
+  14 |     <Reiknivel
+  15 |       cfg={cfg}
+> 16 |       unions={unions.rows.filter((u) => u.is_active).map((u) => ({ id: u.id, name: u.name ...
+     |                           ^
+  17 |       funds={funds.rows
+  18 |         .filter((f) => f.rate_pct != null)
+  19 |         .map((f) => ({ union_id: f.union_id, payer: f.payer, fund_type: f.fund_type, rate_... {
+  digest: '2510612643'
+}
+[browser] Uncaught TypeError: Cannot read properties of undefined (reading 'filter')
+    at ReiknivelPage (app\bokhald\laun\reiknivel\page.tsx:16:27)
+  14 |     <Reiknivel
+  15 |       cfg={cfg}
+> 16 |       unions={unions.rows.filter((u) => u.is_active).map((u) => ({ id: u.id, name: u.name ...
+     |                           ^
+  17 |       funds={funds.rows
+  18 |         .filter((f) => f.rate_pct != null)
+  19 |         .map((f) => ({ union_id: f.union_id, payer: f.payer, fund_type: f.fund_type, rate_...
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Failed to reload dynamic routes: Error: EBUSY: resource busy or locked, open 'C:\Projects\hlidarkaup\.next\dev\types\validator.ts'
+    at ignore-listed frames {
+  errno: -4082,
+  code: 'EBUSY',
+  syscall: 'open',
+  path: 'C:\\Projects\\hlidarkaup\\.next\\dev\\types\\validator.ts'
+}
+⨯ SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)
+    at JSON.parse (<anonymous>)
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <RenderFromTemplateContext>
+      <ScrollAndMaybeFocusHandler cacheNode={{...}}>
+        <InnerScrollAndFocusHandlerOld focusAndScrollRef={{scrollRef:null, ...}} cacheNode={{...}}>
+          <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+            <LoadingBoundary name="/" loading={null}>
+              <HTTPAccessFallbackBoundary notFound={<SegmentViewNode>} forbidden={undefined} unauthorized={undefined}>
+                <HTTPAccessFallbackErrorBoundary pathname="/bokhald" notFound={<SegmentViewNode>} forbidden={undefined} ...>
+                  <RedirectBoundary>
+                    <RedirectErrorBoundary router={{...}}>
+                      <InnerLayoutRouter url="/bokhald" tree={[...]} params={{}} cacheNode={{...}} segmentPath={[...]} ...>
+                        <SegmentViewNode type="layout" pagePath="bokhald/la...">
+                          <SegmentTrieNode>
+                          <script>
+                          <script>
+                          <BokhaldLayout>
+                            <div
++                             className="min-h-screen bg-gray-50 text-gray-900"
+-                             className="bg-gray-50 text-gray-900 min-h-screen pb-24 sm:pb-0"
+                            >
++                             <div className="flex">
+-                             <header className="bg-brand-red shadow-md sticky top-0 z-50">
+                      ...
+          ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at div (<anonymous>)
+    at BokhaldLayout (app\bokhald\layout.tsx:15:6)
+  13 |
+  14 |   return (
+> 15 |     <div className="min-h-screen bg-[#FFF6F6] text-[#21323A]">
+     |      ^
+  16 |       <header className="sticky top-0 z-50 bg-[#2C687B] shadow-sm">
+  17 |         <div className="max-w-7xl mx-auto px-6">
+  18 |           <div className="h-14 flex items-center justify-between gap-4">
+[browser] Google Maps JavaScript API has been loaded directly without loading=async. This can result in suboptimal performance. For best-practice loading patterns please see https://goo.gle/js-api-loading (https://maps.googleapis.com/maps/api/js?key=AIzaSyCXtz6NYeXZJZgxY8YzmI5l_EHZiEYSvk4&libraries=places:2493:325)
+[browser] As of March 1st, 2025, google.maps.places.Autocomplete is not available to new customers. Please use google.maps.places.PlaceAutocompleteElement instead. At this time, google.maps.places.Autocomplete is not scheduled to be discontinued, but google.maps.places.PlaceAutocompleteElement is recommended over google.maps.places.Autocomplete. While google.maps.places.Autocomplete will continue to receive bug fixes for any major regressions, existing bugs in google.maps.places.Autocomplete will not be addressed. At least 12 months notice will be given before support is discontinued. Please see https://developers.google.com/maps/legacy for additional details and https://developers.google.com/maps/documentation/javascript/places-migration-overview for the migration guide. (https://maps.googleapis.com/maps/api/js?key=AIzaSyCXtz6NYeXZJZgxY8YzmI5l_EHZiEYSvk4&libraries=places:904:352)
+⚠ Found a change in next.config.js. Restarting the server to apply the changes...
+⚠ `eslint` configuration in next.config.js is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+⚠ Invalid next.config.js options detected: 
+⚠     Unrecognized key(s) in object: 'eslint'
+⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+[browser] ⨯ unhandledRejection: ChunkLoadError: Failed to load chunk /_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_1mojsay._.js from module [turbopack]/browser/dev/hmr-client/hmr-client.ts [app-client] (ecmascript, async loader)

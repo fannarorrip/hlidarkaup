@@ -113,7 +113,12 @@ export default function CheckoutView({ meals }: { meals: Meal[] }) {
         body: JSON.stringify({
           email: email.trim(), ref, plan, deliveryType,
           address: deliveryType === "delivery" ? address : null,
-          time, date: dayLabel, items: selectedMeals.map((m) => ({ title: m.title })), total: grandTotal,
+          time, date: dayLabel,
+          // Per-meal price (pricePerServing × portions) at 11% so the sale itemises in the ledger;
+          // delivery is sent separately and booked as a 24% line.
+          items: selectedMeals.map((m) => ({ title: m.title, price: box.pricePerServing, quantity: box.portions, vat_rate: 11 })),
+          shipping: shipping ?? 0,
+          total: grandTotal,
         }),
       }).catch(() => { /* email is best-effort */ });
     }

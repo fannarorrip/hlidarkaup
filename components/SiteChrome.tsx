@@ -6,7 +6,7 @@ import CartBar from "@/components/CartBar";
 import Footer from "@/components/Footer";
 
 // Sections that render their own full-page chrome (no main site header/footer).
-const BARE_PREFIXES = ["/eldhus", "/kassi"];
+const BARE_PREFIXES = ["/eldhus", "/kassi", "/bokhald"];
 
 export default function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
