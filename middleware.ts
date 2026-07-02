@@ -45,6 +45,8 @@ function rolesFor(pathname: string): string[] | null {
 // Staff-auth endpoints + login page need no session (they ARE the way in) — but they still fall
 // under the LAN-only block below, so the login screen isn't even visible from the internet.
 const PUBLIC_STAFF = ["/starf/login", "/api/auth/staff/login", "/api/auth/staff/logout"];
+// In-store kiosk (self-checkout) — private to the shop, like the back office.
+const KIOSK = ["/kassi", "/api/kassi"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -61,6 +63,13 @@ export async function middleware(req: NextRequest) {
   }
 
   if (PUBLIC_STAFF.some((p) => pathname === p || pathname.startsWith(p + "/"))) return NextResponse.next();
+
+  // In-store kiosk surfaces (self-checkout page + its APIs): no staff session on the LAN, but
+  // caught by the tunnel block above — the internet gets 404. Staff-gated kassi paths
+  // (/kassi/starf, /api/kassi/sale) have RULES entries and continue to the session check.
+  if (KIOSK.some((p) => pathname === p || pathname.startsWith(p + "/")) && !rolesFor(pathname)) {
+    return NextResponse.next();
+  }
 
   const token = req.cookies.get(STAFF_COOKIE)?.value;
   const session = token ? await verifyStaffSession(token) : null;
@@ -88,7 +97,8 @@ export const config = {
     "/starf", "/starf/:path*",
     "/api/auth/staff/:path*",
     "/bokhald/:path*",
-    "/kassi/starf", "/kassi/starf/:path*",
+    "/kassi", "/kassi/:path*",
+    "/api/kassi/:path*",
     "/admin/:path*",
     "/eldhus/admin", "/eldhus/admin/:path*",
     "/api/eldhus/admin", "/api/eldhus/admin/:path*",
@@ -116,6 +126,5 @@ export const config = {
     "/api/kassauppgjor/:path*",
     "/api/pantanir/:path*",
     "/api/bankatenging/:path*",
-    "/api/kassi/sale",
   ],
 };

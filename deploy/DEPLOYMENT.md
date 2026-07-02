@@ -140,7 +140,7 @@ The bókhald and all admin surfaces are **never reachable from the internet**. T
    ```yaml
    ingress:
      - hostname: hlidarkaup.is
-       path: ^/(bokhald|starf|admin|kassi/starf|eldhus/admin|api/(auth/staff|staff|bankatenging|laun|skraning|afstemming|kassauppgjor|profjofnudur|rekstur|efnahagur|arsreikningur|vsk|hreyfingar|reikningur|suppliers|innkaup|purchases|customers|pantanir|einvoice|manaduppgjor|manadarreikningur|birgdaskyrsla)).*
+       path: ^/(bokhald|starf|admin|kassi|eldhus/admin|api/(auth/staff|staff|kassi|bankatenging|laun|skraning|afstemming|kassauppgjor|profjofnudur|rekstur|efnahagur|arsreikningur|vsk|hreyfingar|reikningur|suppliers|innkaup|purchases|customers|pantanir|einvoice|manaduppgjor|manadarreikningur|birgdaskyrsla)).*
        service: http_status:404
      - hostname: hlidarkaup.is
        service: http://127.0.0.1:3000
