@@ -77,9 +77,26 @@ export async function middleware(req: NextRequest) {
   // cannot remove it); direct LAN/VPN requests to :3000 never have it. Everything this middleware
   // matches (bókhald, kassi/starf, admin APIs, staff login) 404s from the internet.
   if (process.env.ADMIN_LAN_ONLY === "true" && req.headers.get("cf-ray") !== null) {
-    return isApi
-      ? NextResponse.json({ error: "Not found" }, { status: 404 })
-      : new NextResponse("Not found", { status: 404 });
+    // Narrow exception: a short allowlist of external IPs may reach the in-store TILL over the
+    // tunnel (HTTPS) for remote peripheral testing — printer, skúffa, scanner, scale. Scoped to the
+    // kassi tree + the staff-login endpoints it needs; bókhald/admin stay strictly LAN-only.
+    // CF-Connecting-IP is stamped by Cloudflare and overwrites any client-supplied value, so it
+    // cannot be spoofed for tunnel traffic. Clear KASSI_REMOTE_ALLOW_IPS to shut the door again.
+    const allowIps = (process.env.KASSI_REMOTE_ALLOW_IPS ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const clientIp = (req.headers.get("cf-connecting-ip") ?? "").trim();
+    const tillSurface = [...KIOSK, ...PUBLIC_STAFF].some(
+      (p) => pathname === p || pathname.startsWith(p + "/"),
+    );
+    const remoteTillOk = tillSurface && clientIp !== "" && allowIps.includes(clientIp);
+    if (!remoteTillOk) {
+      return isApi
+        ? NextResponse.json({ error: "Not found" }, { status: 404 })
+        : new NextResponse("Not found", { status: 404 });
+    }
+    // allowlisted IP → fall through to the normal kiosk / staff-session flow below.
   }
 
   if (PUBLIC_STAFF.some((p) => pathname === p || pathname.startsWith(p + "/"))) return NextResponse.next();
