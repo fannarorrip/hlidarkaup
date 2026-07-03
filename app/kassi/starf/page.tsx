@@ -266,12 +266,12 @@ export default function StaffTill() {
                   className="relative text-left rounded-xl overflow-hidden min-h-[112px] bg-white border border-gray-200 active:scale-[0.97] transition hover:border-[#8CC7C4] hover:shadow-sm">
                   {p.image ? (
                     <>
-                      {/* photo fills the whole tile; name+price overlay on a bottom scrim */}
+                      {/* photo fills the whole tile; name+price in dark text over a light bottom scrim */}
                       <div className="absolute inset-0 bg-white bg-cover bg-center" style={{ backgroundImage: `url(${p.image})` }} aria-hidden />
-                      <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/65 via-black/25 to-transparent" aria-hidden />
+                      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-white/85 via-white/40 to-transparent" aria-hidden />
                       <div className="relative min-h-[112px] flex flex-col justify-end p-2.5">
-                        <p className="text-[13px] font-semibold leading-snug line-clamp-2 text-white drop-shadow-sm">{p.name}</p>
-                        <p className="text-lg font-bold text-white drop-shadow-sm">{kr(p.price)}</p>
+                        <p className="text-[13px] font-semibold leading-snug line-clamp-2 text-[#21323A]">{p.name}</p>
+                        <p className="text-lg font-bold text-[#2C687B]">{kr(p.price)}</p>
                       </div>
                     </>
                   ) : (
