@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { verifyStaffSession, STAFF_COOKIE } from "@/lib/staff-session";
+import { isComingSoon } from "@/lib/site-status";
 
 // Role-based access for the unified admin. Most-specific prefix first.
 const RULES: { prefix: string; roles: string[] }[] = [
@@ -52,6 +53,25 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isApi = pathname.startsWith("/api/");
 
+  // --- Public "coming soon" gate ---------------------------------------------
+  // The webshop + public eldhús pages show the splash (app/vinnsla) until we open.
+  // Back office (bókhald/kassi/starf/admin + their APIs, staff login) is never gated here —
+  // it stays reachable so the owner can prepare. Static assets aren't matched at all.
+  const isBackOffice =
+    isApi ||
+    !!rolesFor(pathname) ||
+    KIOSK.some((p) => pathname === p || pathname.startsWith(p + "/")) ||
+    PUBLIC_STAFF.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  if (!isBackOffice && pathname !== "/vinnsla") {
+    if (isComingSoon()) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/vinnsla";
+      return NextResponse.rewrite(url); // same URL, splash content
+    }
+    return NextResponse.next(); // open: public pages pass straight through (no LAN block / auth)
+  }
+  // ---------------------------------------------------------------------------
+
   // ADMIN_LAN_ONLY=true (production): the back office is reachable ONLY from the store LAN / VPN.
   // Tunnel traffic always carries Cloudflare's cf-ray header (added at the edge — a public client
   // cannot remove it); direct LAN/VPN requests to :3000 never have it. Everything this middleware
@@ -94,6 +114,14 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
+    // public pages behind the "coming soon" gate
+    "/",
+    "/cart", "/cart/:path*",
+    "/checkout", "/checkout/:path*",
+    "/confirmation", "/confirmation/:path*",
+    "/eldhus", "/eldhus/:path*",
+    "/sjalfsali", "/sjalfsali/:path*",
+    // back office
     "/starf", "/starf/:path*",
     "/api/auth/staff/:path*",
     "/bokhald/:path*",
