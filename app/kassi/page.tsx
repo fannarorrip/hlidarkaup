@@ -1154,25 +1154,18 @@ export default function KassiPage() {
       {bagModalOpen && bagProduct && (
         <div className="absolute inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-8">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-3xl p-10 flex gap-10" style={PATTERN_BG}>
-            {/* Left: bag with eyes + price tag */}
+            {/* Left: the real Hlíðarkaup bag (public/poki.png, from the print design) + price sticker */}
             <div className="flex-1 flex flex-col">
               <h2 className="text-3xl font-extrabold mb-4" style={{ color: INK }}>{t.bagTitle}</h2>
-              <svg viewBox="0 0 220 200" className="w-full max-w-xs mx-auto">
-                {/* Price tag */}
-                <g transform="rotate(-14 60 50)">
-                  <rect x="14" y="34" width="96" height="34" rx="6" fill={RED} />
-                  <text x="62" y="57" textAnchor="middle" fontSize="17" fontWeight="800" fill="#fff">
+              <div className="relative mx-auto mt-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/poki.png" alt="Hlíðarkaup poki" className="h-96 w-auto" />
+                <div className="absolute -left-12 top-20 -rotate-12 rounded-lg px-3.5 py-2 bg-white shadow-lg border-2" style={{ borderColor: RED }}>
+                  <span className="font-extrabold text-lg whitespace-nowrap" style={{ color: RED }}>
                     {bagProduct.price.toLocaleString("is-IS")} kr. {t.pcs}
-                  </text>
-                </g>
-                <path d="M104 64 q14 10 18 26" fill="none" stroke={INK} strokeWidth="2.5" strokeDasharray="1 6" strokeLinecap="round" />
-                {/* Paper bag */}
-                <rect x="92" y="88" width="92" height="96" rx="6" fill="#E8C99B" stroke={INK} strokeWidth="3" />
-                <path d="M112 88 q0 -22 26 -22 q26 0 26 22" fill="none" stroke={INK} strokeWidth="3.5" />
-                <line x1="92" y1="170" x2="184" y2="170" stroke={INK} strokeWidth="2" strokeDasharray="5 5" opacity="0.35" />
-                {/* Hlíðarkaup logo on the bag */}
-                <image href="/logo.png" x="100" y="118" width="76" height="40" preserveAspectRatio="xMidYMid meet" />
-              </svg>
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Right: choose quantity numpad */}
