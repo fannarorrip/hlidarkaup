@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { TouchKeyboard, NumPad } from "./Keyboard";
+import { kbHealth, kbScanEvents, kbPrint, kbDrawer, kbWeigh, formatReceipt } from "@/lib/kassabru";
 
 interface Line { id: string; name: string; price: number; vatPct?: number; quantity: number; priceOverride?: number; discount?: number; }
 interface Customer { id: string; name: string; kennitala: string | null; is_account: boolean; }
-interface SItem { id: string; name: string; price: number; vatPct?: number; image?: string; }
+interface SItem { id: string; name: string; price: number; vatPct?: number; image?: string; useScale?: boolean; }
 interface Category { group: string; name: string; count: number; }
 interface HeldSale { id: string; label: string | null; customer_id: string | null; customer_name: string | null; customer_is_account: boolean | null; total: string; cart: Line[]; created_at: string; }
 type Mode = "card" | "cash" | "account" | "transfer";
@@ -44,6 +45,8 @@ export default function StaffTill() {
   const [editFresh, setEditFresh] = useState(true); // first numpad digit REPLACES a just-selected field
   const [toast, setToast] = useState("");
   const [terminalEnabled, setTerminalEnabled] = useState(false);
+  const [bridge, setBridge] = useState(false); // kassabrú (local hardware bridge) reachable
+  const bridgeRef = useRef(false);
   const [waiting, setWaiting] = useState("");
   const [clock, setClock] = useState("");
   const [kb, setKb] = useState<"search" | "customer" | null>(null); // on-screen keyboard target
@@ -74,14 +77,16 @@ export default function StaffTill() {
     return () => clearTimeout(t);
   }, [custQ, custOpen]);
 
-  const addItem = (d: SItem) => { setError(""); setCart((p) => { const e = p.find((l) => l.id === d.id); return e ? p.map((l) => l.id === d.id ? { ...l, quantity: l.quantity + 1 } : l) : [...p, { id: d.id, name: d.name, price: d.price, vatPct: d.vatPct, quantity: 1 }]; }); };
+  const addItem = (d: SItem, qty = 1) => { setError(""); setCart((p) => { const e = p.find((l) => l.id === d.id); return e ? p.map((l) => l.id === d.id ? { ...l, quantity: l.quantity + qty } : l) : [...p, { id: d.id, name: d.name, price: d.price, vatPct: d.vatPct, quantity: qty }]; }); };
   const changeQty = (id: string, d: number) => setCart((p) => p.map((l) => l.id === id ? { ...l, quantity: l.quantity + d } : l).filter((l) => l.quantity > 0));
   const removeLine = (id: string) => setCart((p) => p.filter((l) => l.id !== id));
   const openEdit = (l: Line) => { setEditField("qty"); setEditFresh(true); setEdit({ id: l.id, name: l.name, catalog: l.price, qty: String(l.quantity), unit: String(effUnit(l)), disc: String(l.discount ?? 0), discPct: false }); };
   const selectField = (f: "qty" | "unit" | "disc") => { setEditField(f); setEditFresh(true); };
   function applyEdit() {
     if (!edit) return;
-    const qty = Math.max(1, Math.round(Number(edit.qty)) || 1);
+    // Fractional quantities are legitimate (vigtarvara in kg) — don't round them away.
+    const qtyRaw = Number(edit.qty) || 1;
+    const qty = Number.isInteger(qtyRaw) ? Math.max(1, Math.round(qtyRaw)) : Math.max(0.001, qtyRaw);
     const unit = Math.max(0, Math.round(Number(edit.unit)) || 0);
     const dIn = Math.max(0, Number(edit.disc) || 0);
     const discKr = edit.discPct ? Math.round((unit * qty * dIn) / 100) : Math.round(dIn);
@@ -93,8 +98,19 @@ export default function StaffTill() {
     const c = code.trim(); if (!c) return;
     const r = await fetch(`/api/kassi/scan?code=${encodeURIComponent(c)}`); const d = await r.json();
     if (!r.ok) { setError(d.error ?? "Vara fannst ekki"); setScan(""); return; }
-    addItem(d); setScan(""); scanRef.current?.focus();
+    if (d.useScale && bridgeRef.current) {
+      // vigtarvara: the item is on the scanner's scale — price per kg × stable weight
+      const w = await kbWeigh();
+      if (!w.ok) { setToast(w.message); setTimeout(() => setToast(""), 4500); setScan(""); return; }
+      addItem(d, w.kg);
+    } else {
+      addItem(d);
+    }
+    setScan(""); scanRef.current?.focus();
   }
+  // Stable handle for the bridge's scan-event stream (subscribed once, below).
+  const addByCodeRef = useRef(addByCode);
+  useEffect(() => { addByCodeRef.current = addByCode; });
 
   // Global barcode scanner: a keyboard-wedge scan is captured even when the scan box isn't
   // focused. A fast burst of characters ending in Enter (and NOT while typing in a text field)
@@ -120,6 +136,29 @@ export default function StaffTill() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Kassabrú: local hardware bridge (NCR scanner/scale + printer + drawer on this PC).
+  // When present, scans arrive over SSE instead of the keyboard wedge — same overlay gating.
+  useEffect(() => {
+    let stop = false;
+    let cleanup: (() => void) | undefined;
+    kbHealth().then((ok) => {
+      if (stop || !ok) return;
+      bridgeRef.current = true; setBridge(true);
+      cleanup = kbScanEvents((code) => { if (!overlayRef.current) addByCodeRef.current(code); });
+    });
+    return () => { stop = true; cleanup?.(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Print via the bridge (real receipt printer) with browser print as fallback.
+  function printReceipt(d: NonNullable<typeof done>, kickDrawer = false) {
+    const text = formatReceipt({
+      invoiceNumber: d.invoiceNumber, total: d.total, mode: d.mode, change: d.change, isReturn: d.isReturn,
+      lines: d.lines.map((l) => ({ name: l.name, quantity: l.quantity, price: effUnit(l), vatPct: l.vatPct, discount: l.discount })),
+    });
+    kbPrint(text, { drawer: kickDrawer }).then((ok) => { if (!ok) window.print(); });
+  }
+
   async function checkout(mode: Mode, change?: number) {
     if (!cart.length) return;
     if (mode === "account" && (!customer || !customer.is_account)) { setError("Veldu reikningsviðskiptamann"); return; }
@@ -128,8 +167,10 @@ export default function StaffTill() {
     const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: cart.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, customerId: customer?.id, payment: { approved: true, processor: "STAFF" } }) });
     const d = await r.json(); setBusy(false);
     if (!r.ok) { setError(d.error ?? "Villa við að skrá söluna"); return; }
-    setDone({ invoiceNumber: d.invoiceNumber, total, mode, change, lines: snapshot });
-    if (mode === "cash") fetch("/api/kassi/drawer", { method: "POST" }).catch(() => {}); // auto-open on cash
+    const doneObj = { invoiceNumber: d.invoiceNumber, total, mode, change, lines: snapshot };
+    setDone(doneObj);
+    if (bridgeRef.current) printReceipt(doneObj, mode === "cash"); // receipt + drawer kick in one go
+    else if (mode === "cash") fetch("/api/kassi/drawer", { method: "POST" }).catch(() => {}); // auto-open on cash
     setCart([]); setCustomer(null); setCashFor(false); setCashGot("");
   }
   function pay(mode: Mode) {
@@ -178,6 +219,12 @@ export default function StaffTill() {
   }
   async function discardHeld(id: string) { await fetch(`/api/kassi/held/${id}`, { method: "DELETE" }).catch(() => {}); loadHeld(); }
   async function openDrawer() {
+    if (bridgeRef.current) {
+      const ok = await kbDrawer();
+      setToast(ok ? "Skúffa opnuð" : "Skúffa ekki tengd");
+      setTimeout(() => setToast(""), 4500);
+      return;
+    }
     const r = await fetch("/api/kassi/drawer", { method: "POST" }).catch(() => null);
     const d = r ? await r.json().catch(() => ({})) : {};
     setToast(d.ok ? "Skúffa opnuð" : (d.message ?? d.error ?? "Skúffa ekki tengd"));
@@ -191,7 +238,9 @@ export default function StaffTill() {
     const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: cart.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, kind: "return", customerId: customer?.id, payment: { approved: true, processor: "STAFF" } }) });
     const d = await r.json(); setBusy(false);
     if (!r.ok) { setError(d.error ?? "Villa við skil"); return; }
-    setDone({ invoiceNumber: d.invoiceNumber, total, mode, lines: snapshot, isReturn: true });
+    const doneObj = { invoiceNumber: d.invoiceNumber, total, mode, lines: snapshot, isReturn: true };
+    setDone(doneObj);
+    if (bridgeRef.current) printReceipt(doneObj);
     setCart([]); setCustomer(null); setReturnMode(false);
   }
 
@@ -227,6 +276,7 @@ export default function StaffTill() {
         <div className="flex items-center gap-3">
           <span className="text-white font-extrabold text-xl tracking-tight">Hlíðarkaup<span className="text-[#DB1A1A]">.</span></span>
           <span className="text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/10 text-[#8CC7C4]">Kassi</span>
+          {bridge && <span className="text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-400/20 text-emerald-200">Vél tengd</span>}
         </div>
         <div className="flex items-center gap-2.5">
           <span className="tabular-nums text-lg text-[#E4F1F0] mr-2">{clock}</span>
@@ -502,7 +552,7 @@ export default function StaffTill() {
             {done.isReturn && <p className="text-lg mb-2">Endurgreitt: <b>{kr(done.total)}</b></p>}
             {!done.isReturn && done.mode === "cash" && done.change != null && done.change > 0 && <p className="text-lg mb-2">Til baka: <b>{kr(done.change)}</b></p>}
             <div className="flex gap-3 mt-5">
-              <button onClick={() => window.print()} className="flex-1 py-4 rounded-xl border-2 border-gray-200 font-semibold hover:bg-gray-50">Prenta</button>
+              <button onClick={() => printReceipt(done)} className="flex-1 py-4 rounded-xl border-2 border-gray-200 font-semibold hover:bg-gray-50">Prenta</button>
               <button onClick={newSale} className={`flex-1 py-4 rounded-xl ${RED} text-white font-semibold`}>Ný sala</button>
             </div>
           </div>
