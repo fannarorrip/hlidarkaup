@@ -127,7 +127,7 @@ export default function CheckoutPage() {
     return (
       <div className="text-center py-24">
         <p className="text-xl text-gray-600 mb-4">Karfan er tóm</p>
-        <Link href="/" className="text-brand-red hover:underline font-medium">← Til baka í vörur</Link>
+        <Link href="/vefverslun" className="text-brand-red hover:underline font-medium">← Til baka í vörur</Link>
       </div>
     );
   }

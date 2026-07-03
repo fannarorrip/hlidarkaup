@@ -12,7 +12,7 @@ export default function CartPage() {
       <div className="text-center py-24">
         <p className="text-2xl mb-4">🛒</p>
         <h2 className="text-xl font-semibold text-gray-700 mb-2">Karfan er tóm</h2>
-        <Link href="/" className="text-brand-red hover:underline font-medium">
+        <Link href="/vefverslun" className="text-brand-red hover:underline font-medium">
           ← Til baka í vörur
         </Link>
       </div>
@@ -75,7 +75,7 @@ export default function CartPage() {
         >
           Halda áfram í greiðslu →
         </Link>
-        <Link href="/" className="block text-center mt-3 text-sm text-gray-500 hover:text-brand-red">
+        <Link href="/vefverslun" className="block text-center mt-3 text-sm text-gray-500 hover:text-brand-red">
           ← Halda áfram að versla
         </Link>
       </div>

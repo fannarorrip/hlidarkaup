@@ -6,11 +6,12 @@ import CartBar from "@/components/CartBar";
 import Footer from "@/components/Footer";
 
 // Sections that render their own full-page chrome (no main site header/footer).
-const BARE_PREFIXES = ["/eldhus", "/kassi", "/bokhald"];
+const BARE_PREFIXES = ["/eldhus", "/kassi", "/bokhald", "/vinnsla"];
 
 export default function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
-  const bare = BARE_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  // "/" is the landing page (its own full-page design); the webshop now lives at /vefverslun.
+  const bare = pathname === "/" || BARE_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
   if (bare) return <>{children}</>;
 

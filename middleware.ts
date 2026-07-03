@@ -116,6 +116,7 @@ export const config = {
   matcher: [
     // public pages behind the "coming soon" gate
     "/",
+    "/vefverslun", "/vefverslun/:path*",
     "/cart", "/cart/:path*",
     "/checkout", "/checkout/:path*",
     "/confirmation", "/confirmation/:path*",

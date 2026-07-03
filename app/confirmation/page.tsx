@@ -48,7 +48,7 @@ function ConfirmationContent() {
       </p>
 
       <Link
-        href="/"
+        href="/vefverslun"
         className="inline-block bg-brand-red hover:bg-brand-red-dark text-white font-bold px-8 py-3 rounded-xl transition-colors"
       >
         Panta aftur

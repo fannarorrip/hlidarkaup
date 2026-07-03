@@ -60,16 +60,13 @@ export default function Vinnsla() {
       </div>
 
       <div className="relative flex flex-col items-center gap-8 sm:gap-10 max-w-3xl">
-        {/* white logo + slogan lockup, big */}
-        <div className="flex flex-col items-center">
-          <img
-            src="/logo.png"
-            alt="Hlíðarkaup"
-            className="h-24 sm:h-44 w-auto max-w-full drop-shadow-md"
-            style={{ filter: "brightness(0) invert(1)" }}
-          />
-          <p className="mt-1 text-white text-xl sm:text-3xl font-medium tracking-wide">- með þér alla daga</p>
-        </div>
+        {/* full logo lockup (wordmark + slogan), white on the red field, large */}
+        <img
+          src="/logo-splash.png"
+          alt="Hlíðarkaup — með þér alla daga"
+          className="w-full max-w-md sm:max-w-2xl h-auto drop-shadow-md"
+          style={{ filter: "brightness(0) invert(1)" }}
+        />
 
         <div>
           <h1 className="text-2xl sm:text-4xl font-extrabold text-white">Þessi síða er í vinnslu</h1>
