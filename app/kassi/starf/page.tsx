@@ -97,11 +97,19 @@ export default function StaffTill() {
 
   // Single entry point for putting a product in the cart — grid tiles, search results and
   // scans all go through here, so vigtarvara is ALWAYS weighed (price per kg × stable weight).
+  // The scale can hold only ONE conversation at a time — rapid-fire clicks must not queue up.
+  const weighBusyRef = useRef(false);
   async function addProduct(d: SItem) {
     if (d.useScale && bridgeRef.current) {
-      const w = await kbWeigh();
-      if (!w.ok) { setToast(w.message); setTimeout(() => setToast(""), 4500); return; }
-      addItem(d, w.kg);
+      if (weighBusyRef.current) { setToast("Vigtun þegar í gangi — bíddu augnablik"); setTimeout(() => setToast(""), 3000); return; }
+      weighBusyRef.current = true;
+      try {
+        const w = await kbWeigh();
+        if (!w.ok) { setToast(w.message); setTimeout(() => setToast(""), 4500); return; }
+        addItem(d, w.kg);
+      } finally {
+        weighBusyRef.current = false;
+      }
     } else {
       addItem(d);
     }

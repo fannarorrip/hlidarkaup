@@ -73,7 +73,9 @@ namespace Kassabru
         class ScaleWait
         {
             public readonly ManualResetEvent Done = new ManualResetEvent(false);
-            public string Frame; // scale frame content (e.g. "1105500"), without ETX/BCC
+            public string Frame;        // scale frame content (e.g. "1105500"), without ETX/BCC
+            public string Expect = "11"; // frame kind this waiter is for ("11" weight, "13" status) —
+                                         // stale frames from an earlier request must not satisfy it
         }
 
         static void Main(string[] args)
@@ -413,9 +415,10 @@ namespace Kassabru
             }
             else if (s.StartsWith("1"))
             {
-                // scale frame (11=weight, 13=status, 10=ack) — hand to a waiting /weigh call
+                // scale frame (11=weight, 13=status, 10=ack) — hand to the waiting /weigh call,
+                // but ONLY the kind it asked for; anything else is a stale leftover and is dropped
                 var w = scaleWait;
-                if (w != null && (s.StartsWith("11") || s.StartsWith("13")))
+                if (w != null && s.StartsWith(w.Expect))
                 {
                     w.Frame = s;
                     w.Done.Set();
@@ -434,7 +437,9 @@ namespace Kassabru
                 WriteJson(resp, 429, "{\"ok\":false,\"reason\":\"busy\",\"message\":\"Vigtun þegar í gangi\"}");
                 return;
             }
-            var w = new ScaleWait();
+            Thread.Sleep(150);   // let stray frames from a previous transaction land while scaleWait
+                                 // is null (they get dropped) instead of poisoning this one
+            var w = new ScaleWait();     // Expect = "11" (weight)
             scaleWait = w;
             try
             {
@@ -452,33 +457,35 @@ namespace Kassabru
                 }
                 // No stable non-zero weight: cancel the pending weigh, then ask why.
                 var w2 = new ScaleWait();
+                w2.Expect = "13";                                      // only a STATUS frame satisfies this waiter
                 scaleWait = w2;
                 SendScannerFrame(new byte[] { 0x31, 0x32 });           // Cancel weigh
                 Thread.Sleep(150);
                 SendScannerFrame(new byte[] { 0x31, 0x33 });           // Scale status
                 string reason = "unknown", message = "Vigtun mistókst";
-                if (w2.Done.WaitOne(1200) && w2.Frame != null)
+                if (w2.Done.WaitOne(1200) && w2.Frame != null && w2.Frame.Length >= 7)
                 {
-                    if (w2.Frame.StartsWith("11"))
+                    char z = w2.Frame[6];   // 13 3V 3W 3X 3Y 3Z — z = ready-state digit
+                    if (z == '4')
                     {
-                        // the weight landed just after our timeout — take it, it's still valid
-                        int raw2;
-                        if (int.TryParse(w2.Frame.Substring(2), NumberStyles.None, CultureInfo.InvariantCulture, out raw2))
+                        // a stable weight is sitting there ready — just weigh again, it answers instantly
+                        var w3 = new ScaleWait();                      // Expect = "11"
+                        scaleWait = w3;
+                        SendScannerFrame(new byte[] { 0x31, 0x31 });
+                        int raw3;
+                        if (w3.Done.WaitOne(1500) && w3.Frame != null &&
+                            int.TryParse(w3.Frame.Substring(2), NumberStyles.None, CultureInfo.InvariantCulture, out raw3))
                         {
-                            WriteJson(resp, 200, string.Format(CultureInfo.InvariantCulture, "{{\"ok\":true,\"kg\":{0:0.###}}}", raw2 / 1000.0));
+                            WriteJson(resp, 200, string.Format(CultureInfo.InvariantCulture, "{{\"ok\":true,\"kg\":{0:0.###}}}", raw3 / 1000.0));
                             return;
                         }
+                        reason = "ready"; message = "Þyngd tilbúin — reyndu aftur";
                     }
-                    if (w2.Frame.StartsWith("13") && w2.Frame.Length >= 7)
-                    {
-                        char z = w2.Frame[6];   // 13 3V 3W 3X 3Y 3Z — z = ready-state digit
-                        if (z == '0') { reason = "notready"; message = "Vigt ekki tilbúin — núllstilla þarf vigtina"; }
-                        else if (z == '1') { reason = "motion"; message = "Vigtin er á hreyfingu — bíddu augnablik"; }
-                        else if (z == '2') { reason = "over"; message = "Of þungt á vigtinni"; }
-                        else if (z == '3') { reason = "zero"; message = "Ekkert á vigtinni"; }
-                        else if (z == '4') { reason = "ready"; message = "Þyngd tilbúin — reyndu aftur"; }
-                        else if (z == '5') { reason = "sent"; message = "Lyftu vörunni af og settu aftur á vigtina"; }
-                    }
+                    else if (z == '0') { reason = "notready"; message = "Vigt ekki tilbúin — núllstilla þarf vigtina"; }
+                    else if (z == '1') { reason = "motion"; message = "Vigtin er á hreyfingu — bíddu augnablik"; }
+                    else if (z == '2') { reason = "over"; message = "Of þungt á vigtinni"; }
+                    else if (z == '3') { reason = "zero"; message = "Ekkert á vigtinni"; }
+                    else if (z == '5') { reason = "sent"; message = "Lyftu vörunni af og settu aftur á vigtina"; }
                 }
                 WriteJson(resp, 200, string.Format("{{\"ok\":false,\"reason\":\"{0}\",\"message\":\"{1}\"}}", reason, message));
             }
