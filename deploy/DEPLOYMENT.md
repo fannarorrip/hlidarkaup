@@ -219,8 +219,9 @@ Also add the app crons (same crontab):
 - **App code: only when we ship something.** The app is your own software — there's no vendor
   pushing updates. When a new feature/fix lands on GitHub, run **one command** on the server:
   ```bash
-  sudo PGPASSWORD=… ./deploy/update.sh     # pull → build → new migrations → restart (~2 min)
+  sudo ./deploy/update.sh                  # pull → build → new migrations → restart (~2 min)
   ```
+  (Migrations authenticate using the app's own `DATABASE_URL` from `.env.local` — no password to type.)
   ⚠️ On an EXISTING database, baseline the migration tracker ONCE before the first update:
   `BASELINE=1 PGDATABASE=hlidarkaup ./deploy/apply-migrations.sh`
 - **Monthly, ~10 minutes:** `sudo dnf needs-restarting -r || sudo reboot` (kernel updates need a

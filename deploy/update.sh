@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Update the Hlíðarkaup app on the server to the latest code from GitHub:
 #   pull → install deps → build → apply new migrations → restart the service.
-# Run with sudo:  sudo PGPASSWORD=… ./deploy/update.sh
+# Run with sudo:  sudo ./deploy/update.sh   (DB credentials are read from .env.local — no PGPASSWORD)
 # Takes ~1–2 minutes; the app is briefly unavailable during the restart (seconds).
 set -euo pipefail
 
