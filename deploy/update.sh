@@ -18,8 +18,9 @@ echo "== building"
 sudo -u hlidarkaup npm run build
 
 echo "== applying new migrations (if any)"
+# Run via bash so a lost executable bit (e.g. after a Windows-side commit) can't break the deploy.
 PGUSER="${PGUSER:-hlidar}" PGHOST="${PGHOST:-127.0.0.1}" PGDATABASE="${PGDATABASE:-hlidarkaup}" \
-  "$APP_DIR/deploy/apply-migrations.sh"
+  bash "$APP_DIR/deploy/apply-migrations.sh"
 
 echo "== restarting"
 systemctl restart hlidarkaup
