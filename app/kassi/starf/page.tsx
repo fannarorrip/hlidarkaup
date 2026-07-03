@@ -78,7 +78,8 @@ export default function StaffTill() {
   }, [custQ, custOpen]);
 
   const addItem = (d: SItem, qty = 1) => { setError(""); setCart((p) => { const e = p.find((l) => l.id === d.id); return e ? p.map((l) => l.id === d.id ? { ...l, quantity: l.quantity + qty } : l) : [...p, { id: d.id, name: d.name, price: d.price, vatPct: d.vatPct, quantity: qty }]; }); };
-  const changeQty = (id: string, d: number) => setCart((p) => p.map((l) => l.id === id ? { ...l, quantity: l.quantity + d } : l).filter((l) => l.quantity > 0));
+  // ±1 makes no sense for weighed (fractional-kg) lines — those adjust via the line editor.
+  const changeQty = (id: string, d: number) => setCart((p) => p.map((l) => l.id === id && Number.isInteger(l.quantity) ? { ...l, quantity: l.quantity + d } : l).filter((l) => l.quantity > 0));
   const removeLine = (id: string) => setCart((p) => p.filter((l) => l.id !== id));
   const openEdit = (l: Line) => { setEditField("qty"); setEditFresh(true); setEdit({ id: l.id, name: l.name, catalog: l.price, qty: String(l.quantity), unit: String(effUnit(l)), disc: String(l.discount ?? 0), discPct: false }); };
   const selectField = (f: "qty" | "unit" | "disc") => { setEditField(f); setEditFresh(true); };
@@ -94,18 +95,22 @@ export default function StaffTill() {
     setEdit(null);
   }
 
-  async function addByCode(code: string) {
-    const c = code.trim(); if (!c) return;
-    const r = await fetch(`/api/kassi/scan?code=${encodeURIComponent(c)}`); const d = await r.json();
-    if (!r.ok) { setError(d.error ?? "Vara fannst ekki"); setScan(""); return; }
+  // Single entry point for putting a product in the cart — grid tiles, search results and
+  // scans all go through here, so vigtarvara is ALWAYS weighed (price per kg × stable weight).
+  async function addProduct(d: SItem) {
     if (d.useScale && bridgeRef.current) {
-      // vigtarvara: the item is on the scanner's scale — price per kg × stable weight
       const w = await kbWeigh();
-      if (!w.ok) { setToast(w.message); setTimeout(() => setToast(""), 4500); setScan(""); return; }
+      if (!w.ok) { setToast(w.message); setTimeout(() => setToast(""), 4500); return; }
       addItem(d, w.kg);
     } else {
       addItem(d);
     }
+  }
+  async function addByCode(code: string) {
+    const c = code.trim(); if (!c) return;
+    const r = await fetch(`/api/kassi/scan?code=${encodeURIComponent(c)}`); const d = await r.json();
+    if (!r.ok) { setError(d.error ?? "Vara fannst ekki"); setScan(""); return; }
+    await addProduct(d);
     setScan(""); scanRef.current?.focus();
   }
   // Stable handle for the bridge's scan-event stream (subscribed once, below).
@@ -156,7 +161,13 @@ export default function StaffTill() {
       invoiceNumber: d.invoiceNumber, total: d.total, mode: d.mode, change: d.change, isReturn: d.isReturn,
       lines: d.lines.map((l) => ({ name: l.name, quantity: l.quantity, price: effUnit(l), vatPct: l.vatPct, discount: l.discount })),
     });
-    kbPrint(text, { drawer: kickDrawer }).then((ok) => { if (!ok) window.print(); });
+    kbPrint(text, { drawer: kickDrawer }).then(async (ok) => {
+      if (!ok) {
+        // print failed → the drawer kick riding on it never happened; open it separately
+        if (kickDrawer && !(await kbDrawer())) fetch("/api/kassi/drawer", { method: "POST" }).catch(() => {});
+        window.print();
+      }
+    });
   }
 
   async function checkout(mode: Mode, change?: number) {
@@ -247,7 +258,9 @@ export default function StaffTill() {
   const cashGotN = Number(cashGot.replace(/\D/g, "")) || 0;
   const change = cashGotN - total;
   const editPreview = edit ? (() => {
-    const q = Math.max(1, Math.round(Number(edit.qty)) || 1), u = Math.max(0, Math.round(Number(edit.unit)) || 0), d = Math.max(0, Number(edit.disc) || 0);
+    const qRaw = Number(edit.qty) || 1;
+    const q = Number.isInteger(qRaw) ? Math.max(1, Math.round(qRaw)) : Math.max(0.001, qRaw); // mirror applyEdit
+    const u = Math.max(0, Math.round(Number(edit.unit)) || 0), d = Math.max(0, Number(edit.disc) || 0);
     return Math.max(0, u * q - (edit.discPct ? Math.round((u * q * d) / 100) : Math.round(d)));
   })() : 0;
   const gridItems = search.trim().length >= 2 ? results : grid;
@@ -312,7 +325,7 @@ export default function StaffTill() {
           <div className={`flex-1 overflow-y-auto p-3 ${kb === "search" ? "pb-[320px]" : ""}`}>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
               {gridItems.map((p) => (
-                <button key={p.id} onClick={() => addItem(p)}
+                <button key={p.id} onClick={() => addProduct(p)}
                   className="relative text-left rounded-xl overflow-hidden min-h-[112px] bg-white border border-gray-200 active:scale-[0.97] transition hover:border-[#8CC7C4] hover:shadow-sm">
                   {p.image ? (
                     <>
@@ -438,9 +451,9 @@ export default function StaffTill() {
               <div>
                 <label className="block text-sm text-gray-500 mb-1">Magn</label>
                 <div className="flex items-center gap-2 mb-3">
-                  <button onClick={() => { setEditField("qty"); setEditFresh(false); setEdit({ ...edit, qty: String(Math.max(1, (Math.round(Number(edit.qty)) || 1) - 1)) }); }} className="w-12 h-12 rounded-xl bg-gray-100 text-2xl active:scale-95 shrink-0">−</button>
+                  <button onClick={() => { setEditField("qty"); setEditFresh(false); const q = Number(edit.qty) || 1; const floor = Number.isInteger(q) ? 1 : (q % 1 || 1); setEdit({ ...edit, qty: String(Math.max(floor, +(q - 1).toFixed(3))) }); }} className="w-12 h-12 rounded-xl bg-gray-100 text-2xl active:scale-95 shrink-0">−</button>
                   <input inputMode="none" value={edit.qty} onFocus={() => selectField("qty")} onClick={() => selectField("qty")} onChange={(e) => { setEditFresh(false); setEdit({ ...edit, qty: e.target.value }); }} className={`${numInp(editField === "qty")} text-center`} />
-                  <button onClick={() => { setEditField("qty"); setEditFresh(false); setEdit({ ...edit, qty: String((Math.round(Number(edit.qty)) || 0) + 1) }); }} className="w-12 h-12 rounded-xl bg-gray-100 text-2xl active:scale-95 shrink-0">+</button>
+                  <button onClick={() => { setEditField("qty"); setEditFresh(false); const q = Number(edit.qty) || 0; setEdit({ ...edit, qty: String(+(q + 1).toFixed(3)) }); }} className="w-12 h-12 rounded-xl bg-gray-100 text-2xl active:scale-95 shrink-0">+</button>
                 </div>
                 <label className="block text-sm text-gray-500 mb-1">Einingaverð (kr)</label>
                 <input inputMode="none" value={edit.unit} onFocus={() => selectField("unit")} onClick={() => selectField("unit")} onChange={(e) => { setEditFresh(false); setEdit({ ...edit, unit: e.target.value }); }} className={numInp(editField === "unit")} />

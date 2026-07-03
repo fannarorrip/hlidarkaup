@@ -55,12 +55,20 @@ namespace Kassabru
         static SerialPort scanner;                 // reader thread owns reads; writes via scannerWriteLock
         static readonly object scannerWriteLock = new object();
 
-        // SSE clients (till pages listening for scan events)
-        static readonly List<StreamWriter> sseClients = new List<StreamWriter>();
+        // SSE clients (till pages listening for scan events). Each handler thread is the sole
+        // writer for its own socket — PushScan only enqueues, so a stuck client can't stall scans.
+        class SseClient
+        {
+            public StreamWriter W;
+            public readonly Queue<string> Q = new Queue<string>();
+            public readonly AutoResetEvent Signal = new AutoResetEvent(false);
+        }
+        static readonly List<SseClient> sseClients = new List<SseClient>();
         static readonly object sseLock = new object();
 
-        // One in-flight scale request at a time (single till)
+        // One in-flight scale request at a time (single till) — enforced via scaleLock
         static volatile ScaleWait scaleWait;
+        static readonly object scaleLock = new object();
 
         class ScaleWait
         {
@@ -109,10 +117,17 @@ namespace Kassabru
                 if (origin != null)
                 {
                     foreach (var a in AllowedOrigins) if (string.Equals(a, origin, StringComparison.OrdinalIgnoreCase)) { originOk = true; break; }
-                    // The till may also run off the store server's LAN address (http://192.168.x.x:3000)
-                    if (!originOk && origin.StartsWith("http://") && origin.EndsWith(":3000") &&
-                        (origin.StartsWith("http://192.168.") || origin.StartsWith("http://10.")))
-                        originOk = true;
+                    // The till may also run off the store server's LAN address (http://192.168.x.x:3000).
+                    // Must be a real IPv4 LITERAL — a DNS name like 192.168.evil.com must NOT pass.
+                    if (!originOk)
+                    {
+                        Uri u; System.Net.IPAddress ip;
+                        if (Uri.TryCreate(origin, UriKind.Absolute, out u) && u.Scheme == "http" && u.Port == 3000 &&
+                            System.Net.IPAddress.TryParse(u.Host, out ip) &&
+                            ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork &&
+                            (u.Host.StartsWith("192.168.") || u.Host.StartsWith("10.")))
+                            originOk = true;
+                    }
                 }
                 if (originOk)
                 {
@@ -128,10 +143,13 @@ namespace Kassabru
                     resp.Headers["Access-Control-Max-Age"] = "600";
                     resp.StatusCode = 204; resp.Close(); return;
                 }
-                // A browser page (non-allowlisted origin) gets nothing; curl/no-Origin is fine for local testing.
-                if (origin != null && !originOk) { WriteJson(resp, 403, "{\"error\":\"origin not allowed\"}"); return; }
-
+                // Everything except GET /health requires an allowlisted Origin — a request without
+                // one (or from a foreign page) gets 403. Browsers always attach Origin cross-origin,
+                // so the till is unaffected; local testing needs an Origin header (see install.ps1).
                 string path = req.Url.AbsolutePath;
+                bool healthGet = path == "/health" && req.HttpMethod == "GET";
+                if (!originOk && !healthGet) { WriteJson(resp, 403, "{\"error\":\"origin not allowed\"}"); return; }
+
                 if (path == "/health" && req.HttpMethod == "GET") { HandleHealth(resp); return; }
                 if (path == "/events" && req.HttpMethod == "GET") { HandleEvents(resp); return; }
                 if (path == "/print" && req.HttpMethod == "POST") { HandlePrint(req, resp); return; }
@@ -162,27 +180,34 @@ namespace Kassabru
             resp.ContentType = "text/event-stream";
             resp.Headers["Cache-Control"] = "no-cache";
             resp.SendChunked = true;
-            var w = new StreamWriter(resp.OutputStream, new UTF8Encoding(false));
-            w.Write(": kassabru\n\n"); w.Flush();
-            lock (sseLock) sseClients.Add(w);
+            var c = new SseClient();
+            c.W = new StreamWriter(resp.OutputStream, new UTF8Encoding(false));
+            lock (sseLock)
+            {
+                if (sseClients.Count >= 8) { try { resp.Abort(); } catch { } return; }   // sanity cap
+                sseClients.Add(c);
+            }
             Log("SSE client tengdur ({0} alls)", sseClients.Count);
-            // Heartbeat so dead connections get detected; keep this handler thread alive.
-            // Writes happen under sseLock — PushScan writes to the same stream from other threads.
             try
             {
+                c.W.Write(": kassabru\n\n"); c.W.Flush();
                 while (true)
                 {
-                    Thread.Sleep(15000);
+                    c.Signal.WaitOne(15000);   // scan enqueued, or 15s heartbeat tick
+                    var pending = new List<string>();
                     lock (sseLock)
                     {
-                        if (!sseClients.Contains(w)) break;
-                        w.Write(": ping\n\n"); w.Flush();
+                        if (!sseClients.Contains(c)) break;
+                        while (c.Q.Count > 0) pending.Add(c.Q.Dequeue());
                     }
+                    if (pending.Count == 0) pending.Add(": ping\n\n");
+                    foreach (var m in pending) c.W.Write(m);
+                    c.W.Flush();
                 }
             }
             catch
             {
-                lock (sseLock) sseClients.Remove(w);
+                lock (sseLock) sseClients.Remove(c);
                 Log("SSE client aftengdur ({0} eftir)", sseClients.Count);
             }
         }
@@ -194,8 +219,10 @@ namespace Kassabru
             {
                 for (int i = sseClients.Count - 1; i >= 0; i--)
                 {
-                    try { sseClients[i].Write(msg); sseClients[i].Flush(); }
-                    catch { sseClients.RemoveAt(i); }
+                    var cl = sseClients[i];
+                    if (cl.Q.Count > 32) { sseClients.RemoveAt(i); continue; }   // stuck reader — drop it
+                    cl.Q.Enqueue(msg);
+                    cl.Signal.Set();
                 }
             }
         }
@@ -210,7 +237,11 @@ namespace Kassabru
                 {
                     if (printer != null) { try { printer.Dispose(); } catch { } }
                     printer = new SerialPort(PrinterPort, 9600, Parity.None, 8, StopBits.One);
-                    printer.Handshake = Handshake.None;   // receipts fit the 7197's 4KB buffer
+                    // Handshake deliberately None: the 7197's default flow control is DTR/DSR, which
+                    // .NET can't do directly, and RTS/CTS would deadlock if the cable doesn't cross
+                    // printer-DTR onto our CTS. At 9600 baud the line (~960 B/s) feeds slower than the
+                    // printer prints, so its 4KB receive buffer cannot overflow in practice.
+                    printer.Handshake = Handshake.None;
                     printer.DtrEnable = true;             // printer needs host DTR/RTS up to answer status
                     printer.RtsEnable = true;
                     printer.WriteTimeout = 5000;
@@ -327,16 +358,18 @@ namespace Kassabru
             {
                 if (scanner == null || !scanner.IsOpen)
                 {
+                    frame.Clear();                     // discard partial frame from before the disconnect
                     Thread.Sleep(3000);
                     TryOpenScanner();
                     continue;
                 }
                 int b;
                 try { b = scanner.ReadByte(); }
-                catch (TimeoutException) { continue; }
+                catch (TimeoutException) { continue; }  // inter-byte gap mid-frame is fine — keep buffer
                 catch (Exception ex)
                 {
                     Log("skanni lestur: {0}", ex.Message);
+                    frame.Clear();                     // byte-stream integrity lost — abandon partial frame
                     Thread.Sleep(2000);
                     continue;
                 }
@@ -344,9 +377,14 @@ namespace Kassabru
                 if (b == 0x02 && frame.Count == 0) continue;   // stray STX (prefix enabled) — ignore
                 if (b == 0x03)
                 {
-                    // terminator: next byte is the BCC — read it (best effort), then dispatch
-                    try { scanner.ReadByte(); } catch { }
-                    DispatchFrame(frame.ToArray());
+                    // terminator: next byte is the BCC = XOR of all bytes after STX incl. ETX — verify it
+                    int rx = -1;
+                    try { rx = scanner.ReadByte(); } catch { }
+                    byte expected = 0x03;
+                    for (int i = 0; i < frame.Count; i++) expected ^= frame[i];
+                    if (rx == expected) DispatchFrame(frame.ToArray());
+                    else Log("BCC villa (fékk {0:X2}, vænti {1:X2}) — rammi hunsaður: {2}",
+                             rx, expected, Encoding.ASCII.GetString(frame.ToArray()));
                     frame.Clear();
                     continue;
                 }
@@ -389,11 +427,18 @@ namespace Kassabru
         static void HandleWeigh(HttpListenerResponse resp)
         {
             if (!TryOpenScanner()) { WriteJson(resp, 503, "{\"ok\":false,\"reason\":\"offline\",\"message\":\"Vigt ekki tengd\"}"); return; }
+            // One scale transaction at a time — overlapping requests would steal each other's
+            // replies and the shared Cancel would kill the other request's pending Weigh.
+            if (!Monitor.TryEnter(scaleLock, 3000))
+            {
+                WriteJson(resp, 429, "{\"ok\":false,\"reason\":\"busy\",\"message\":\"Vigtun þegar í gangi\"}");
+                return;
+            }
             var w = new ScaleWait();
             scaleWait = w;
             try
             {
-                SendScannerFrame(new byte[] { 0x31, 0x31 });           // Weigh
+                SendScannerFrame(new byte[] { 0x31, 0x31 });           // Weigh (item already on platter)
                 if (w.Done.WaitOne(2500) && w.Frame != null && w.Frame.StartsWith("11"))
                 {
                     string d = w.Frame.Substring(2);
@@ -412,14 +457,28 @@ namespace Kassabru
                 Thread.Sleep(150);
                 SendScannerFrame(new byte[] { 0x31, 0x33 });           // Scale status
                 string reason = "unknown", message = "Vigtun mistókst";
-                if (w2.Done.WaitOne(1200) && w2.Frame != null && w2.Frame.StartsWith("13") && w2.Frame.Length >= 7)
+                if (w2.Done.WaitOne(1200) && w2.Frame != null)
                 {
-                    char z = w2.Frame[6];   // 13 3V 3W 3X 3Y 3Z — z = ready-state digit
-                    if (z == '0') { reason = "notready"; message = "Vigt ekki tilbúin — núllstilla þarf vigtina"; }
-                    else if (z == '1') { reason = "motion"; message = "Vigtin er á hreyfingu — bíddu augnablik"; }
-                    else if (z == '2') { reason = "over"; message = "Of þungt á vigtinni"; }
-                    else if (z == '3') { reason = "zero"; message = "Ekkert á vigtinni"; }
-                    else if (z == '5') { reason = "sent"; message = "Lyftu vörunni af og settu aftur á vigtina"; }
+                    if (w2.Frame.StartsWith("11"))
+                    {
+                        // the weight landed just after our timeout — take it, it's still valid
+                        int raw2;
+                        if (int.TryParse(w2.Frame.Substring(2), NumberStyles.None, CultureInfo.InvariantCulture, out raw2))
+                        {
+                            WriteJson(resp, 200, string.Format(CultureInfo.InvariantCulture, "{{\"ok\":true,\"kg\":{0:0.###}}}", raw2 / 1000.0));
+                            return;
+                        }
+                    }
+                    if (w2.Frame.StartsWith("13") && w2.Frame.Length >= 7)
+                    {
+                        char z = w2.Frame[6];   // 13 3V 3W 3X 3Y 3Z — z = ready-state digit
+                        if (z == '0') { reason = "notready"; message = "Vigt ekki tilbúin — núllstilla þarf vigtina"; }
+                        else if (z == '1') { reason = "motion"; message = "Vigtin er á hreyfingu — bíddu augnablik"; }
+                        else if (z == '2') { reason = "over"; message = "Of þungt á vigtinni"; }
+                        else if (z == '3') { reason = "zero"; message = "Ekkert á vigtinni"; }
+                        else if (z == '4') { reason = "ready"; message = "Þyngd tilbúin — reyndu aftur"; }
+                        else if (z == '5') { reason = "sent"; message = "Lyftu vörunni af og settu aftur á vigtina"; }
+                    }
                 }
                 WriteJson(resp, 200, string.Format("{{\"ok\":false,\"reason\":\"{0}\",\"message\":\"{1}\"}}", reason, message));
             }
@@ -428,7 +487,7 @@ namespace Kassabru
                 Log("vigtun: {0}", ex.Message);
                 WriteJson(resp, 500, "{\"ok\":false,\"reason\":\"error\",\"message\":\"Villa í samskiptum við vigt\"}");
             }
-            finally { scaleWait = null; }
+            finally { scaleWait = null; Monitor.Exit(scaleLock); }
         }
 
         // ------------------------------------------------------------ misc --

@@ -116,18 +116,19 @@ export function formatReceipt(o: {
   const vatTotals = new Map<number, number>();
   for (const l of o.lines) {
     const rate = l.vatPct ?? 24;
-    const lineTotal = l.price * l.quantity - (l.discount ?? 0);
+    const discount = Math.min(l.discount ?? 0, l.price * l.quantity); // never exceed line gross (matches page + server)
+    const lineTotal = l.price * l.quantity - discount;
     const vat = lineTotal - lineTotal / (1 + rate / 100);
     vatTotals.set(rate, (vatTotals.get(rate) ?? 0) + vat);
 
     const qty = Number.isInteger(l.quantity) ? String(l.quantity) : l.quantity.toFixed(3);
     if (l.quantity !== 1) {
       out.push(l.name.slice(0, COLS));
-      out.push(row(`  ${qty} x ${kr(l.price)}`, kr(lineTotal + (l.discount ?? 0))));
+      out.push(row(`  ${qty} x ${kr(l.price)}`, kr(lineTotal + discount)));
     } else {
-      out.push(row(l.name.slice(0, COLS - 12), kr(lineTotal + (l.discount ?? 0))));
+      out.push(row(l.name.slice(0, COLS - 12), kr(lineTotal + discount)));
     }
-    if (l.discount) out.push(row("  Afsláttur", `-${kr(l.discount)}`));
+    if (discount > 0) out.push(row("  Afsláttur", `-${kr(discount)}`));
   }
 
   out.push(div);
