@@ -505,10 +505,10 @@ export default function KassiPage() {
   const langButton = (onRed = false) => (
     <button
       onClick={() => setLang((l) => (l === "is" ? "en" : "is"))}
-      className="flex items-center gap-3 active:scale-95 transition-transform"
+      className="flex items-center gap-3 active:scale-95 transition-transform py-3 px-2 -my-3 -mx-2"
     >
       <span className="font-bold text-lg" style={{ color: onRed ? "#fff" : INK }}>{otherLang.langName}</span>
-      <span className="w-10 h-10 rounded-full overflow-hidden shadow flex items-center justify-center text-2xl bg-white">
+      <span className="w-12 h-12 rounded-full overflow-hidden shadow flex items-center justify-center text-2xl bg-white">
         {otherLang.langFlag}
       </span>
     </button>
@@ -638,7 +638,7 @@ export default function KassiPage() {
   const helpButton = (
     <button
       onClick={() => setHelpOpen(true)}
-      className="absolute bottom-6 left-8 z-20 flex items-center gap-3 group"
+      className="absolute bottom-4 left-6 z-20 flex items-center gap-3 group py-3 px-2"
     >
       {personIcon}
       <span className="font-bold text-lg" style={{ color: INK }}>{t.getHelp}</span>
@@ -666,9 +666,10 @@ export default function KassiPage() {
         <img src="/logo.png" alt="Hlíðarkaup" className="relative z-10 w-[28rem] max-w-[70vw] mb-4" />
         <p className="relative z-10 text-2xl font-medium mb-16 text-gray-500">{t.selfCheckout}</p>
 
-        <div className="relative z-10 animate-pulse flex flex-col items-center gap-2">
-          <p className="text-3xl font-bold" style={{ color: INK }}>{t.scanToStart}</p>
-          <p className="text-gray-400 text-lg">{t.orTouch}</p>
+        {/* 21.5" kiosk: read from a step away — big call to action */}
+        <div className="relative z-10 animate-pulse flex flex-col items-center gap-3">
+          <p className="text-5xl font-extrabold" style={{ color: INK }}>{t.scanToStart}</p>
+          <p className="text-gray-400 text-2xl">{t.orTouch}</p>
         </div>
 
         <p className="absolute bottom-6 z-10 text-gray-400 text-sm">Akurhlíð 1 · Sauðárkrókur</p>

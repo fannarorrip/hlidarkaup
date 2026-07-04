@@ -346,7 +346,8 @@ export default function StaffTill() {
           )}
 
           <div className={`flex-1 overflow-y-auto p-3 ${kb === "search" ? "pb-[320px]" : ""}`}>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+            {/* 5 columns only on the full 1920px till (100% scaling) — 4 at 125%-scaled 1536px */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 min-[1800px]:grid-cols-5 gap-2.5">
               {gridItems.map((p) => (
                 <button key={p.id} onClick={() => addProduct(p)}
                   className="relative text-left rounded-xl overflow-hidden min-h-[112px] bg-white border border-gray-200 active:scale-[0.97] transition hover:border-[#8CC7C4] hover:shadow-sm">
@@ -404,18 +405,18 @@ export default function StaffTill() {
             ) : cart.map((l) => (
               <div key={l.uid} className="flex items-center gap-2 py-3 border-b border-gray-100">
                 <button onClick={() => openEdit(l)} className="flex-1 min-w-0 text-left">
-                  <p className="font-medium leading-tight truncate">{l.name}</p>
+                  <p className="font-medium leading-tight truncate text-[17px]">{l.name}</p>
                   <p className="text-xs text-gray-400">
                     {kr(effUnit(l))}
                     {l.priceOverride != null && <span className="ml-1 text-amber-600">· verð breytt</span>}
                     {l.discount ? <span className="ml-1 text-[#DB1A1A]">· −{kr(l.discount)}</span> : null}
                   </p>
                 </button>
-                <button onClick={() => changeQty(l.uid, -1)} className="w-12 h-12 rounded-xl bg-gray-100 text-2xl leading-none hover:bg-gray-200 active:scale-95 transition">−</button>
+                <button onClick={() => changeQty(l.uid, -1)} className="w-14 h-14 rounded-xl bg-gray-100 text-2xl leading-none hover:bg-gray-200 active:scale-95 transition">−</button>
                 <span className="w-8 text-center font-bold tabular-nums text-lg">{l.quantity}</span>
-                <button onClick={() => changeQty(l.uid, 1)} className="w-12 h-12 rounded-xl bg-gray-100 text-2xl leading-none hover:bg-gray-200 active:scale-95 transition">+</button>
+                <button onClick={() => changeQty(l.uid, 1)} className="w-14 h-14 rounded-xl bg-gray-100 text-2xl leading-none hover:bg-gray-200 active:scale-95 transition">+</button>
                 <span className="w-20 text-right font-semibold tabular-nums">{kr(lineTotal(l))}</span>
-                <button onClick={() => removeLine(l.uid)} className="text-gray-300 hover:text-[#DB1A1A] text-xl w-7 h-12" aria-label="Fjarlægja">×</button>
+                <button onClick={() => removeLine(l.uid)} className="text-gray-300 hover:text-[#DB1A1A] text-2xl w-12 h-14" aria-label="Fjarlægja">×</button>
               </div>
             ))}
           </div>
