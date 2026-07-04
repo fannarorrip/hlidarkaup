@@ -3,9 +3,11 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { TouchKeyboard, NumPad } from "./Keyboard";
 import { kbHealth, kbScanEvents, kbPrint, kbDrawer, kbWeigh, formatReceipt } from "@/lib/kassabru";
 
-interface Line { id: string; name: string; price: number; vatPct?: number; quantity: number; priceOverride?: number; discount?: number; }
+// uid = the LINE's identity (edit/remove/merge); id = the product number (what the sale posts).
+// They differ for price-embedded (verðmerkt) packs, where every scan must stay its own line.
+interface Line { uid: string; id: string; name: string; price: number; vatPct?: number; quantity: number; priceOverride?: number; discount?: number; }
 interface Customer { id: string; name: string; kennitala: string | null; is_account: boolean; }
-interface SItem { id: string; name: string; price: number; vatPct?: number; image?: string; useScale?: boolean; }
+interface SItem { id: string; name: string; price: number; vatPct?: number; image?: string; useScale?: boolean; embeddedPrice?: number; embeddedKg?: number | null; }
 interface Category { group: string; name: string; count: number; }
 interface HeldSale { id: string; label: string | null; customer_id: string | null; customer_name: string | null; customer_is_account: boolean | null; total: string; cart: Line[]; created_at: string; }
 type Mode = "card" | "cash" | "account" | "transfer";
@@ -77,11 +79,11 @@ export default function StaffTill() {
     return () => clearTimeout(t);
   }, [custQ, custOpen]);
 
-  const addItem = (d: SItem, qty = 1) => { setError(""); setCart((p) => { const e = p.find((l) => l.id === d.id); return e ? p.map((l) => l.id === d.id ? { ...l, quantity: l.quantity + qty } : l) : [...p, { id: d.id, name: d.name, price: d.price, vatPct: d.vatPct, quantity: qty }]; }); };
+  const addItem = (d: SItem, qty = 1) => { setError(""); setCart((p) => { const e = p.find((l) => l.uid === d.id); return e ? p.map((l) => l.uid === d.id ? { ...l, quantity: l.quantity + qty } : l) : [...p, { uid: d.id, id: d.id, name: d.name, price: d.price, vatPct: d.vatPct, quantity: qty }]; }); };
   // ±1 makes no sense for weighed (fractional-kg) lines — those adjust via the line editor.
-  const changeQty = (id: string, d: number) => setCart((p) => p.map((l) => l.id === id && Number.isInteger(l.quantity) ? { ...l, quantity: l.quantity + d } : l).filter((l) => l.quantity > 0));
-  const removeLine = (id: string) => setCart((p) => p.filter((l) => l.id !== id));
-  const openEdit = (l: Line) => { setEditField("qty"); setEditFresh(true); setEdit({ id: l.id, name: l.name, catalog: l.price, qty: String(l.quantity), unit: String(effUnit(l)), disc: String(l.discount ?? 0), discPct: false }); };
+  const changeQty = (uid: string, d: number) => setCart((p) => p.map((l) => l.uid === uid && Number.isInteger(l.quantity) ? { ...l, quantity: l.quantity + d } : l).filter((l) => l.quantity > 0));
+  const removeLine = (uid: string) => setCart((p) => p.filter((l) => l.uid !== uid));
+  const openEdit = (l: Line) => { setEditField("qty"); setEditFresh(true); setEdit({ id: l.uid, name: l.name, catalog: l.price, qty: String(l.quantity), unit: String(effUnit(l)), disc: String(l.discount ?? 0), discPct: false }); };
   const selectField = (f: "qty" | "unit" | "disc") => { setEditField(f); setEditFresh(true); };
   function applyEdit() {
     if (!edit) return;
@@ -91,7 +93,7 @@ export default function StaffTill() {
     const unit = Math.max(0, Math.round(Number(edit.unit)) || 0);
     const dIn = Math.max(0, Number(edit.disc) || 0);
     const discKr = edit.discPct ? Math.round((unit * qty * dIn) / 100) : Math.round(dIn);
-    setCart((p) => p.map((l) => l.id === edit.id ? { ...l, quantity: qty, priceOverride: unit !== l.price ? unit : undefined, discount: discKr > 0 ? Math.min(discKr, unit * qty) : undefined } : l));
+    setCart((p) => p.map((l) => l.uid === edit.id ? { ...l, quantity: qty, priceOverride: unit !== l.price ? unit : undefined, discount: discKr > 0 ? Math.min(discKr, unit * qty) : undefined } : l));
     setEdit(null);
   }
 
@@ -99,7 +101,19 @@ export default function StaffTill() {
   // scans all go through here, so vigtarvara is ALWAYS weighed (price per kg × stable weight).
   // The scale can hold only ONE conversation at a time — rapid-fire clicks must not queue up.
   const weighBusyRef = useRef(false);
+  const uidSeq = useRef(0);
   async function addProduct(d: SItem) {
+    // Price-embedded label (verðmerki af vigtarprentara): the pack's exact price came out of
+    // the barcode — always its OWN line (packs of the same product have different prices).
+    if (d.embeddedPrice) {
+      const kgTxt = d.embeddedKg ? ` (${d.embeddedKg.toFixed(3).replace(".", ",")} kg)` : " (verðmerkt)";
+      setError("");
+      setCart((p) => [...p, {
+        uid: `${d.id}~${++uidSeq.current}`, id: d.id, name: d.name + kgTxt,
+        price: d.price, priceOverride: d.embeddedPrice, vatPct: d.vatPct, quantity: 1,
+      }]);
+      return;
+    }
     if (d.useScale && bridgeRef.current) {
       if (weighBusyRef.current) { setToast("Vigtun þegar í gangi — bíddu augnablik"); setTimeout(() => setToast(""), 3000); return; }
       weighBusyRef.current = true;
@@ -229,7 +243,8 @@ export default function StaffTill() {
     setCart([]); setCustomer(null); loadHeld();
   }
   async function recall(h: HeldSale) {
-    setCart(Array.isArray(h.cart) ? h.cart : []);
+    // held rows from before the uid field exist without it — hydrate so line identity works
+    setCart(Array.isArray(h.cart) ? h.cart.map((l) => ({ ...l, uid: l.uid ?? l.id })) : []);
     // is_account comes from the held row (old rows: null → false, so Á reikning demands re-picking).
     setCustomer(h.customer_id ? { id: h.customer_id, name: h.customer_name ?? "", kennitala: null, is_account: h.customer_is_account === true } : null);
     setHeldOpen(false);
@@ -387,7 +402,7 @@ export default function StaffTill() {
                 <p className="text-sm font-medium">Engar vörur</p>
               </div>
             ) : cart.map((l) => (
-              <div key={l.id} className="flex items-center gap-2 py-3 border-b border-gray-100">
+              <div key={l.uid} className="flex items-center gap-2 py-3 border-b border-gray-100">
                 <button onClick={() => openEdit(l)} className="flex-1 min-w-0 text-left">
                   <p className="font-medium leading-tight truncate">{l.name}</p>
                   <p className="text-xs text-gray-400">
@@ -396,11 +411,11 @@ export default function StaffTill() {
                     {l.discount ? <span className="ml-1 text-[#DB1A1A]">· −{kr(l.discount)}</span> : null}
                   </p>
                 </button>
-                <button onClick={() => changeQty(l.id, -1)} className="w-12 h-12 rounded-xl bg-gray-100 text-2xl leading-none hover:bg-gray-200 active:scale-95 transition">−</button>
+                <button onClick={() => changeQty(l.uid, -1)} className="w-12 h-12 rounded-xl bg-gray-100 text-2xl leading-none hover:bg-gray-200 active:scale-95 transition">−</button>
                 <span className="w-8 text-center font-bold tabular-nums text-lg">{l.quantity}</span>
-                <button onClick={() => changeQty(l.id, 1)} className="w-12 h-12 rounded-xl bg-gray-100 text-2xl leading-none hover:bg-gray-200 active:scale-95 transition">+</button>
+                <button onClick={() => changeQty(l.uid, 1)} className="w-12 h-12 rounded-xl bg-gray-100 text-2xl leading-none hover:bg-gray-200 active:scale-95 transition">+</button>
                 <span className="w-20 text-right font-semibold tabular-nums">{kr(lineTotal(l))}</span>
-                <button onClick={() => removeLine(l.id)} className="text-gray-300 hover:text-[#DB1A1A] text-xl w-7 h-12" aria-label="Fjarlægja">×</button>
+                <button onClick={() => removeLine(l.uid)} className="text-gray-300 hover:text-[#DB1A1A] text-xl w-7 h-12" aria-label="Fjarlægja">×</button>
               </div>
             ))}
           </div>
@@ -581,7 +596,7 @@ export default function StaffTill() {
             <p style={{ textAlign: "center", fontWeight: 700 }}>Hlíðarkaup</p>
             <p style={{ textAlign: "center" }}>Kvittun {done.invoiceNumber}</p>
             <hr />
-            {done.lines.map((l) => (<div key={l.id} style={{ display: "flex", justifyContent: "space-between" }}><span>{l.quantity}× {l.name}</span><span>{kr(lineTotal(l))}</span></div>))}
+            {done.lines.map((l) => (<div key={l.uid} style={{ display: "flex", justifyContent: "space-between" }}><span>{l.quantity}× {l.name}</span><span>{kr(lineTotal(l))}</span></div>))}
             <hr />
             <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700 }}><span>Samtals</span><span>{kr(done.total)}</span></div>
             {done.mode === "cash" && done.change != null && <div style={{ display: "flex", justifyContent: "space-between" }}><span>Til baka</span><span>{kr(done.change)}</span></div>}

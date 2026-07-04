@@ -328,6 +328,13 @@ export default function KassiPage() {
         setScreen("scan");
         return;
       }
+      // Verðmerkt (price-embedded) pack: the kiosk checkout re-prices from the catalog, so it
+      // cannot honor the label price — those packs are staff-till only for now.
+      if (data.embeddedPrice) {
+        setScanError("Vigtarvara — vinsamlegast greiddu á afgreiðslukassa");
+        setScreen("scan");
+        return;
+      }
       addProduct(data);
       setScreen("scan");
       // Fetch a product photo in the background (Open Food Facts by EAN)
