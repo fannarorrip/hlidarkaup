@@ -81,6 +81,12 @@ function row(left: string, right: string): string {
 
 const kr = (n: number) => `${Math.round(n).toLocaleString("is-IS")} kr.`;
 
+/** Icelandic VAT class letter printed on receipts: A = 24%, B = 11%, C = 0%/undanþegið. */
+export const vatClass = (rate: number) => (rate >= 24 ? "A" : rate >= 11 ? "B" : "C");
+
+/** Three-column row for the VSK summary table (12 + 18 + 12 = 42). */
+const row3 = (a: string, b: string, c: string) => a.padEnd(12) + b.padStart(18) + c.padStart(12);
+
 interface ReceiptLine {
   name: string;
   quantity: number;
@@ -112,21 +118,25 @@ export function formatReceipt(o: {
   out.push(row(`Kvittun ${o.invoiceNumber}`, stamp));
   out.push(div);
 
-  // VAT totals per rate (prices are gross)
-  const vatTotals = new Map<number, number>();
+  // VAT per class (prices are gross): every line carries its class letter (A/B/C),
+  // summarized in the VSK table below — the standard Icelandic receipt layout.
+  const vatTotals = new Map<number, { gross: number; vat: number }>();
   for (const l of o.lines) {
     const rate = l.vatPct ?? 24;
     const discount = Math.min(l.discount ?? 0, l.price * l.quantity); // never exceed line gross (matches page + server)
     const lineTotal = l.price * l.quantity - discount;
-    const vat = lineTotal - lineTotal / (1 + rate / 100);
-    vatTotals.set(rate, (vatTotals.get(rate) ?? 0) + vat);
+    const cls = vatTotals.get(rate) ?? { gross: 0, vat: 0 };
+    cls.gross += lineTotal;
+    cls.vat += lineTotal - lineTotal / (1 + rate / 100);
+    vatTotals.set(rate, cls);
 
+    const letter = vatClass(rate);
     const qty = Number.isInteger(l.quantity) ? String(l.quantity) : l.quantity.toFixed(3);
     if (l.quantity !== 1) {
       out.push(l.name.slice(0, COLS));
-      out.push(row(`  ${qty} x ${kr(l.price)}`, kr(lineTotal + discount)));
+      out.push(row(`  ${qty} x ${kr(l.price)}`, `${kr(lineTotal + discount)} ${letter}`));
     } else {
-      out.push(row(l.name.slice(0, COLS - 12), kr(lineTotal + discount)));
+      out.push(row(l.name.slice(0, COLS - 14), `${kr(lineTotal + discount)} ${letter}`));
     }
     if (discount > 0) out.push(row("  Afsláttur", `-${kr(discount)}`));
   }
@@ -137,8 +147,10 @@ export function formatReceipt(o: {
     o.mode === "cash" ? "Reiðufé" : o.mode === "card" ? "Kort" : o.mode === "account" ? "Á reikning" : "Millifærsla";
   out.push(row("Greitt með", modeName));
   if (o.change !== undefined && o.change > 0) out.push(row("Skiptimynt", kr(o.change)));
-  for (const [rate, vat] of [...vatTotals.entries()].sort((a, b) => b[0] - a[0])) {
-    if (rate > 0) out.push(row(`Þar af VSK ${rate}%`, kr(vat)));
+  out.push("");
+  out.push(row3("VSK-flokkur", "Velta m/VSK", "VSK"));
+  for (const [rate, cls] of [...vatTotals.entries()].sort((a, b) => b[0] - a[0])) {
+    out.push(row3(`${vatClass(rate)} = ${rate}%`, kr(cls.gross), kr(Math.round(cls.vat))));
   }
   out.push("");
   out.push("!C!Takk fyrir viðskiptin!");

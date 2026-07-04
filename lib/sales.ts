@@ -167,7 +167,7 @@ export async function postSale(items: SaleItem[], opts: PostSaleOpts): Promise<{
       await handleAccountSaleBilling(v.id, opts.customerId);
     }
 
-    const prefix = series === "KASSI" ? "KS" : series;
+    const prefix = series === "KASSI" ? "HK" : series; // HK = Hlíðarkaup (receipt series; number sequence unbroken)
     return { invoiceNumber: `${prefix}-${String(v.voucher_number).padStart(6, "0")}`, voucherNumber: String(v.voucher_number), voucherId: v.id };
   } catch (err) {
     await client.query("rollback");

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { TouchKeyboard, NumPad } from "./Keyboard";
-import { kbHealth, kbScanEvents, kbPrint, kbDrawer, kbWeigh, formatReceipt } from "@/lib/kassabru";
+import { kbHealth, kbScanEvents, kbPrint, kbDrawer, kbWeigh, formatReceipt, vatClass } from "@/lib/kassabru";
 
 // uid = the LINE's identity (edit/remove/merge); id = the product number (what the sale posts).
 // They differ for price-embedded (verðmerkt) packs, where every scan must stay its own line.
@@ -597,10 +597,17 @@ export default function StaffTill() {
             <p style={{ textAlign: "center", fontWeight: 700 }}>Hlíðarkaup</p>
             <p style={{ textAlign: "center" }}>Kvittun {done.invoiceNumber}</p>
             <hr />
-            {done.lines.map((l) => (<div key={l.uid} style={{ display: "flex", justifyContent: "space-between" }}><span>{l.quantity}× {l.name}</span><span>{kr(lineTotal(l))}</span></div>))}
+            {done.lines.map((l) => (<div key={l.uid} style={{ display: "flex", justifyContent: "space-between" }}><span>{l.quantity}× {l.name}</span><span>{kr(lineTotal(l))} {vatClass(l.vatPct ?? 24)}</span></div>))}
             <hr />
             <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700 }}><span>Samtals</span><span>{kr(done.total)}</span></div>
             {done.mode === "cash" && done.change != null && <div style={{ display: "flex", justifyContent: "space-between" }}><span>Til baka</span><span>{kr(done.change)}</span></div>}
+            {(() => {
+              const cls = new Map<number, { g: number; v: number }>();
+              done.lines.forEach((l) => { const r = l.vatPct ?? 24; const g = lineTotal(l); const e = cls.get(r) ?? { g: 0, v: 0 }; e.g += g; e.v += g - g / (1 + r / 100); cls.set(r, e); });
+              return [...cls.entries()].sort((a, b) => b[0] - a[0]).map(([r, e]) => (
+                <div key={r} style={{ display: "flex", justifyContent: "space-between" }}><span>{vatClass(r)} = {r}% af {kr(e.g)}</span><span>VSK {kr(Math.round(e.v))}</span></div>
+              ));
+            })()}
           </div>
         </div>
       )}
