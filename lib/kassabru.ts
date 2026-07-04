@@ -111,6 +111,7 @@ export function formatReceipt(o: {
 
   const out: string[] = [];
   out.push("!BIG!HLÍÐARKAUP");
+  out.push("!C!— með þér alla daga —");
   out.push("!C!Akurhlíð 1 · 550 Sauðárkrókur");
   out.push("!C!Sími 453-6166 · hlidarkaup.is");
   out.push("");
@@ -154,7 +155,6 @@ export function formatReceipt(o: {
   }
   out.push("");
   out.push("!C!Takk fyrir viðskiptin!");
-  out.push("!C!— með þér alla daga —");
   out.push("");
   return out.join("\n");
 }
