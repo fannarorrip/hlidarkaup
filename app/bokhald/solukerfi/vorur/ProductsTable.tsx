@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import type { ProductRow } from "@/lib/accounting-queries";
 import { kr } from "@/lib/format";
+import { kbHealth, kbScanEvents } from "@/lib/kassabru";
 
 export default function ProductsTable({ products, total }: { products: ProductRow[]; total: number }) {
   const [q, setQ] = useState("");
@@ -23,6 +24,15 @@ export default function ProductsTable({ products, total }: { products: ProductRo
     }, 250);
     return () => clearTimeout(t);
   }, [q]);
+
+  // Physical barcode scanner (kassabrú, when this page is open on the till PC):
+  // a scan drops the code straight into the search box — the debounced search does the rest.
+  useEffect(() => {
+    let stop = false;
+    let cleanup: (() => void) | undefined;
+    kbHealth().then((ok) => { if (!stop && ok) cleanup = kbScanEvents((code) => setQ(code)); });
+    return () => { stop = true; cleanup?.(); };
+  }, []);
 
   const filtered = results ?? products;
 

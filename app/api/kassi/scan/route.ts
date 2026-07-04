@@ -16,15 +16,21 @@ export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code")?.trim();
   if (!code) return NextResponse.json({ error: "Vantar strikamerki" }, { status: 400 });
 
+  // UPC-A goods are the same code as EAN-13 with a leading zero — scanners and imports
+  // disagree on which form to use, so match both spellings.
+  const variants = [code];
+  if (/^\d{12}$/.test(code)) variants.push("0" + code);
+  if (/^0\d{12}$/.test(code)) variants.push(code.slice(1));
+
   const rows = await query<ProductRow>(
     `select p.product_number, p.name, p.price_gross, p.vat_rate,
             p.stock_quantity, p.is_stock_controlled, p.use_scale
        from shop.products p
        left join shop.product_barcodes b on b.product_number = p.product_number
-      where p.is_active and (b.barcode = $1 or p.product_number = $1)
-      order by (b.barcode = $1) desc nulls last
+      where p.is_active and (b.barcode = any($1::text[]) or p.product_number = $2)
+      order by (b.barcode = any($1::text[])) desc nulls last
       limit 1`,
-    [code],
+    [variants, code],
   );
 
   if (!rows.length) {

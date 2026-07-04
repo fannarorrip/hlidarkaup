@@ -1,8 +1,9 @@
 "use client";
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { ProductDetail } from "@/lib/accounting-queries";
 import { kr } from "@/lib/format";
+import { kbHealth, kbScanEvents } from "@/lib/kassabru";
 
 const inp = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-red-400";
 
@@ -99,6 +100,17 @@ export default function ProductForm({ product, barcodes: initialBarcodes, salesH
     if (res.ok) setImageUrl(null);
     else setImgError("Tókst ekki að fjarlægja mynd");
   }
+
+  // Physical barcode scanner (kassabrú, when this page is open on the till PC): a scan fills
+  // the new-barcode box — attaching still takes the explicit "+ Bæta við" click, so a stray
+  // scan can't silently link the wrong barcode to a product.
+  useEffect(() => {
+    let stop = false;
+    let cleanup: (() => void) | undefined;
+    kbHealth().then((ok) => { if (!stop && ok) cleanup = kbScanEvents((code) => setNewBarcode(code)); });
+    return () => { stop = true; cleanup?.(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function addBarcode() {
     const bc = newBarcode.trim();
