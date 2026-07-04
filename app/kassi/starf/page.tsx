@@ -7,7 +7,7 @@ import { kbHealth, kbScanEvents, kbPrint, kbDrawer, kbWeigh, formatReceipt, vatC
 // They differ for price-embedded (verðmerkt) packs, where every scan must stay its own line.
 interface Line { uid: string; id: string; name: string; price: number; vatPct?: number; quantity: number; priceOverride?: number; discount?: number; }
 interface Customer { id: string; name: string; kennitala: string | null; is_account: boolean; }
-interface SItem { id: string; name: string; price: number; vatPct?: number; image?: string; useScale?: boolean; embeddedPrice?: number; embeddedKg?: number | null; }
+interface SItem { id: string; name: string; price: number; vatPct?: number; image?: string; useScale?: boolean; embeddedPrice?: number; embeddedKg?: number | null; embeddedWeightKg?: number; }
 interface Category { group: string; name: string; count: number; }
 interface HeldSale { id: string; label: string | null; customer_id: string | null; customer_name: string | null; customer_is_account: boolean | null; total: string; cart: Line[]; created_at: string; }
 type Mode = "card" | "cash" | "account" | "transfer";
@@ -103,14 +103,25 @@ export default function StaffTill() {
   const weighBusyRef = useRef(false);
   const uidSeq = useRef(0);
   async function addProduct(d: SItem) {
-    // Price-embedded label (verðmerki af vigtarprentara): the pack's exact price came out of
-    // the barcode — always its OWN line (packs of the same product have different prices).
+    // Price-embedded label (verðmerki, prefix 22): the pack's exact price came out of the
+    // barcode — always its OWN line (packs of the same product have different prices).
     if (d.embeddedPrice) {
       const kgTxt = d.embeddedKg ? ` (${d.embeddedKg.toFixed(3).replace(".", ",")} kg)` : " (verðmerkt)";
       setError("");
       setCart((p) => [...p, {
         uid: `${d.id}~${++uidSeq.current}`, id: d.id, name: d.name + kgTxt,
         price: d.price, priceOverride: d.embeddedPrice, vatPct: d.vatPct, quantity: 1,
+      }]);
+      return;
+    }
+    // Weight-embedded label (magnmerki, prefix 23): grams came out of the barcode —
+    // charged as kg × catalog price-per-kg, own line per pack like the price labels.
+    if (d.embeddedWeightKg) {
+      setError("");
+      setCart((p) => [...p, {
+        uid: `${d.id}~${++uidSeq.current}`, id: d.id,
+        name: `${d.name} (${d.embeddedWeightKg.toFixed(3).replace(".", ",")} kg)`,
+        price: d.price, vatPct: d.vatPct, quantity: d.embeddedWeightKg,
       }]);
       return;
     }

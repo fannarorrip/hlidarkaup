@@ -328,9 +328,9 @@ export default function KassiPage() {
         setScreen("scan");
         return;
       }
-      // Verðmerkt (price-embedded) pack: the kiosk checkout re-prices from the catalog, so it
-      // cannot honor the label price — those packs are staff-till only for now.
-      if (data.embeddedPrice) {
+      // Verðmerkt/magnmerkt (embedded price or weight) pack: the kiosk cart works in whole
+      // units and re-prices from the catalog — these packs are staff-till only for now.
+      if (data.embeddedPrice || data.embeddedWeightKg) {
         setScanError("Vigtarvara — vinsamlegast greiddu á afgreiðslukassa");
         setScreen("scan");
         return;

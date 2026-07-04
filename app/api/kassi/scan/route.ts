@@ -16,14 +16,16 @@ export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code")?.trim();
   if (!code) return NextResponse.json({ error: "Vantar strikamerki" }, { status: 400 });
 
-  // In-store price-embedded barcode (verðmerki from the scale printer): 13 digits starting
-  // with '2' — [7 item ref][5 price in kr][1 check digit], e.g. 2200409|01719|9 = item
-  // 2200409 at 1,719 kr. The 7-digit ref is what's registered in product_barcodes.
-  // Falls through to normal lookup if the ref isn't registered ('2…' EAN-13s do exist).
-  if (/^2\d{12}$/.test(code)) {
+  // In-store embedded barcodes from the scale printer: 13 digits, [7 item ref][5 value][CD].
+  //   prefix 22 = PRICE embedded  (verðmerki):  2200409|01719|9 → item 2200409 at 1.719 kr
+  //   prefix 23 = WEIGHT embedded (magnmerki):  2314801|00346|6 → item 2314801, 346 g = 0,346 kg
+  // The 7-digit ref is what's registered in product_barcodes. Falls through to normal lookup
+  // if the ref isn't registered ('2…' EAN-13s do exist in the wild).
+  if (/^2[23]\d{11}$/.test(code)) {
+    const isWeight = code.startsWith("23");
     const ref = code.slice(0, 7);
-    const priceKr = parseInt(code.slice(7, 12), 10);
-    if (priceKr > 0) {
+    const value = parseInt(code.slice(7, 12), 10);
+    if (value > 0) {
       const emb = await query<ProductRow>(
         `select p.product_number, p.name, p.price_gross, p.vat_rate,
                 p.stock_quantity, p.is_stock_controlled, p.use_scale
@@ -35,16 +37,14 @@ export async function GET(req: NextRequest) {
       );
       if (emb.length) {
         const p = emb[0];
-        // derive the pack weight from price ÷ price-per-kg (display/statistics only)
-        const kg = p.price_gross > 0 ? Math.round((priceKr / p.price_gross) * 1000) / 1000 : null;
-        return NextResponse.json({
-          id: p.product_number,
-          name: p.name,
-          price: p.price_gross,
-          vatPct: Number(p.vat_rate),
-          embeddedPrice: priceKr,
-          embeddedKg: kg,
-        });
+        const base = { id: p.product_number, name: p.name, price: p.price_gross, vatPct: Number(p.vat_rate) };
+        if (isWeight) {
+          // grams on the label → kg; the till charges kg × catalog price-per-kg
+          return NextResponse.json({ ...base, embeddedWeightKg: value / 1000 });
+        }
+        // price on the label wins exactly; derived weight is display/statistics only
+        const kg = p.price_gross > 0 ? Math.round((value / p.price_gross) * 1000) / 1000 : null;
+        return NextResponse.json({ ...base, embeddedPrice: value, embeddedKg: kg });
       }
     }
   }
