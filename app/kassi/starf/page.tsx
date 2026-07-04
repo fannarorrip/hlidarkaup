@@ -595,6 +595,7 @@ export default function StaffTill() {
           </div>
           <div id="rcpt" className="hidden">
             <p style={{ textAlign: "center", fontWeight: 700 }}>Hlíðarkaup</p>
+            <p style={{ textAlign: "center" }}>kt. 650725-0420 · VSK-nr. 158053</p>
             <p style={{ textAlign: "center" }}>Kvittun {done.invoiceNumber}</p>
             <hr />
             {done.lines.map((l) => (<div key={l.uid} style={{ display: "flex", justifyContent: "space-between" }}><span>{l.quantity}× {l.name}</span><span>{kr(lineTotal(l))} {vatClass(l.vatPct ?? 24)}</span></div>))}

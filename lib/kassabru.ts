@@ -114,6 +114,7 @@ export function formatReceipt(o: {
   out.push("!C!— með þér alla daga —");
   out.push("!C!Akurhlíð 1 · 550 Sauðárkrókur");
   out.push("!C!Sími 453-6166 · hlidarkaup.is");
+  out.push("!C!kt. 650725-0420 · VSK-nr. 158053");
   out.push("");
   if (o.isReturn) out.push("!BIG!ENDURGREIÐSLA");
   out.push(row(`Kvittun ${o.invoiceNumber}`, stamp));
