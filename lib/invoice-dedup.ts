@@ -71,6 +71,19 @@ export async function recordSupplierInvoice(client: Q, key: string, invNo: strin
   if (!upd.rows.length) throw new DuplicateInvoiceError(n);
 }
 
+/** Backstop across ALL entry doors: a live (non-reversed) voucher already carrying this
+ *  reference/invoice number — compared case-insensitively with collapsed whitespace. */
+export async function findVoucherByReference(ref: string, client: Q = db): Promise<{ id: string; series_code: string; voucher_number: string; supplier_id: string | null } | null> {
+  const n = normInv(ref);
+  if (!n) return null;
+  return (await client.query<{ id: string; series_code: string; voucher_number: string; supplier_id: string | null }>(
+    `select id, series_code, voucher_number::text as voucher_number, supplier_id
+       from acc.vouchers
+      where upper(regexp_replace(btrim(coalesce(external_reference, '')), '\\s+', ' ', 'g')) = $1
+        and status <> 'reversed'
+      limit 1`, [n])).rows[0] ?? null;
+}
+
 /** For inbound channels: is this invoice already booked or already a pending draft? */
 export async function invoiceAlreadyKnown(kt: string, invNo: string): Promise<"booked" | "pending" | null> {
   const k = normKt(kt), n = normInv(invNo);

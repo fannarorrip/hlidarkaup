@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { findVoucherByReference } from "@/lib/invoice-dedup";
+import { vNr } from "@/lib/format";
 
 // Post a manual journal entry (handvirk dagbókarfærsla) to the ledger, and
 // optionally retain the source PDF (fylgiskjal) linked to the voucher.
@@ -8,6 +10,17 @@ export async function POST(req: NextRequest) {
   const valid = (lines ?? []).filter((l: { account?: string; debit?: number; credit?: number }) =>
     l.account && (Number(l.debit) > 0 || Number(l.credit) > 0));
   if (valid.length < 2) return NextResponse.json({ error: "Færsla þarf a.m.k. tvær línur" }, { status: 400 });
+
+  // Tvíbókunarvörn: the same tilvísun/reikningsnúmer may not exist on another live fylgiskjal —
+  // whichever door it was booked through (innkaup, pósthólf, handvirkt).
+  if (reference) {
+    const dup = await findVoucherByReference(String(reference));
+    if (dup) {
+      return NextResponse.json(
+        { error: `Tilvísunin „${reference}“ er þegar á fylgiskjali ${vNr(dup.series_code, dup.voucher_number)} (tvíbókun varin).` },
+        { status: 409 });
+    }
+  }
 
   const jsonLines = valid.map((l: { account: string; debit?: number; credit?: number; vat_code?: string; description?: string }) => ({
     account: String(l.account),

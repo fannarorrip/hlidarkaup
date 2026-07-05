@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { findBookedInvoice, recordSupplierInvoice, dedupKey } from "@/lib/invoice-dedup";
+import { findBookedInvoice, recordSupplierInvoice, dedupKey, findVoucherByReference } from "@/lib/invoice-dedup";
+import { vNr } from "@/lib/format";
 
 // Approve an emailed invoice draft: post the (possibly edited) dagbók entry to the
 // ledger, attach the stored source document as the fylgiskjal, and mark the draft
@@ -26,11 +27,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!draft) return NextResponse.json({ error: "Drög fundust ekki" }, { status: 404 });
   if (draft.status === "approved") return NextResponse.json({ error: "Þegar bókað" }, { status: 409 });
 
-  // Duplicate-invoice hard block (supplier kennitala + invoice number).
-  const invNo = draft.extracted?.invoiceNumber ?? "";
+  // Duplicate-invoice hard block. The invoice number is the EXTRACTED one or the typed
+  // tilvísun — whichever exists; and booking an invoice without any supplier identity is
+  // refused outright (an unkeyed booking would be invisible to the guard).
+  const invNo = String(draft.extracted?.invoiceNumber || reference || "").trim();
   const kt = draft.extracted?.supplierKennitala ?? "";
-  if (invNo && (await findBookedInvoice(dedupKey(kt, supplier_id || null, null), invNo))) {
+  const key = dedupKey(kt, supplier_id || null, null);
+  if (invNo && !key) {
+    return NextResponse.json({ error: "Veldu lánadrottin (birgja) áður en reikningurinn er bókaður — tvíbókunarvörnin þarf auðkenni." }, { status: 400 });
+  }
+  if (invNo && (await findBookedInvoice(key, invNo))) {
     return NextResponse.json({ error: `Reikningur nr. ${invNo} frá þessum birgi er þegar bókaður (tvíbókun varin).` }, { status: 409 });
+  }
+  // Backstop across all doors: the same tilvísun may not exist on another live fylgiskjal.
+  if (reference) {
+    const dup = await findVoucherByReference(String(reference));
+    if (dup) return NextResponse.json({ error: `Tilvísunin „${reference}“ er þegar á fylgiskjali ${vNr(dup.series_code, dup.voucher_number)} (tvíbókun varin).` }, { status: 409 });
   }
 
   try {
@@ -50,7 +62,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     await db.query(`update acc.email_invoices set status='approved', voucher_id=$1, error=null, processed_at=now() where id=$2`, [voucherId, id]);
-    if (invNo) { try { await recordSupplierInvoice(db, dedupKey(kt, supplier_id || null, null), invNo, voucherId, supplier_id || null, "email"); } catch { /* race only; pre-check guards the normal path */ } }
+    if (invNo) { try { await recordSupplierInvoice(db, key, invNo, voucherId, supplier_id || null, "email"); } catch { /* race only; pre-check guards the normal path */ } }
     return NextResponse.json({ ok: true, voucherId, voucherNumber: n, invoiceNumber: `J-${String(n).padStart(6, "0")}` });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";

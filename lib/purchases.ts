@@ -3,7 +3,7 @@
 //   Debit  innskattur (input VAT)  9510 (24%) / 9512 (11%)
 //   Credit Lánadrottnar 9300 (á reikning)  OR  a bank/cash account (greitt)
 import { db } from "@/lib/db";
-import { findBookedInvoice, recordSupplierInvoice, dedupKey } from "@/lib/invoice-dedup";
+import { findBookedInvoice, recordSupplierInvoice, dedupKey, findVoucherByReference } from "@/lib/invoice-dedup";
 import { recordPayable } from "@/lib/payables";
 
 const INPUT_VAT: Record<number, string> = { 24: "9510", 11: "9512" };
@@ -41,6 +41,12 @@ export async function postPurchase(input: PostPurchaseInput): Promise<{ invoiceN
     const dkey = dedupKey(kt, input.supplierId || null, input.supplierName);
     if (input.supplierInvoiceNo && (await findBookedInvoice(dkey, input.supplierInvoiceNo, client))) {
       throw new PurchaseError(`Reikningur nr. ${input.supplierInvoiceNo} frá þessum birgi er þegar bókaður (tvíbókun varin).`, 409);
+    }
+    // Cross-door backstop: the same number on a live voucher booked through ANOTHER door
+    // (handvirk skráning, pósthólf) — blocked unless it clearly belongs to a DIFFERENT birgir.
+    const dupRef = await findVoucherByReference(input.supplierInvoiceNo, client);
+    if (dupRef && (!dupRef.supplier_id || !input.supplierId || dupRef.supplier_id === input.supplierId)) {
+      throw new PurchaseError(`Reikningsnúmerið er þegar á fylgiskjali í kerfinu (tvíbókun varin).`, 409);
     }
 
     const debitLines: { account: string; debit: number; credit: number; vat_code: string | null; description: string | null }[] = [];
