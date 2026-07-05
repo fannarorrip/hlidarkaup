@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { arionStatus, getArionCards, getArionCardTransactions } from "@/lib/arion";
+import { suggestAccounts } from "@/lib/tx-rules";
 
 // Pull the company's cards + transactions from Arion for reconciliation against the card
 // account (7716). Accepts a pasted sandbox token in the body (on-page tester) or falls back
@@ -26,6 +27,10 @@ export async function POST(req: NextRequest) {
       try { transactions = await getArionCardTransactions(cardId, undefined, undefined, bearer); }
       catch (e) { txError = e instanceof Error ? e.message : String(e); } // best-effort — cards still show
     }
+    // Learned categorization: pre-fill each transaction's lykill from earlier bookings.
+    const txList = transactions as { merchant?: string; description?: string }[];
+    const sugg = await suggestAccounts(txList.map((t) => t.merchant || t.description));
+    transactions = txList.map((t) => ({ ...t, suggestedAccount: sugg[(t.merchant || t.description || "").trim()] }));
     return NextResponse.json({ ok: true, cards, cardId, transactions, txError });
   } catch (e) {
     return NextResponse.json({ ok: false, reason: "error", message: e instanceof Error ? e.message : String(e) });

@@ -11,7 +11,10 @@ export async function POST(req: NextRequest) {
   const debitAccount = String(body.debitAccount || "").trim();
   const liabilityAccount = String(body.liabilityAccount || "9310").trim() || "9310";
   const txns = Array.isArray(body.transactions) ? body.transactions : [];
-  if (!debitAccount) return NextResponse.json({ ok: false, message: "Veldu gjaldalykil (debet)." });
+  // Each transaction may carry its own debitAccount (per-tx categorization); the shared
+  // default is only required for rows that don't.
+  const missing = txns.some((t: { debitAccount?: string }) => !String(t?.debitAccount || "").trim());
+  if (!debitAccount && missing) return NextResponse.json({ ok: false, message: "Veldu gjaldalykil (debet) fyrir allar færslur." });
   if (!txns.length) return NextResponse.json({ ok: false, message: "Engar færslur til að bóka." });
   try {
     const res = await bookArionCardTransactions(txns, debitAccount, liabilityAccount, typeof body.maskedPan === "string" ? body.maskedPan : undefined);

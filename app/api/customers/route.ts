@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning id`,
       [b.customer_number || null, b.kennitala || null, b.name.trim(), b.address || null, b.postal_code || null,
        b.city || null, b.phone || null, b.email || null, Number(b.payment_terms_days) || 0,
-       !!b.is_account, b.is_active !== false, !!b.rafraen_vidskipti, b.billing_mode === "per_trip" ? "per_trip" : "consolidated"],
+       !!b.is_account, b.is_active !== false, !!b.rafraen_vidskipti, ["per_trip", "per_trip_invoice"].includes(b.billing_mode) ? b.billing_mode : "consolidated"],
     );
     return NextResponse.json({ ok: true, id: rows[0].id });
   } catch {

@@ -9,7 +9,6 @@ interface Line { uid: string; id: string; name: string; price: number; vatPct?: 
 interface Customer { id: string; name: string; kennitala: string | null; is_account: boolean; }
 interface SItem { id: string; name: string; price: number; vatPct?: number; image?: string; useScale?: boolean; embeddedPrice?: number; embeddedKg?: number | null; embeddedWeightKg?: number; }
 interface Category { group: string; name: string; count: number; }
-interface HeldSale { id: string; label: string | null; customer_id: string | null; customer_name: string | null; customer_is_account: boolean | null; total: string; cart: Line[]; created_at: string; }
 type Mode = "card" | "cash" | "account" | "transfer";
 
 // Always use a dot as the thousands separator (don't rely on the browser locale).
@@ -39,8 +38,6 @@ export default function StaffTill() {
   const [cashFor, setCashFor] = useState(false);
   const [cashGot, setCashGot] = useState("");
   const [done, setDone] = useState<{ invoiceNumber: string; total: number; mode: Mode; change?: number; lines: Line[]; isReturn?: boolean } | null>(null);
-  const [held, setHeld] = useState<HeldSale[]>([]);
-  const [heldOpen, setHeldOpen] = useState(false);
   const [returnMode, setReturnMode] = useState(false);
   const [edit, setEdit] = useState<{ id: string; name: string; catalog: number; qty: string; unit: string; disc: string; discPct: boolean } | null>(null);
   const [editField, setEditField] = useState<"qty" | "unit" | "disc">("qty");
@@ -156,7 +153,7 @@ export default function StaffTill() {
   // Gated OFF while any overlay is open, so a stray scan can't mutate the cart behind a modal
   // (or corrupt a payment mid-flow).
   const overlayRef = useRef(false);
-  useEffect(() => { overlayRef.current = !!(cashFor || edit || custOpen || heldOpen || done || waiting); });
+  useEffect(() => { overlayRef.current = !!(cashFor || edit || custOpen || done || waiting); });
   useEffect(() => {
     let buf = ""; let last = 0;
     const onKey = (e: KeyboardEvent) => {
@@ -241,28 +238,6 @@ export default function StaffTill() {
   }
   function newSale() { setDone(null); setError(""); setCart([]); setCustomer(null); setSearch(""); setResults([]); setReturnMode(false); setTimeout(() => scanRef.current?.focus(), 50); }
 
-  const loadHeld = useCallback(() => { fetch("/api/kassi/held").then((r) => r.json()).then((d) => setHeld(d.held ?? [])).catch(() => {}); }, []);
-  useEffect(() => { loadHeld(); }, [loadHeld]);
-
-  async function hold() {
-    if (!cart.length) return;
-    setBusy(true); setError("");
-    // Only clear the cart when the save actually succeeded — a network hiccup must not eat the sale.
-    const r = await fetch("/api/kassi/held", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ label: customer?.name ?? null, customerId: customer?.id ?? null, customerName: customer?.name ?? null, customerIsAccount: customer?.is_account ?? null, cart, total }) }).catch(() => null);
-    setBusy(false);
-    if (!r?.ok) { setError("Tókst ekki að geyma söluna — reyndu aftur."); return; }
-    setCart([]); setCustomer(null); loadHeld();
-  }
-  async function recall(h: HeldSale) {
-    // held rows from before the uid field exist without it — hydrate so line identity works
-    setCart(Array.isArray(h.cart) ? h.cart.map((l) => ({ ...l, uid: l.uid ?? l.id })) : []);
-    // is_account comes from the held row (old rows: null → false, so Á reikning demands re-picking).
-    setCustomer(h.customer_id ? { id: h.customer_id, name: h.customer_name ?? "", kennitala: null, is_account: h.customer_is_account === true } : null);
-    setHeldOpen(false);
-    await fetch(`/api/kassi/held/${h.id}`, { method: "DELETE" }).catch(() => {});
-    loadHeld();
-  }
-  async function discardHeld(id: string) { await fetch(`/api/kassi/held/${id}`, { method: "DELETE" }).catch(() => {}); loadHeld(); }
   async function openDrawer() {
     if (bridgeRef.current) {
       const ok = await kbDrawer();
@@ -400,9 +375,7 @@ export default function StaffTill() {
             <span className="text-[#8CC7C4] text-lg">›</span>
           </button>
 
-          <div className="shrink-0 grid grid-cols-3 gap-2 m-3 mb-0">
-            <FnBtn label="Geyma" onClick={hold} disabled={!cart.length || busy} />
-            <FnBtn label={`Geymdir${held.length ? ` (${held.length})` : ""}`} onClick={() => { loadHeld(); setHeldOpen(true); }} />
+          <div className="shrink-0 grid grid-cols-1 gap-2 m-3 mb-0">
             <FnBtn label={returnMode ? "Hætta skil" : "Skila vörum"} active={returnMode} onClick={() => { setReturnMode((v) => !v); setCart([]); setCustomer(null); setError(""); }} />
           </div>
           {returnMode && <div className="shrink-0 mx-3 mt-2 rounded-xl bg-[#DB1A1A] text-white text-center py-2.5 font-semibold">SKILAMÁTI — endurgreiðsla</div>}
@@ -520,28 +493,6 @@ export default function StaffTill() {
         </div>
       )}
 
-      {/* Held sales */}
-      {heldOpen && (
-        <div className="fixed inset-0 z-40 bg-black/40 flex items-start justify-center pt-20" onClick={() => setHeldOpen(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-md p-5" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3"><h2 className="font-bold text-lg">Geymdir reikningar</h2><button onClick={() => setHeldOpen(false)} className="text-gray-400 text-3xl leading-none w-11 h-11" aria-label="Loka">×</button></div>
-            {held.length === 0 ? <p className="text-gray-400 py-8 text-center">Engir geymdir reikningar</p> : (
-              <div className="max-h-96 overflow-y-auto divide-y divide-gray-100">
-                {held.map((h) => (
-                  <div key={h.id} className="flex items-center gap-2 py-3">
-                    <button onClick={() => recall(h)} className="flex-1 text-left">
-                      <p className="font-medium">{h.customer_name || "Staðgreitt"} <span className="text-gray-400 text-sm font-normal">· {Array.isArray(h.cart) ? h.cart.length : 0} vörur</span></p>
-                      <p className="text-xs text-gray-400">{new Date(h.created_at).toLocaleString("is-IS")}</p>
-                    </button>
-                    <span className="font-semibold tabular-nums">{kr(Number(h.total))}</span>
-                    <button onClick={() => discardHeld(h.id)} className="text-gray-300 hover:text-[#DB1A1A] text-xl w-11 h-11" aria-label="Eyða">×</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Cash modal — with number pad */}
       {cashFor && (

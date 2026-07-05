@@ -7,6 +7,7 @@ interface Row {
   id: string; entry_reference: string; booking_date: string | null; amount: number; currency: string | null;
   counterparty: string | null; remittance: string | null; status: string;
   series_code: string | null; voucher_number: string | null; contra_account: string | null;
+  suggested_contra: string | null;   // learned counterparty→lykill rule
 }
 interface BankAcct { account_number: string; name: string }
 
@@ -19,8 +20,12 @@ export default function ArionStatement({ bankAccounts, defaultBank, contraIn, co
   const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [accountId, setAccountId] = useState("");
   const [ledgerAccount, setLedgerAccount] = useState(defaultBank || bankAccounts[0]?.account_number || "");
-  // Default mótlykill by direction (from Samstillingar); the row input pre-fills to this.
-  const defContra = (amount: number) => (amount >= 0 ? contraIn : contraOut) || "";
+  // Mótlykill pre-fill: the LEARNED rule for the counterparty wins; otherwise the direction
+  // default from Samstillingar. The system learns on every booking.
+  const defContra = (r: { amount: number; suggested_contra?: string | null }) =>
+    r.suggested_contra || ((r.amount >= 0 ? contraIn : contraOut) || "");
+  const [sel, setSel] = useState<Record<string, boolean>>({});
+  const [bulkBooking, setBulkBooking] = useState(false);
   const [from, setFrom] = useState(iso(new Date(Date.now() - 90 * 864e5)));
   const [to, setTo] = useState(iso(new Date()));
   const [rows, setRows] = useState<Row[] | null>(null);
@@ -96,23 +101,50 @@ export default function ArionStatement({ bankAccounts, defaultBank, contraIn, co
     finally { setBusy(false); }
   }
 
+  async function bookOne(row: Row): Promise<boolean> {
+    const contraAccount = (contra[row.id] ?? defContra(row)).trim();
+    if (!contraAccount) return false;
+    const r = await fetch("/api/bankatenging/statement/book", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ bankTxId: row.id, bankAccount: ledgerAccount, contraAccount }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.message || "Villa");
+    setRows((prev) => prev?.map((x) => x.id === row.id
+      ? { ...x, status: "booked", series_code: d.voucher?.series_code ?? null, voucher_number: d.voucher?.voucher_number ?? null }
+      : x) ?? null);
+    return true;
+  }
+
   async function book(row: Row) {
-    const contraAccount = (contra[row.id] ?? defContra(row.amount)).trim();
-    if (!contraAccount) { setErr("Sláðu inn mótlykil fyrir færsluna."); return; }
+    if (!(contra[row.id] ?? defContra(row)).trim()) { setErr("Sláðu inn mótlykil fyrir færsluna."); return; }
     setBookingId(row.id); setErr(""); setMsg("");
     try {
-      const r = await fetch("/api/bankatenging/statement/book", {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ bankTxId: row.id, bankAccount: ledgerAccount, contraAccount }),
-      });
-      const d = await r.json();
-      if (!d.ok) { setErr(d.message || "Villa"); return; }
-      setRows((prev) => prev?.map((x) => x.id === row.id
-        ? { ...x, status: "booked", series_code: d.voucher?.series_code ?? null, voucher_number: d.voucher?.voucher_number ?? null }
-        : x) ?? null);
-      setMsg(`✓ Bókað sem fylgiskjal ${d.voucher?.series_code}-${d.voucher?.voucher_number}.`);
+      await bookOne(row);
+      setMsg("✓ Bókað.");
     } catch (e) { setErr(e instanceof Error ? e.message : "Villa"); }
     finally { setBookingId(null); }
+  }
+
+  /** Book every ticked, unbooked row with its own mótlykill — one by one, stopping on errors. */
+  async function bookSelected() {
+    const targets = (rows ?? []).filter((r) => sel[r.id] && r.status !== "booked");
+    if (!targets.length) return;
+    setBulkBooking(true); setErr(""); setMsg("");
+    let ok = 0;
+    const problems: string[] = [];
+    for (const row of targets) {
+      try {
+        if (await bookOne(row)) ok++;
+        else problems.push(`${row.counterparty || row.id}: vantar mótlykil`);
+      } catch (e) {
+        problems.push(`${row.counterparty || row.id}: ${e instanceof Error ? e.message : "villa"}`);
+      }
+    }
+    setMsg(`✓ Bókaði ${ok} af ${targets.length} völdum færslum.`);
+    if (problems.length) setErr(problems.slice(0, 3).join(" · ") + (problems.length > 3 ? ` · +${problems.length - 3}` : ""));
+    setSel({});
+    setBulkBooking(false);
   }
 
   const kr = (n: number) => Math.round(n).toLocaleString("is-IS");
@@ -174,9 +206,16 @@ export default function ArionStatement({ bankAccounts, defaultBank, contraIn, co
       {rows && (rows.length === 0 ? (
         <p className="text-sm text-gray-400">Engar hreyfingar á tímabilinu.</p>
       ) : (
+        <>
         <table className="w-full text-sm">
           <thead className="text-gray-400 text-left text-xs">
             <tr>
+              <th className="py-1 w-8">
+                <input type="checkbox"
+                  checked={rows.filter((r) => r.status !== "booked").length > 0 && rows.filter((r) => r.status !== "booked").every((r) => sel[r.id])}
+                  onChange={(e) => setSel(Object.fromEntries(rows.filter((r) => r.status !== "booked").map((r) => [r.id, e.target.checked])))}
+                  aria-label="Velja allar" />
+              </th>
               <th className="py-1 font-medium">Dags.</th>
               <th className="py-1 font-medium">Mótaðili / skýring</th>
               <th className="py-1 font-medium text-right">Upphæð</th>
@@ -189,6 +228,11 @@ export default function ArionStatement({ bankAccounts, defaultBank, contraIn, co
               const inbound = r.amount >= 0;
               return (
                 <tr key={r.id} className="border-t border-gray-100 align-top">
+                  <td className="py-1.5">
+                    {r.status !== "booked" && (
+                      <input type="checkbox" checked={!!sel[r.id]} onChange={(e) => setSel((p) => ({ ...p, [r.id]: e.target.checked }))} aria-label="Velja" />
+                    )}
+                  </td>
                   <td className="py-1.5 text-gray-500 tabular-nums whitespace-nowrap">{dags(r.booking_date)}</td>
                   <td className="py-1.5">
                     {r.counterparty || "—"}
@@ -201,14 +245,15 @@ export default function ArionStatement({ bankAccounts, defaultBank, contraIn, co
                     {r.status === "booked" ? (
                       <span className="text-xs text-green-700">✓ {r.series_code}-{r.voucher_number}</span>
                     ) : (
-                      <input value={contra[r.id] ?? defContra(r.amount)} onChange={(e) => setContra((p) => ({ ...p, [r.id]: e.target.value }))}
+                      <input value={contra[r.id] ?? defContra(r)} onChange={(e) => setContra((p) => ({ ...p, [r.id]: e.target.value }))}
                         placeholder={inbound ? "t.d. 7600" : "t.d. 9300"}
-                        className="w-24 border border-gray-300 rounded px-2 py-1 text-xs tabular-nums" />
+                        title={r.suggested_contra ? "Lært af fyrri bókunum" : undefined}
+                        className={`w-24 border rounded px-2 py-1 text-xs tabular-nums ${r.suggested_contra && (contra[r.id] ?? defContra(r)) === r.suggested_contra ? "border-emerald-300 bg-emerald-50/50" : "border-gray-300"}`} />
                     )}
                   </td>
                   <td className="py-1.5">
                     {r.status !== "booked" && (
-                      <button onClick={() => book(r)} disabled={bookingId !== null || !(contra[r.id] ?? defContra(r.amount)).trim()}
+                      <button onClick={() => book(r)} disabled={bookingId !== null || bulkBooking || !(contra[r.id] ?? defContra(r)).trim()}
                         className="px-3 py-1 rounded-lg bg-gray-800 text-white text-xs font-semibold hover:bg-gray-900 disabled:opacity-40">{bookingId === r.id ? "Bóka…" : "Bóka"}</button>
                     )}
                   </td>
@@ -217,10 +262,18 @@ export default function ArionStatement({ bankAccounts, defaultBank, contraIn, co
             })}
           </tbody>
         </table>
+        {rows.some((r) => sel[r.id] && r.status !== "booked") && (
+          <button onClick={bookSelected} disabled={bulkBooking || bookingId !== null}
+            className="mt-3 px-4 py-1.5 rounded-lg bg-gray-800 text-white text-sm font-semibold hover:bg-gray-900 disabled:opacity-40">
+            {bulkBooking ? "Bóka…" : `Bóka valdar (${rows.filter((r) => sel[r.id] && r.status !== "booked").length})`}
+          </button>
+        )}
+        </>
       ))}
 
       <p className="mt-3 text-[11px] text-gray-400">
-        Innborgun (+) bókast: Debet bankalykill / Kredit mótlykill (t.d. 7600 viðskiptakröfur). Úttekt (−): Debet mótlykill / Kredit bankalykill (t.d. 9300 lánardrottnar). Sama færsla bókast aðeins einu sinni.
+        Innborgun (+) bókast: Debet bankalykill / Kredit mótlykill (t.d. 7600 viðskiptakröfur). Úttekt (−): Debet mótlykill / Kredit bankalykill (t.d. 9300 lánardrottnar).
+        Kerfið man mótlykilinn fyrir hvern mótaðila og fyllir hann sjálfkrafa næst (grænt = lært). Sama færsla bókast aðeins einu sinni.
       </p>
     </div>
   );

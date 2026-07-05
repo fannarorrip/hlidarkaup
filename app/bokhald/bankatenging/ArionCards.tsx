@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { dags } from "@/lib/format";
 
 interface Card { id: string; name?: string; maskedNumber?: string; holder?: string; available?: number }
-interface Tx { id: string; date: string; amount: number; currency?: string; description?: string; merchant?: string }
+interface Tx { id: string; date: string; amount: number; currency?: string; description?: string; merchant?: string; suggestedAccount?: string }
 
 export default function ArionCards({ defaultLiability = "9310", defaultExpense, sandbox = false, serverReady = false }: { defaultLiability?: string; defaultExpense?: string; sandbox?: boolean; serverReady?: boolean }) {
   const [token, setToken] = useState("");
@@ -19,21 +19,31 @@ export default function ArionCards({ defaultLiability = "9310", defaultExpense, 
   const [debitAcct, setDebitAcct] = useState("");
   const [booking, setBooking] = useState(false);
   const [bookMsg, setBookMsg] = useState("");
+  // Per-transaction categorization: tick which to book + a lykill per row (pre-filled from
+  // the learned rules; falls back to the shared default below).
+  const [sel, setSel] = useState<Record<string, boolean>>({});
+  const [rowAcct, setRowAcct] = useState<Record<string, string>>({});
   useEffect(() => { try { const v = window.localStorage.getItem("arion_card_debit"); if (v) setDebitAcct(v); else if (defaultExpense) setDebitAcct(defaultExpense); } catch { /* */ } }, []);
   useEffect(() => { try { window.localStorage.setItem("arion_card_debit", debitAcct); } catch { /* */ } }, [debitAcct]);
 
+  const selected = (txs ?? []).filter((t) => sel[t.id]);
+
   async function book() {
-    if (!txs?.length || !debitAcct.trim()) return;
+    if (!selected.length) return;
     setBooking(true); setBookMsg("");
     const card = cards.find((c) => c.id === cardId) || cards[0];
     try {
       const r = await fetch("/api/bankatenging/cards/book", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ transactions: txs, debitAccount: debitAcct.trim(), liabilityAccount: defaultLiability, maskedPan: card?.maskedNumber }),
+        body: JSON.stringify({
+          transactions: selected.map((t) => ({ ...t, debitAccount: (rowAcct[t.id] || debitAcct).trim() })),
+          debitAccount: debitAcct.trim(), liabilityAccount: defaultLiability, maskedPan: card?.maskedNumber,
+        }),
       });
       const d = await r.json();
       if (!d.ok) { setBookMsg("✗ " + (d.message || "Villa")); return; }
       setBookMsg(`✓ Bókaði ${d.booked} færslur${d.skipped ? ` (${d.skipped} áður bókaðar)` : ""}${d.errors?.length ? ` · ${d.errors.length} villa/villur` : ""}`);
+      setSel({});
     } catch (e) { setBookMsg("✗ " + (e instanceof Error ? e.message : "Villa")); }
     finally { setBooking(false); }
   }
@@ -47,7 +57,11 @@ export default function ArionCards({ defaultLiability = "9310", defaultExpense, 
       });
       const d = await r.json();
       if (!d.ok) { setErr(d.message || "Villa"); setTxs(null); return; }
-      setCards(d.cards || []); setCardId(d.cardId || ""); setTxs(d.transactions || []); setTxErr(d.txError || null);
+      const list: Tx[] = d.transactions || [];
+      setCards(d.cards || []); setCardId(d.cardId || ""); setTxs(list); setTxErr(d.txError || null);
+      // select everything by default; pre-fill each row's lykill from the learned rules
+      setSel(Object.fromEntries(list.map((t) => [t.id, true])));
+      setRowAcct(Object.fromEntries(list.filter((t) => t.suggestedAccount).map((t) => [t.id, t.suggestedAccount as string])));
     } catch (e) { setErr(e instanceof Error ? e.message : "Villa"); }
     finally { setBusy(false); }
   }
@@ -98,13 +112,32 @@ export default function ArionCards({ defaultLiability = "9310", defaultExpense, 
       {txs && txs.length > 0 && (
         <table className="w-full text-sm mt-3">
           <thead className="text-gray-400 text-left text-xs">
-            <tr><th className="py-1 font-medium">Dags.</th><th className="py-1 font-medium">Lýsing</th><th className="py-1 font-medium text-right">Upphæð</th></tr>
+            <tr>
+              <th className="py-1 w-8">
+                <input type="checkbox" checked={selected.length === txs.length && txs.length > 0}
+                  onChange={(e) => setSel(Object.fromEntries(txs.map((t) => [t.id, e.target.checked])))} aria-label="Velja allar" />
+              </th>
+              <th className="py-1 font-medium">Dags.</th><th className="py-1 font-medium">Lýsing</th>
+              <th className="py-1 font-medium">Lykill</th><th className="py-1 font-medium text-right">Upphæð</th>
+            </tr>
           </thead>
           <tbody>
             {txs.map((t, i) => (
-              <tr key={t.id || i} className="border-t border-gray-100">
+              <tr key={t.id || i} className={`border-t border-gray-100 ${sel[t.id] ? "" : "opacity-50"}`}>
+                <td className="py-1">
+                  <input type="checkbox" checked={!!sel[t.id]} onChange={(e) => setSel((p) => ({ ...p, [t.id]: e.target.checked }))} aria-label="Velja" />
+                </td>
                 <td className="py-1 text-gray-500 tabular-nums">{dags(t.date)}</td>
                 <td className="py-1">{t.merchant || t.description || "—"}</td>
+                <td className="py-1">
+                  <input
+                    value={rowAcct[t.id] ?? ""}
+                    onChange={(e) => setRowAcct((p) => ({ ...p, [t.id]: e.target.value }))}
+                    placeholder={debitAcct || "lykill"}
+                    className={`w-24 border rounded-lg px-2 py-1 text-sm tabular-nums ${t.suggestedAccount && rowAcct[t.id] === t.suggestedAccount ? "border-emerald-300 bg-emerald-50/50" : "border-gray-200"}`}
+                    title={t.suggestedAccount ? "Lært af fyrri bókunum" : undefined}
+                  />
+                </td>
                 <td className="py-1 text-right tabular-nums">{kr(t.amount)}{t.currency && t.currency !== "ISK" ? ` ${t.currency}` : " kr."}</td>
               </tr>
             ))}
@@ -119,23 +152,24 @@ export default function ArionCards({ defaultLiability = "9310", defaultExpense, 
             <input
               value={debitAcct}
               onChange={(e) => setDebitAcct(e.target.value)}
-              placeholder="Gjaldalykill (debet), t.d. 2100"
+              placeholder="Sjálfgefinn gjaldalykill, t.d. 2100"
               className="w-56 border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
             />
             <span className="text-xs text-gray-400">→ {defaultLiability} skuld (kredit)</span>
             <button
               onClick={book}
-              disabled={booking || !debitAcct.trim()}
+              disabled={booking || !selected.length || (!debitAcct.trim() && selected.some((t) => !(rowAcct[t.id] || "").trim()))}
               className="px-4 py-1.5 rounded-lg bg-gray-800 text-white text-sm font-semibold hover:bg-gray-900 disabled:opacity-40"
             >
-              {booking ? "Bóka…" : `Bóka ${txs.length} færslur`}
+              {booking ? "Bóka…" : `Bóka valdar (${selected.length})`}
             </button>
           </div>
           {bookMsg && (
             <p className={`mt-2 text-sm ${bookMsg.startsWith("✓") ? "text-green-700" : "text-red-700"}`}>{bookMsg}</p>
           )}
           <p className="mt-1 text-[11px] text-gray-400">
-            Hver færsla bókast: Debet gjaldalykill / Kredit 9310. Sama færsla tvíbókast ekki (auðkennt á færslunúmeri). Endurflokka má síðar í bókhaldi.
+            Hver færsla bókast: Debet lykill línunnar (eða sjálfgefni lykillinn) / Kredit {defaultLiability}. Kerfið man lykilinn
+            fyrir hvern söluaðila og fyllir hann sjálfkrafa næst. Sama færsla tvíbókast ekki.
           </p>
         </div>
       )}

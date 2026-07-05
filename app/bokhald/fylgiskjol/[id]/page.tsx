@@ -33,11 +33,12 @@ export default async function VoucherDetail({ params }: { params: Promise<{ id: 
         </a>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-sm">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 text-sm">
         <Field label="Lýsing" value={v.description ?? "—"} />
-        <Field label="Tilvísun" value={v.external_reference ?? "—"} />
+        <Field label="Lánadrottinn" value={v.supplier_name ?? "—"} />
+        <Field label="Reikningsnr. (tilvísun)" value={v.external_reference ?? "—"} />
         <Field label="Bókað af" value={v.posted_by ?? "—"} />
-        <Field label="Bókað" value={v.posted_at ? v.posted_at.slice(0, 16).replace("T", " ") : "—"} />
+        <Field label="Bókað" value={v.posted_at ? `${dags(v.posted_at)} ${v.posted_at.slice(11, 16)}` : "—"} />
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">

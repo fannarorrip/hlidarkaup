@@ -20,7 +20,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
        typeof b.is_account === "boolean" ? b.is_account : null,
        typeof b.is_active === "boolean" ? b.is_active : null,
        typeof b.rafraen_vidskipti === "boolean" ? b.rafraen_vidskipti : null,
-       b.billing_mode === "per_trip" || b.billing_mode === "consolidated" ? b.billing_mode : null],
+       ["per_trip", "per_trip_invoice", "consolidated"].includes(b.billing_mode) ? b.billing_mode : null],
     );
     if (!rows.length) return NextResponse.json({ error: "Viðskiptamaður fannst ekki" }, { status: 404 });
     return NextResponse.json({ ok: true });

@@ -4,8 +4,10 @@
 // Dedup by the bank's card_transaction_id: the claim-INSERT runs first, inside the same transaction
 // as the voucher, so a re-run (or a concurrent double-click) skips cleanly instead of double-posting.
 import { db } from "@/lib/db";
+import { learnAccount } from "@/lib/tx-rules";
 
-export interface CardTxInput { id: string; date: string; amount: number; merchant?: string; description?: string }
+// debitAccount on a transaction overrides the shared default — per-tx categorization.
+export interface CardTxInput { id: string; date: string; amount: number; merchant?: string; description?: string; debitAccount?: string }
 
 export async function bookArionCardTransactions(
   txns: CardTxInput[], debitAccount: string, liabilityAccount = "9310", maskedPan?: string,
@@ -18,6 +20,8 @@ export async function bookArionCardTransactions(
       const raw = Number(t.amount) || 0;
       const amount = Math.round(Math.abs(raw));
       if (!t.id || !amount) { skipped++; continue; }
+      const acct = (t.debitAccount || debitAccount || "").trim();
+      if (!acct) { errors.push(`${(t.merchant || t.id).slice(0, 30)}: vantar gjaldalykil`); continue; }
       const isRefund = raw < 0;
       try {
         await client.query("begin");
@@ -33,8 +37,8 @@ export async function bookArionCardTransactions(
         const desc = (t.merchant || t.description || "Kortafærsla").slice(0, 140);
         const lines = isRefund
           ? [{ account: liabilityAccount, debit: amount, credit: 0, vat_code: null, description: "Kreditkort endurgreiðsla" },
-             { account: debitAccount, debit: 0, credit: amount, vat_code: null, description: desc }]
-          : [{ account: debitAccount, debit: amount, credit: 0, vat_code: null, description: desc },
+             { account: acct, debit: 0, credit: amount, vat_code: null, description: desc }]
+          : [{ account: acct, debit: amount, credit: 0, vat_code: null, description: desc },
              { account: liabilityAccount, debit: 0, credit: amount, vat_code: null, description: "Kreditkort" }];
         const v = await client.query(
           "select id from acc.post_voucher('JOURNAL',$1::date,'card_purchase',$2,$3,'bokhald',$4::jsonb)",
@@ -43,6 +47,7 @@ export async function bookArionCardTransactions(
         await client.query("update acc.card_transactions set voucher_id = $1 where card_transaction_id = $2", [v.rows[0].id, t.id]);
         await client.query("commit");
         booked++;
+        await learnAccount(t.merchant || t.description, acct); // kerfið lærir hvað hvert fer
       } catch (e) {
         try { await client.query("rollback"); } catch { /* */ }
         errors.push(`${(t.merchant || t.id).slice(0, 30)}: ${e instanceof Error ? e.message : String(e)}`);

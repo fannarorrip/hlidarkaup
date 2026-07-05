@@ -19,7 +19,7 @@ export default function CustomerForm({ customer }: { customer?: CustomerRow | nu
     payment_terms_days: String(customer?.payment_terms_days ?? 0),
     is_account: customer?.is_account ?? false, is_active: customer?.is_active ?? true,
     rafraen_vidskipti: customer?.rafraen_vidskipti ?? false,
-    billing_mode: customer?.billing_mode === "per_trip" ? "per_trip" : "consolidated",
+    billing_mode: ["per_trip", "per_trip_invoice"].includes(customer?.billing_mode ?? "") ? (customer!.billing_mode as string) : "consolidated",
   });
   const set = (k: string, v: string | boolean) => setF((p) => ({ ...p, [k]: v }));
   const [saving, setSaving] = useState(false);
@@ -88,6 +88,7 @@ export default function CustomerForm({ customer }: { customer?: CustomerRow | nu
           <select value={f.billing_mode} onChange={(e) => set("billing_mode", e.target.value)}
             className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-red-400">
             <option value="consolidated">Safna saman — einn reikningur í lok mánaðar</option>
+            <option value="per_trip_invoice">Hver verslun — reikningur strax (engin krafa)</option>
             <option value="per_trip">Hver verslun — reikningur og krafa strax</option>
           </select>
         </div>

@@ -5,6 +5,7 @@
 //   money OUT (amount <  0): DEBIT contra          / CREDIT bank account
 import { db, query } from "@/lib/db";
 import type { ArionAccountTx } from "@/lib/arion";
+import { learnAccount } from "@/lib/tx-rules";
 
 export interface StoredBankTx {
   id: string; entry_reference: string; booking_date: string | null; value_date: string | null;
@@ -12,6 +13,7 @@ export interface StoredBankTx {
   reference: string | null; status: string; voucher_id: string | null;
   ledger_account: string | null; contra_account: string | null;
   series_code: string | null; voucher_number: string | null;
+  suggested_contra: string | null;   // learned counterparty→lykill rule (acc.tx_account_rules)
 }
 
 /** Upsert fetched statement lines, deduped on (account_id, entry_reference). Existing rows keep
@@ -44,9 +46,11 @@ export function listBankTransactions(accountId: string, from?: string, to?: stri
     `select bt.id, bt.entry_reference, bt.booking_date::text as booking_date, bt.value_date::text as value_date,
             bt.amount::float8 as amount, bt.currency, bt.counterparty, bt.remittance, bt.reference,
             bt.status, bt.voucher_id, bt.ledger_account, bt.contra_account,
-            v.series_code, v.voucher_number::text as voucher_number
+            v.series_code, v.voucher_number::text as voucher_number,
+            r.account_number as suggested_contra
      from acc.bank_transactions bt
      left join acc.vouchers v on v.id = bt.voucher_id
+     left join acc.tx_account_rules r on r.match_key = lower(unaccent(trim(coalesce(bt.counterparty,''))))
      where bt.account_id = $1
        and ($2 = '' or bt.booking_date >= $2::date)
        and ($3 = '' or bt.booking_date <= $3::date)
@@ -107,6 +111,7 @@ export async function bookBankTransaction(
       [v.rows[0].id, bankAccount, contraAccount, bankTxId]);
     if (upd.rowCount === 0) { await client.query("rollback"); return { ok: false, message: "Færsla var þegar bókuð." }; }
     await client.query("commit");
+    await learnAccount(bt.counterparty, contraAccount); // kerfið lærir hvað hver mótaðili fer á
     return { ok: true, voucher: { series_code: v.rows[0].series_code, voucher_number: v.rows[0].voucher_number } };
   } catch (e) {
     try { await client.query("rollback"); } catch { /* */ }

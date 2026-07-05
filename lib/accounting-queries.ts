@@ -58,6 +58,35 @@ export const getRecentVouchers = (limit = 12) =>
 export const getVouchers = (limit = 200) =>
   query<VoucherRow>(`${VOUCHER_SELECT} group by v.id order by v.voucher_date desc, v.voucher_number desc limit $1`, [limit]);
 
+// Fylgiskjöl browsing: list + search WITH the supplier (lánadrottinn) and invoice number
+// (tilvísun/external_reference) visible — what the accountant reconciles against.
+export interface VoucherListRow extends VoucherRow {
+  supplier_name: string | null;
+  external_reference: string | null;
+}
+const VOUCHER_LIST_SELECT = `
+  select v.id, v.series_code, v.voucher_number, v.voucher_date::text, v.voucher_type,
+         v.status, v.description, v.source, v.external_reference, s.name as supplier_name,
+         coalesce(sum(le.debit),0) as amount
+  from acc.vouchers v
+  join acc.ledger_entries le on le.voucher_id=v.id
+  left join acc.suppliers s on s.id = v.supplier_id`;
+
+export const getVoucherList = (limit = 200) =>
+  query<VoucherListRow>(`${VOUCHER_LIST_SELECT} group by v.id, s.name order by v.voucher_date desc, v.voucher_number desc limit $1`, [limit]);
+
+/** Accent-insensitive voucher search: number (HK-000123 / 123), description, supplier name, tilvísun. */
+export const searchVouchers = (q: string, limit = 300) =>
+  query<VoucherListRow>(`${VOUCHER_LIST_SELECT}
+  where unaccent(coalesce(v.description,'')) ilike unaccent('%'||$1||'%')
+     or unaccent(coalesce(s.name,'')) ilike unaccent('%'||$1||'%')
+     or coalesce(v.external_reference,'') ilike '%'||$1||'%'
+     or v.series_code || '-' || v.voucher_number::text ilike '%'||$1||'%'
+     -- receipts print HK-000123 while the series is KASSI — match on the DIGITS regardless of prefix
+     or (nullif(regexp_replace($1, '\\D', '', 'g'), '') is not null
+         and v.voucher_number::text = ltrim(regexp_replace($1, '\\D', '', 'g'), '0'))
+  group by v.id, s.name order by v.voucher_date desc, v.voucher_number desc limit $2`, [q, limit]);
+
 export interface SalesInvoiceRow extends VoucherRow {
   customer_id: string | null;
   customer_flagged: boolean;       // customer marked rafræn viðskipti
@@ -83,10 +112,12 @@ export const getSalesInvoices = (limit = 200) =>
 export async function getVoucher(id: string) {
   const v = (await query<VoucherRow & {
     external_reference: string | null; posted_at: string | null; posted_by: string | null;
+    supplier_name: string | null;
     has_document: boolean; document_name: string | null; document_skjalanumer: string | null;
   }>(`
     select v.id, v.series_code, v.voucher_number, v.voucher_date::text, v.voucher_type, v.status,
            v.description, v.external_reference, v.posted_at::text, v.posted_by,
+           (select name from acc.suppliers s where s.id = v.supplier_id) as supplier_name,
            coalesce((select sum(debit) from acc.ledger_entries where voucher_id=v.id),0) as amount,
            exists(select 1 from acc.documents d where d.voucher_id=v.id) as has_document,
            (select filename from acc.documents d where d.voucher_id=v.id order by created_at desc limit 1) as document_name,
