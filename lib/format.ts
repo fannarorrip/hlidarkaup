@@ -13,6 +13,17 @@ export const num = (n: number | string) => {
   return neg + dotGroup(i) + (f ? "," + f : "");
 };
 
+/** Icelandic date, e.g. 5.7.2026. Accepts Date, ISO timestamp or date-only string. */
+export const dags = (d: string | Date | null | undefined) => {
+  if (!d) return "—";
+  const dt = typeof d === "string" ? new Date(d.length === 10 ? d + "T00:00:00" : d) : d;
+  if (isNaN(dt.getTime())) return String(d);
+  return `${dt.getDate()}.${dt.getMonth() + 1}.${dt.getFullYear()}`;
+};
+
+/** Icelandic month names (nominative, lower-case) for chart axes and pickers. */
+export const MANUDIR = ["janúar", "febrúar", "mars", "apríl", "maí", "júní", "júlí", "ágúst", "september", "október", "nóvember", "desember"];
+
 // VSK-flokkur letters shown on invoices/receipts: A = 24%, B = 11%, C = 0%.
 export const vatLetter = (rate: number | string) => {
   const r = Number(rate);

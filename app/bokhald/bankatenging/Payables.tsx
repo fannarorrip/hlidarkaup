@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { dags } from "@/lib/format";
 
 interface Payable {
   id: string; supplier_name: string | null; supplier_iban: string | null; invoice_number: string | null;
@@ -164,7 +165,7 @@ export default function Payables({ payables, bankAccounts, defaultBank, sandbox 
                   {p.status === "pending" && <span className="ml-1 text-[11px] text-amber-600">(greiðsla í vinnslu)</span>}
                 </td>
                 <td className="py-1.5 text-gray-500">{p.invoice_number || "—"}</td>
-                <td className="py-1.5 whitespace-nowrap">{(p.due_date || "").slice(0, 10)} <span className="text-xs">· <Aging d={p.days_overdue} /></span></td>
+                <td className="py-1.5 whitespace-nowrap">{dags(p.due_date)} <span className="text-xs">· <Aging d={p.days_overdue} /></span></td>
                 <td className="py-1.5 text-right tabular-nums whitespace-nowrap">{kr(p.amount)} kr.</td>
                 <td className="py-1.5">
                   <div className="flex flex-col items-end gap-1">

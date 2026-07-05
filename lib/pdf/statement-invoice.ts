@@ -5,6 +5,7 @@ import fs from "fs";
 import path from "path";
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import { STORE } from "@/lib/store";
+import { MANUDIR } from "@/lib/format";
 
 export interface StatementTripLine { name: string; quantity: number; line_total: number; vat_rate: number }
 export interface StatementTrip { date: string; series_code?: string; voucher_number?: string; total: number; lines: StatementTripLine[] }
@@ -13,6 +14,7 @@ export interface StatementInvoiceData { invoice_number: string; customer_name: s
 const isk = (n: number) => Math.round(n).toLocaleString("is-IS") + " kr.";
 const vatLetter = (r: number) => (r === 24 ? "A" : r === 11 ? "B" : r === 0 ? "C" : "");
 const fmtD = (iso: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ""); return m ? `${m[3]}.${m[2]}.${m[1]}` : iso; };
+const periodLabel = (p: string) => { const m = /^(\d{4})-(\d{2})$/.exec(p || ""); return m ? `${MANUDIR[+m[2] - 1]} ${m[1]}` : p; };
 function safe(s: string) { return (s || "").replace(/[^ -ÿ€‘’“”–—•]/g, "?"); }
 
 let _logo: Buffer | null | undefined;
@@ -45,7 +47,7 @@ export async function renderStatementInvoicePdf(d: StatementInvoiceData): Promis
   const oldY = y;
   y = dy;
   TR(`Nr. ${d.invoice_number}`, right, 9, font, muted); y -= 12;
-  TR(`Tímabil ${d.period}`, right, 9, font, muted);
+  TR(`Tímabil ${periodLabel(d.period)}`, right, 9, font, muted);
   y = Math.min(oldY, y) - 16;
 
   // Customer

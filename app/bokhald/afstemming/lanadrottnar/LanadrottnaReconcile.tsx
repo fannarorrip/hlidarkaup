@@ -1,6 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
-import { kr } from "@/lib/format";
+import { dags, kr } from "@/lib/format";
 
 interface ReconLine { invoiceNumber: string; date: string | null; statementAmount: number | null; ourAmount: number | null; status: string; voucherId: string | null }
 interface Res {
@@ -53,7 +53,7 @@ export default function LanadrottnaReconcile() {
         <>
           <div className="bg-white border border-gray-200 rounded-xl px-5 py-3 text-sm flex flex-wrap gap-x-8 gap-y-1">
             <span className="text-gray-600">Lánadrottinn: <b className="text-gray-900">{res.supplierName}</b></span>
-            {res.statementDate && <span className="text-gray-600">Dagsetning yfirlits: <b className="text-gray-900">{res.statementDate}</b></span>}
+            {res.statementDate && <span className="text-gray-600">Dagsetning yfirlits: <b className="text-gray-900">{dags(res.statementDate)}</b></span>}
           </div>
 
           <div className="grid sm:grid-cols-4 gap-3">
@@ -88,7 +88,7 @@ export default function LanadrottnaReconcile() {
                       <td className="px-4 py-2 font-mono text-gray-700">
                         {l.voucherId ? <a href={`/bokhald/fylgiskjol/${l.voucherId}`} className="text-red-700 hover:underline">{l.invoiceNumber || "—"}</a> : (l.invoiceNumber || "—")}
                       </td>
-                      <td className="px-4 py-2 text-gray-500">{l.date ?? "—"}</td>
+                      <td className="px-4 py-2 text-gray-500">{dags(l.date)}</td>
                       <td className="px-4 py-2 text-right">{l.statementAmount != null ? kr(l.statementAmount) : "—"}</td>
                       <td className="px-4 py-2 text-right">{l.ourAmount != null ? kr(l.ourAmount) : "—"}</td>
                       <td className="px-4 py-2"><span className={`text-xs px-2 py-0.5 rounded ${st.cls}`}>{st.label}</span></td>

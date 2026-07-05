@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { kr } from "@/lib/format";
+import { dags, kr } from "@/lib/format";
 import type { SupplierReturnRow } from "@/lib/supplier-returns";
 
 interface DraftLine { product_number: string | null; name: string; qty: number; unitCost: number; vatRate: number }
@@ -65,7 +65,7 @@ export default function SupplierReturns({ returns, suppliers }: { returns: Suppl
                 <td className="px-4 py-2">{r.supplier_name ?? "—"}</td>
                 <td className="px-4 py-2 text-center text-gray-600">{r.line_count}</td>
                 <td className="px-4 py-2 text-right">{kr(Number(r.total))}</td>
-                <td className="px-4 py-2 text-gray-500">{r.created_at?.slice(0, 10)}</td>
+                <td className="px-4 py-2 text-gray-500">{dags(r.created_at)}</td>
                 <td className="px-4 py-2 text-right whitespace-nowrap">
                   {r.voucher_id && <a href={`/bokhald/fylgiskjol/${r.voucher_id}`} className="text-gray-500 hover:underline mr-3">Færsla</a>}
                   <a href={`/api/innkaup/return/${r.id}/pdf`} target="_blank" rel="noopener" className="text-red-700 hover:underline mr-3">PDF</a>

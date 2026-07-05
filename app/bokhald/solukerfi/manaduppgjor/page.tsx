@@ -1,8 +1,14 @@
 import { getBillingInvoices } from "@/lib/month-end";
-import { kr } from "@/lib/format";
+import { kr, MANUDIR } from "@/lib/format";
 import MonthEndRunner from "./MonthEndRunner";
 
 export const dynamic = "force-dynamic";
+
+// "2026-06" → "júní 2026"; malformed values fall back to the raw string.
+const periodLabel = (p: string) => {
+  const m = /^(\d{4})-(\d{2})$/.exec(p || "");
+  return m && MANUDIR[+m[2] - 1] ? `${MANUDIR[+m[2] - 1]} ${m[1]}` : p;
+};
 
 const DLV: Record<string, string> = { einvoice: "Rafrænt", pdf: "PDF í pósti", none: "—" };
 const STATUS: Record<string, string> = { queued: "Í biðröð", sent: "Sent", failed: "Mistókst", created: "Stofnuð", paid: "Greidd" };
@@ -41,7 +47,7 @@ export default async function ManadUppgjorPage() {
               <tr key={b.id} className="border-t border-gray-100 hover:bg-gray-50">
                 <td className="px-4 py-2 font-mono">{b.invoice_number}</td>
                 <td className="px-4 py-2">{b.customer_name ?? "—"}</td>
-                <td className="px-4 py-2 text-gray-600">{b.period}</td>
+                <td className="px-4 py-2 text-gray-600">{periodLabel(b.period)}</td>
                 <td className="px-4 py-2 text-center text-gray-600">{b.trip_count}</td>
                 <td className="px-4 py-2 text-right font-medium">{kr(b.total)}</td>
                 <td className="px-4 py-2 text-gray-500">{DLV[b.delivery ?? "none"] ?? b.delivery} <span className="text-xs text-gray-400">({STATUS[b.delivery_status] ?? b.delivery_status})</span></td>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getVoucher } from "@/lib/accounting-queries";
-import { kr, vType, STATUS_LABEL } from "@/lib/format";
+import { dags, kr, vType, STATUS_LABEL } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ export default async function VoucherDetail({ params }: { params: Promise<{ id: 
         <h1 className="text-2xl font-bold font-mono">{v.series_code}-{v.voucher_number}</h1>
         <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">{STATUS_LABEL[v.status] ?? v.status}</span>
       </div>
-      <p className="text-sm text-gray-500 mb-4">{vType(v.voucher_type)} · {v.voucher_date}</p>
+      <p className="text-sm text-gray-500 mb-4">{vType(v.voucher_type)} · {dags(v.voucher_date)}</p>
 
       {v.has_document && (
         <a href={`/api/skraning/document/${id}`} target="_blank" rel="noopener"

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { getIncomeStatementPeriod } from "@/lib/accounting-queries";
 import { buildIncomeStatement, type ISRow } from "@/lib/income-statement";
+import { dags } from "@/lib/format";
 
 // Rekstrarreikningur → Excel (.xlsx). Same period params as the PDF route. Middleware-gated.
 export const runtime = "nodejs";
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
   const is = buildIncomeStatement(await getIncomeStatementPeriod(from, to));
 
   const aoa: (string | number)[][] = [];
-  aoa.push(["Rekstrarreikningur", `${from} – ${to}`]);
+  aoa.push(["Rekstrarreikningur", `${dags(from)} – ${dags(to)}`]);
   aoa.push([]);
   aoa.push(["Lykill", "Heiti", "Upphæð"]);
   const section = (title: string, rows: ISRow[], total: number) => {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getClaims, claimsEnabled } from "@/lib/claims";
-import { kr } from "@/lib/format";
+import { dags, kr } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +52,7 @@ export default async function KrofurPage() {
                 <td className="px-4 py-2">{c.customer_name ?? "—"}</td>
                 <td className="px-4 py-2 font-mono text-gray-600">{c.kennitala ?? "—"}</td>
                 <td className="px-4 py-2 text-right font-medium">{kr(c.amount)}</td>
-                <td className="px-4 py-2 text-gray-600">{c.due_date ?? "—"}</td>
+                <td className="px-4 py-2 text-gray-600">{dags(c.due_date)}</td>
                 <td className="px-4 py-2"><span className={`text-xs px-2 py-0.5 rounded ${STATUS_CLS[c.status] ?? "bg-gray-100"}`}>{STATUS_LABEL[c.status] ?? c.status}</span></td>
               </tr>
             ))}

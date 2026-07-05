@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { C } from "../theme";
+import { dags } from "@/lib/format";
 import type { MealRow } from "@/lib/eldhus-admin";
 import type { EldhusOrder } from "@/lib/eldhus-orders";
 
@@ -151,7 +152,7 @@ export default function AdminClient({ email, roleLabel, enabled }: { email: stri
                     {o.plan === "subscription" && <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: C.tealSoft, color: C.deep }}>Áskrift</span>}
                   </p>
                   <p className="text-sm" style={{ color: C.muted }}>
-                    {o.delivery_type === "delivery" ? `Heimsending · ${o.address ?? ""}` : "Sókn í verslun"} · {o.delivery_date ? `${o.delivery_date} ` : ""}{o.pickup_time}
+                    {o.delivery_type === "delivery" ? `Heimsending · ${o.address ?? ""}` : "Sókn í verslun"} · {o.delivery_date ? `${dags(o.delivery_date)} ` : ""}{o.pickup_time}
                   </p>
                   <p className="text-sm mt-1" style={{ color: C.ink }}>
                     {(o.items ?? []).map((it) => it.title).join(", ")}

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getSalesInvoices } from "@/lib/accounting-queries";
-import { kr, vType, sourceLabel, STATUS_LABEL } from "@/lib/format";
+import { dags, kr, vType, sourceLabel, STATUS_LABEL } from "@/lib/format";
 import EinvoiceSendButton from "./EinvoiceSendButton";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +34,7 @@ export default async function ReikningarPage() {
                 <td className="px-4 py-2">
                   <Link href={`/bokhald/solukerfi/reikningar/${v.id}`} className="font-mono text-red-700 hover:underline">{v.series_code}-{v.voucher_number}</Link>
                 </td>
-                <td className="px-4 py-2 text-gray-600">{v.voucher_date}</td>
+                <td className="px-4 py-2 text-gray-600">{dags(v.voucher_date)}</td>
                 <td className="px-4 py-2">{vType(v.voucher_type)}</td>
                 <td className="px-4 py-2 text-gray-600">{sourceLabel(v.source)}</td>
                 <td className="px-4 py-2 text-gray-600 truncate max-w-sm">{v.description}</td>

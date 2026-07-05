@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { kr } from "@/lib/format";
+import { dags, kr } from "@/lib/format";
 import type { ReconEntry } from "@/lib/accounting-queries";
 
 interface Bank { account_number: string; name: string; }
@@ -73,7 +73,7 @@ export default function BankRecon({ banks, account, acctName, date, entries, led
         <div className="bg-white border border-gray-200 rounded-xl px-5 py-10 text-center text-gray-400">Veldu bankareikning til að hefja afstemmingu.</div>
       ) : (
         <>
-          {open && <p className="text-xs text-amber-600 mb-3">Opin afstemming í vinnslu — hlaðin inn (vistuð {open.as_of_date}).</p>}
+          {open && <p className="text-xs text-amber-600 mb-3">Opin afstemming í vinnslu — hlaðin inn (vistuð {dags(open.as_of_date)}).</p>}
 
           {/* Summary */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
@@ -115,13 +115,13 @@ export default function BankRecon({ banks, account, acctName, date, entries, led
               </thead>
               <tbody>
                 {entries.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-6 text-center text-gray-400">Engar færslur á lyklinum til {date}</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-6 text-center text-gray-400">Engar færslur á lyklinum til {dags(date)}</td></tr>
                 ) : entries.map((e) => {
                   const on = cleared.has(e.id);
                   return (
                     <tr key={e.id} className={`border-t border-gray-100 ${on ? "bg-green-50/40" : ""}`}>
                       <td className="px-3 py-2 text-center"><input type="checkbox" checked={on} onChange={() => toggle(e.id)} className="accent-green-600" /></td>
-                      <td className="px-3 py-2 text-gray-600">{e.voucher_date}</td>
+                      <td className="px-3 py-2 text-gray-600">{dags(e.voucher_date)}</td>
                       <td className="px-3 py-2"><Link href={`/bokhald/fylgiskjol/${e.voucher_id}`} className="font-mono text-red-700 hover:underline">{e.series_code}-{e.voucher_number}</Link></td>
                       <td className="px-3 py-2 text-gray-600">{e.line_description || e.description}</td>
                       <td className="px-3 py-2 text-right">{Number(e.debit) ? kr(e.debit) : ""}</td>

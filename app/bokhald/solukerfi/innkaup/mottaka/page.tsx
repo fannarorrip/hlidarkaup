@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { listGoodsReceipts, type GoodsReceiptRow } from "@/lib/accounting-queries";
-import { kr } from "@/lib/format";
+import { dags, kr } from "@/lib/format";
 import MottakaUpload from "./MottakaUpload";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +43,7 @@ export default async function MottakaPage() {
                 <tr key={r.id} className="border-t border-gray-100 hover:bg-gray-50">
                   <td className="px-4 py-2 font-medium">{r.supplier_name || "—"}</td>
                   <td className="px-4 py-2 text-gray-500">{r.invoice_number || "—"}</td>
-                  <td className="px-4 py-2 text-gray-500">{r.invoice_date || "—"}</td>
+                  <td className="px-4 py-2 text-gray-500">{dags(r.invoice_date)}</td>
                   <td className="px-4 py-2 text-gray-500">{SOURCE[r.source] || r.source}</td>
                   <td className="px-4 py-2 text-center text-gray-600">{r.line_count}</td>
                   <td className="px-4 py-2 text-right">{r.total_gross ? kr(r.total_gross) : "—"}</td>

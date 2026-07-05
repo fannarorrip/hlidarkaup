@@ -1,25 +1,21 @@
 import Link from "next/link";
 import { getSummary, getRecentVouchers } from "@/lib/accounting-queries";
-import { kr, num, vType, STATUS_LABEL } from "@/lib/format";
+import { kr, num, vType, dags, STATUS_LABEL } from "@/lib/format";
+import YfirlitCharts from "./YfirlitCharts";
 
 export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
   const [s, recent] = await Promise.all([getSummary(), getRecentVouchers(10)]);
 
-  const heildarvelta =
-    Number(s.till_gross) + Number(s.kiosk_gross) + Number(s.web_gross) + Number(s.eldhus_gross);
-
   const velta = [
-    { label: "Velta í kassa", value: kr(s.till_gross) },
-    { label: "Velta í sjálfsafgreiðslukassa", value: kr(s.kiosk_gross) },
-    { label: "Velta í vefverslun", value: kr(s.web_gross) },
-    { label: "Velta í eldhúsi", value: kr(s.eldhus_gross) },
+    { label: "Kassi", value: kr(s.till_gross) },
+    { label: "Sjálfsafgreiðsla", value: kr(s.kiosk_gross) },
+    { label: "Vefverslun", value: kr(s.web_gross) },
+    { label: "Eldhús", value: kr(s.eldhus_gross) },
   ];
 
-  const cards = [
-    { label: "Heildarvelta", value: kr(heildarvelta) },
-    { label: "Sölur (fjöldi)", value: num(s.sales_tx) },
+  const stats = [
     { label: "Útskattur (VSK)", value: kr(s.output_vat) },
     { label: "Bókhaldslyklar", value: num(s.accounts) },
     { label: "Vörur", value: num(s.products) },
@@ -29,23 +25,28 @@ export default async function Dashboard() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-1">Yfirlit</h1>
-      <p className="text-sm text-gray-500 mb-6">Staða bókhalds og nýjustu færslur</p>
+      <p className="text-sm text-gray-500 mb-6">Sala, greiðslumátar og nýjustu fylgiskjöl</p>
 
-      <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Velta eftir sölurás</h2>
+      {/* Live analytics: KPI + charts (dagar / vikur / mánuðir) */}
+      <YfirlitCharts />
+
+      {/* All-time channel + bookkeeping stats */}
+      <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mt-8 mb-2">
+        Velta eftir sölurás (frá upphafi)
+      </h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {velta.map((c) => (
           <div key={c.label} className="bg-white border border-gray-200 rounded-xl p-4">
             <p className="text-xs text-gray-500">{c.label}</p>
-            <p className="text-2xl font-bold mt-1">{c.value}</p>
+            <p className="text-xl font-bold mt-1 tabular-nums">{c.value}</p>
           </div>
         ))}
       </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-        {cards.map((c) => (
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {stats.map((c) => (
           <div key={c.label} className="bg-white border border-gray-200 rounded-xl p-4">
             <p className="text-xs text-gray-500">{c.label}</p>
-            <p className="text-2xl font-bold mt-1">{c.value}</p>
+            <p className="text-xl font-bold mt-1 tabular-nums">{c.value}</p>
           </div>
         ))}
       </div>
@@ -75,7 +76,7 @@ export default async function Dashboard() {
                     {v.series_code}-{v.voucher_number}
                   </Link>
                 </td>
-                <td className="px-4 py-2 text-gray-600">{v.voucher_date}</td>
+                <td className="px-4 py-2 text-gray-600">{dags(v.voucher_date)}</td>
                 <td className="px-4 py-2">{vType(v.voucher_type)}</td>
                 <td className="px-4 py-2 text-gray-600 truncate max-w-xs">{v.description}</td>
                 <td className="px-4 py-2 text-right font-medium">{kr(v.amount)}</td>

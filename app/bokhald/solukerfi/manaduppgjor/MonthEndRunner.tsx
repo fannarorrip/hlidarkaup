@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { kr } from "@/lib/format";
+import { dags, kr } from "@/lib/format";
 
 interface PreviewCustomer { customerId: string; name: string; kennitala: string | null; rafraen: boolean; hasEmail: boolean; tripCount: number; total: number }
 interface Preview { from: string; to: string; customers: PreviewCustomer[] }
@@ -55,7 +55,7 @@ export default function MonthEndRunner({ defaultPeriod }: { defaultPeriod: strin
 
       {preview && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-5 py-2 text-xs text-gray-500 bg-gray-50">Óreikningsfærð reikningssala {preview.from} – {preview.to} ({preview.customers.length} viðskiptamenn)</div>
+          <div className="px-5 py-2 text-xs text-gray-500 bg-gray-50">Óreikningsfærð reikningssala {dags(preview.from)} – {dags(preview.to)} ({preview.customers.length} viðskiptamenn)</div>
           {preview.customers.length === 0 ? (
             <p className="px-5 py-6 text-center text-gray-400 text-sm">Engin óreikningsfærð reikningssala á tímabilinu.</p>
           ) : (

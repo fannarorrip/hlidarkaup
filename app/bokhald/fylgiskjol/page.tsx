@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getVouchers } from "@/lib/accounting-queries";
-import { kr, vType, STATUS_LABEL } from "@/lib/format";
+import { dags, kr, vType, STATUS_LABEL } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +42,7 @@ export default async function FylgiskjolPage() {
                     {v.series_code}-{v.voucher_number}
                   </Link>
                 </td>
-                <td className="px-4 py-2 text-gray-600">{v.voucher_date}</td>
+                <td className="px-4 py-2 text-gray-600">{dags(v.voucher_date)}</td>
                 <td className="px-4 py-2">{vType(v.voucher_type)}</td>
                 <td className="px-4 py-2 text-gray-600 truncate max-w-sm">{v.description}</td>
                 <td className="px-4 py-2">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { getBalanceSheetAsOf, getRetainedThroughAsOf } from "@/lib/accounting-queries";
 import { buildBalanceSheet, type BSRow } from "@/lib/balance-sheet";
+import { dags } from "@/lib/format";
 
 // Efnahagsreikningur → Excel (.xlsx). Same asOf param as the PDF route. Middleware-gated.
 export const runtime = "nodejs";
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
   const sheet = buildBalanceSheet(bs, is);
 
   const aoa: (string | number)[][] = [];
-  aoa.push(["Efnahagsreikningur", `Staða þann ${asOf}`]);
+  aoa.push(["Efnahagsreikningur", `Staða þann ${dags(asOf)}`]);
   aoa.push([]);
   aoa.push(["Lykill", "Heiti", "Upphæð"]);
   const lines = (title: string, items: BSRow[]) => { aoa.push([title]); for (const l of items) aoa.push([l.account_number, l.name, r(l.val)]); };

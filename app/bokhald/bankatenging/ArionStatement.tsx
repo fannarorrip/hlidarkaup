@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { dags } from "@/lib/format";
 
 interface Account { id: string; iban?: string; name?: string; currency?: string; balance?: number }
 interface Row {
@@ -188,7 +189,7 @@ export default function ArionStatement({ bankAccounts, defaultBank, contraIn, co
               const inbound = r.amount >= 0;
               return (
                 <tr key={r.id} className="border-t border-gray-100 align-top">
-                  <td className="py-1.5 text-gray-500 tabular-nums whitespace-nowrap">{(r.booking_date || "").slice(0, 10)}</td>
+                  <td className="py-1.5 text-gray-500 tabular-nums whitespace-nowrap">{dags(r.booking_date)}</td>
                   <td className="py-1.5">
                     {r.counterparty || "—"}
                     {r.remittance && <span className="block text-[11px] text-gray-400">{r.remittance}</span>}

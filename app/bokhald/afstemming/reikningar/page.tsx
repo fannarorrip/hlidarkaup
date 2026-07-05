@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getOpenReceivables, getDuplicateSales } from "@/lib/accounting-queries";
-import { kr } from "@/lib/format";
+import { dags, kr } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +65,7 @@ export default async function ReikningsafstemmingPage() {
             ) : dups.map((d, i) => (
               <tr key={i} className="border-t border-gray-100">
                 <td className="px-4 py-2">{d.customer_name ?? "(almennur)"}</td>
-                <td className="px-4 py-2 text-gray-600">{d.voucher_date}</td>
+                <td className="px-4 py-2 text-gray-600">{dags(d.voucher_date)}</td>
                 <td className="px-4 py-2 text-right">{kr(d.amount)}</td>
                 <td className="px-4 py-2 text-right text-amber-600 font-semibold">{d.cnt}×</td>
                 <td className="px-4 py-2 font-mono text-xs text-gray-500">{d.vouchers}</td>

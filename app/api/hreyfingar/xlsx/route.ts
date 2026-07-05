@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   const accounts = buildLedger(opening, entries);
 
   const aoa: (string | number)[][] = [];
-  aoa.push(["Hreyfingar — Aðalbók", `${from} – ${to}`]);
+  aoa.push(["Hreyfingar — Aðalbók", `${fmtD(from)} – ${fmtD(to)}`]);
   aoa.push([]);
 
   for (const a of accounts) {

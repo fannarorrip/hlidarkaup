@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { listPayrollRuns, type PayrollRunRow } from "@/lib/accounting-queries";
-import { kr } from "@/lib/format";
+import { dags, kr } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +40,7 @@ export default async function LaunPage() {
               {runs.map((r: PayrollRunRow) => (
                 <tr key={r.id} className="border-t border-gray-100 hover:bg-gray-50">
                   <td className="px-4 py-2 font-medium">{MONTHS[r.month]} {r.year}</td>
-                  <td className="px-4 py-2 text-gray-500">{r.pay_date}</td>
+                  <td className="px-4 py-2 text-gray-500">{dags(r.pay_date)}</td>
                   <td className="px-4 py-2 text-center text-gray-600">{r.line_count}</td>
                   <td className="px-4 py-2 text-right">{kr(r.total_gross)}</td>
                   <td className="px-4 py-2 text-right">{kr(r.total_net)}</td>

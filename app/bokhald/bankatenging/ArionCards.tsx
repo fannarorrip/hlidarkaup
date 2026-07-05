@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { dags } from "@/lib/format";
 
 interface Card { id: string; name?: string; maskedNumber?: string; holder?: string; available?: number }
 interface Tx { id: string; date: string; amount: number; currency?: string; description?: string; merchant?: string }
@@ -102,7 +103,7 @@ export default function ArionCards({ defaultLiability = "9310", defaultExpense, 
           <tbody>
             {txs.map((t, i) => (
               <tr key={t.id || i} className="border-t border-gray-100">
-                <td className="py-1 text-gray-500 tabular-nums">{(t.date || "").slice(0, 10)}</td>
+                <td className="py-1 text-gray-500 tabular-nums">{dags(t.date)}</td>
                 <td className="py-1">{t.merchant || t.description || "—"}</td>
                 <td className="py-1 text-right tabular-nums">{kr(t.amount)}{t.currency && t.currency !== "ISK" ? ` ${t.currency}` : " kr."}</td>
               </tr>

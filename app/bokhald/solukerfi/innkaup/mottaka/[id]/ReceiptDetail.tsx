@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { GoodsReceiptRow, GoodsReceiptLineRow } from "@/lib/accounting-queries";
-import { kr } from "@/lib/format";
+import { dags, kr } from "@/lib/format";
 import SupplierPicker from "../../../../SupplierPicker";
 import ProductPicker from "../../../../ProductPicker";
 
@@ -46,7 +46,7 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${booked ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}>{booked ? "Bókað" : "Drög"}</span>
       </div>
       <p className="text-sm text-gray-500 mb-5">
-        Reikningur {receipt.invoice_number || "—"} · {receipt.invoice_date || "—"} · {receipt.source === "peppol" ? "inExchange (XML)" : receipt.source === "pdf" ? "PDF (gervigreind)" : "handvirkt"}
+        Reikningur {receipt.invoice_number || "—"} · {dags(receipt.invoice_date)} · {receipt.source === "peppol" ? "inExchange (XML)" : receipt.source === "pdf" ? "PDF (gervigreind)" : "handvirkt"}
         {receipt.has_doc && <> · <a href={`/api/innkaup/receipt/${receipt.id}/document`} target="_blank" rel="noopener" className="text-red-600 hover:underline">skjal</a></>}
         {booked && receipt.voucher_id && <> · <Link href={`/bokhald/fylgiskjol/${receipt.voucher_id}`} className="text-red-600 hover:underline">fylgiskjal</Link></>}
       </p>

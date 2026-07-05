@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { PayrollRunRow, PayrollLineRow } from "@/lib/accounting-queries";
-import { kr } from "@/lib/format";
+import { dags, kr } from "@/lib/format";
 
 const MONTHS = ["", "janúar", "febrúar", "mars", "apríl", "maí", "júní", "júlí", "ágúst", "september", "október", "nóvember", "desember"];
 
@@ -87,7 +87,7 @@ export default function RunView({ run, lines }: { run: PayrollRunRow; lines: Pay
         <h1 className="text-2xl font-bold">Launakeyrsla — {MONTHS[run.month]} {run.year}</h1>
         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${posted ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}>{posted ? "Bókað" : "Drög"}</span>
       </div>
-      <p className="text-sm text-gray-500 mb-5">Útborgunardagur {run.pay_date} · {lines.length} launþegar
+      <p className="text-sm text-gray-500 mb-5">Útborgunardagur {dags(run.pay_date)} · {lines.length} launþegar
         {posted && run.voucher_id && <> · <Link href={`/bokhald/fylgiskjol/${run.voucher_id}`} className="text-red-600 hover:underline">Skoða fylgiskjal</Link></>}
       </p>
 

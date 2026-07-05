@@ -25,7 +25,7 @@ const UTSVAR_RATE = 14.97; // meðalútsvar — only used to split the cost bar 
 const round = (n: number) => Math.round(n);
 const g = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 const pn = (s: string) => Number(String(s).replace(/\./g, "").replace(",", ".")) || 0; // parse "11,50" / "850.000"
-const fmtPct = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(".", ",");
+const fmtPct = (n: number) => n.toLocaleString("is-IS", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function Reiknivel({ cfg, unions, funds }: { cfg: Cfg; unions: Union[]; funds: Fund[] }) {
   const [gross, setGross] = useState(850000);

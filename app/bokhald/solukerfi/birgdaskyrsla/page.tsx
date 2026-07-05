@@ -1,5 +1,5 @@
 import { getStockSummary, getStockAttention, getRecentStockMovements } from "@/lib/stock-report";
-import { kr } from "@/lib/format";
+import { dags, kr } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +69,7 @@ export default async function BirgdaskyrslaPage() {
                 const d = Number(m.qty_delta) || 0;
                 return (
                   <tr key={m.id} className="border-t border-gray-100">
-                    <td className="px-4 py-2 text-gray-500">{m.created_at?.slice(0, 16).replace("T", " ")}</td>
+                    <td className="px-4 py-2 text-gray-500">{m.created_at ? `${dags(m.created_at)} ${m.created_at.slice(11, 16)}` : "—"}</td>
                     <td className="px-4 py-2"><span className="font-mono text-gray-400 mr-2">{m.product_number}</span>{m.name ?? ""}</td>
                     <td className="px-4 py-2 text-gray-600">{MOVE[m.type] ?? m.type}</td>
                     <td className={`px-4 py-2 text-right tabular-nums font-medium ${d < 0 ? "text-rose-600" : "text-green-700"}`}>{d > 0 ? "+" : ""}{n(m.qty_delta)}</td>

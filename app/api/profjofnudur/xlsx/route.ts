@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { getTrialBalancePeriod } from "@/lib/accounting-queries";
 import { buildTrialBalance } from "@/lib/trial-balance";
+import { dags } from "@/lib/format";
 
 // Prófjöfnuður → Excel (.xlsx). Same period params as the PDF route. Middleware-gated.
 export const runtime = "nodejs";
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
   const tb = buildTrialBalance(await getTrialBalancePeriod(from, to));
 
   const aoa: (string | number)[][] = [];
-  aoa.push(["Prófjöfnuður", `${from} – ${to}`]);
+  aoa.push(["Prófjöfnuður", `${dags(from)} – ${dags(to)}`]);
   aoa.push([]);
   aoa.push(["Lykill", "Heiti", "RSK", "VSK", "Staða í upphafi", "Debet", "Kredit", "Hreyfing", "Staða í lok"]);
 

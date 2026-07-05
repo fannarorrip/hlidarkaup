@@ -7,6 +7,7 @@ import fs from "fs";
 import path from "path";
 import { PDFDocument, PDFFont, StandardFonts, rgb } from "pdf-lib";
 import { STORE } from "@/lib/store";
+import { dags } from "@/lib/format";
 import type { Breakdown, BreakdownItem } from "@/lib/payroll";
 
 // Logo read once (undefined = not tried, null = unavailable).
@@ -92,7 +93,7 @@ export async function renderPayslipPdf(d: PayslipData): Promise<Uint8Array> {
   const ibX = 320, ibTop = 766;
   const irows: [string, string][] = [["Útborgun", periodLabel(d.period)]];
   if (d.kennitala) irows.push(["Kennitala", d.kennitala]);
-  irows.push(["Útb.dags", d.pay_date]);
+  irows.push(["Útb.dags", dags(d.pay_date)]);
   irows.push(["Greiðslumáti", "Lagt inn á reikning"]);
   if (d.bank_account) irows.push(["Reikningsnúmer", d.bank_account]);
   const ibRowH = 13, ibPad = 7;

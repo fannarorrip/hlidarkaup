@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 import { getVatVeltaByRate, getVatAccountsPeriod } from "@/lib/accounting-queries";
 import { buildVatReport } from "@/lib/vat-report";
 import { vatPeriods, currentVatPeriod } from "@/lib/vat-periods";
+import { dags } from "@/lib/format";
 
 // Virðisaukaskattsskýrsla → Excel (.xlsx). Same year/period params. Middleware-gated.
 export const runtime = "nodejs";
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
   const rep = buildVatReport(velta, accts);
 
   const aoa: (string | number)[][] = [];
-  aoa.push(["Virðisaukaskattsskýrsla", p.label, `${p.from} – ${p.to}`]);
+  aoa.push(["Virðisaukaskattsskýrsla", p.label, `${dags(p.from)} – ${dags(p.to)}`]);
   aoa.push([]);
   aoa.push(["Skattskyld velta (án VSK)"]);
   aoa.push(["24% þrep", r(rep.v24)]);
