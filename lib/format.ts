@@ -68,8 +68,8 @@ export const SERIES_PREFIX: Record<string, string> = {
 };
 
 /** Voucher number as displayed everywhere: HK-000123, INN-000016, DB-000009… */
-export const vNr = (series: string, num: number | string | null | undefined) =>
-  `${SERIES_PREFIX[series] ?? series}-${String(num ?? "").padStart(6, "0")}`;
+export const vNr = (series: string | null | undefined, num: number | string | null | undefined) =>
+  `${SERIES_PREFIX[series ?? ""] ?? series ?? ""}-${String(num ?? "").padStart(6, "0")}`;
 
 // Sales channel (voucher source) labels.
 export const SOURCE_LABEL: Record<string, string> = {
