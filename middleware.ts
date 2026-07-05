@@ -21,6 +21,7 @@ const RULES: { prefix: string; roles: string[] }[] = [
   { prefix: "/api/profjofnudur", roles: ["stjornandi", "bokari"] },
   { prefix: "/api/rekstur", roles: ["stjornandi", "bokari"] },
   { prefix: "/api/yfirlit", roles: ["stjornandi", "bokari"] },
+  { prefix: "/api/screen-ads", roles: ["stjornandi", "bokari"] },
   { prefix: "/api/efnahagur", roles: ["stjornandi", "bokari"] },
   { prefix: "/api/arsreikningur", roles: ["stjornandi", "bokari"] },
   { prefix: "/api/vsk", roles: ["stjornandi", "bokari"] },
@@ -47,8 +48,8 @@ function rolesFor(pathname: string): string[] | null {
 // Staff-auth endpoints + login page need no session (they ARE the way in) — but they still fall
 // under the LAN-only block below, so the login screen isn't even visible from the internet.
 const PUBLIC_STAFF = ["/starf/login", "/api/auth/staff/login", "/api/auth/staff/logout"];
-// In-store kiosk (self-checkout) — private to the shop, like the back office.
-const KIOSK = ["/kassi", "/api/kassi"];
+// In-store kiosk surfaces (self-checkout, price checker) — private to the shop, like the back office.
+const KIOSK = ["/kassi", "/api/kassi", "/verdskanni"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -163,6 +164,8 @@ export const config = {
     "/api/profjofnudur/:path*",
     "/api/rekstur/:path*",
     "/api/yfirlit",
+    "/api/screen-ads", "/api/screen-ads/:path*",
+    "/verdskanni",
     "/api/efnahagur/:path*",
     "/api/arsreikningur/:path*",
     "/api/vsk/:path*",

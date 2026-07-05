@@ -39,6 +39,7 @@ const SECTIONS: { title: string; links: LinkItem[] }[] = [
       { href: "/bokhald/solukerfi/kassauppgjor", label: "Kassauppgjör" },
       { href: "/bokhald/solukerfi/krofur", label: "Kröfur" },
       { href: "/bokhald/solukerfi/krofustillingar", label: "Kröfustillingar", soon: true },
+      { href: "/bokhald/solukerfi/skjaauglysingar", label: "Skjáauglýsingar" },
     ],
   },
   {
