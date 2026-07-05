@@ -14,6 +14,9 @@ export interface CollectionProfile {
 
 export interface CollectionSettings {
   kennitala_krofuhafa: string | null; agreement_signed: boolean; agreement_note: string | null;
+  claim_bank: string | null;        // 4-digit útibú for the 12-digit claim account (innheimtusamningur)
+  final_due_days: number;           // eindagi = gjalddagi + N dagar
+  expires_after_days: number;       // lokadagur (expirationDate) = gjalddagi + N dagar
 }
 
 export const getCollectionProfiles = () =>
@@ -32,8 +35,13 @@ export const getDefaultProfile = async () =>
 
 export async function getCollectionSettings(): Promise<CollectionSettings> {
   const r = await query<CollectionSettings>(
-    `select kennitala_krofuhafa, agreement_signed, agreement_note from acc.collection_settings where id = 1`);
-  return r[0] ?? { kennitala_krofuhafa: null, agreement_signed: false, agreement_note: null };
+    `select kennitala_krofuhafa, agreement_signed, agreement_note,
+            claim_bank, final_due_days, expires_after_days
+       from acc.collection_settings where id = 1`);
+  return r[0] ?? {
+    kennitala_krofuhafa: null, agreement_signed: false, agreement_note: null,
+    claim_bank: null, final_due_days: 0, expires_after_days: 90,
+  };
 }
 
 export interface SaveProfileInput {

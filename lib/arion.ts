@@ -438,9 +438,13 @@ export async function getArionPaymentStatus(paymentId: string, bearerToken?: str
 
 // ── Claims / Innheimta (Business API REST) — issue greiðsluseðlar to customers ─────
 // Arion wraps RB's Kröfupottur in a REST Claims API (same mTLS/búnaðarskilríki auth as Cards).
-// Claims is its own product subscription → its own key. The exact request/response shape must be
-// confirmed against the live Arion Claims reference; fields below map the RB IK claim record and
-// parsing is defensive. Gated by ARION_CLAIMS_ENABLED so this never fires before it's confirmed.
+// Claims is its own product subscription → its own key. Request/response shapes follow the
+// OFFICIAL reference (confirmed by Arion, July 2026):
+//   https://arionbanki.gitbook.io/arion-banki/business-apis/claims-api/claims-api-refererence
+// A claim is keyed by claimKey = { claimantId (kt), account (12 digits: 4-digit útibú + '66' +
+// 6-digit kröfunúmer), dueDate }; finalDueDate and expirationDate are REQUIRED. NOTE: the claims
+// sandbox is not live yet (Arion targets autumn 2026) — gated by ARION_CLAIMS_ENABLED until a
+// controlled production test passes.
 const CLAIMS_BASE = process.env.ARION_CLAIMS_API_PATH || "/claims/api/v1";
 const claimsSub = (k?: string): string => {
   const key = k || process.env.ARION_CLAIMS_SUBSCRIPTION_KEY || "";
@@ -449,43 +453,80 @@ const claimsSub = (k?: string): string => {
 };
 
 export interface ArionClaimInput {
-  profileCode: string;        // kröfusnið / innheimtuauðkenni
-  debtorKennitala: string;    // kt greiðanda
+  claimantKennitala: string;  // kt kröfuhafa (verslunarinnar) — claimKey.claimantId
+  claimBank: string;          // 4-digit útibú from the innheimtusamningur
+  claimNumber: string;        // 6-digit kröfunúmer (we use the invoice/voucher number)
+  templateCode: string;       // kröfusnið ([0-9A-Z]{3} per the reference)
+  debtorKennitala: string;    // kt greiðanda — payorId
   amount: number;             // upphæð (heilar krónur)
   dueDate: string;            // gjalddagi YYYY-MM-DD
-  finalDueDate?: string;      // eindagi
-  reference?: string;         // tilvísun (t.d. reikningsnúmer)
-  customerNumber?: string;    // viðskiptanúmer
+  finalDueDate: string;       // eindagi — REQUIRED by the API
+  expirationDate: string;     // lokadagur — REQUIRED by the API
+  reference?: string;         // tilvísun (max 16)
+  billNumber?: string;        // reikningsnúmer (max 7)
+  customerNumber?: string;    // viðskiptanúmer (max 16)
+  idempotencyKey?: string;    // UUID → X-Idempotency-Key (we pass the claim row id)
 }
 // ok = HTTP 2xx (the request itself succeeded). claimRef may still be empty if the response used
 // an unexpected field name — callers must NOT treat ok+empty-claimRef as a plain failure (the claim
 // may exist at the bank), only as needs-review, so it isn't silently buried + un-retried.
 export interface ArionClaimResult { ok: boolean; claimRef: string; status?: string; error?: string }
 
-/** Create (register) a claim in the bank's Kröfupottur. Returns the kröfunúmer (claimRef). */
+/** Create (register) a claim in the bank's Kröfupottur (POST /claims per the official reference).
+ *  Returns the bank's claimId as claimRef. */
 export async function createArionClaim(claim: ArionClaimInput, opts: { bearerToken?: string; subscriptionKey?: string } = {}): Promise<ArionClaimResult> {
+  const digits = (s: string) => (s || "").replace(/\D/g, "");
+  const claimant = digits(claim.claimantKennitala);
+  const payor = digits(claim.debtorKennitala);
+  const bank = digits(claim.claimBank);
+  const num = digits(claim.claimNumber);
+  if (claimant.length !== 10) return { ok: false, claimRef: "", status: "failed", error: "Kennitala kröfuhafa verður að vera 10 tölustafir (kröfustillingar)." };
+  if (payor.length !== 10) return { ok: false, claimRef: "", status: "failed", error: "Kennitala greiðanda verður að vera 10 tölustafir." };
+  if (bank.length !== 4) return { ok: false, claimRef: "", status: "failed", error: "Útibúsnúmer kröfureiknings verður að vera 4 tölustafir (kröfustillingar)." };
+  if (num.length < 1 || num.length > 6) return { ok: false, claimRef: "", status: "failed", error: "Kröfunúmer verður að vera 1–6 tölustafir." };
+
+  const account = `${bank}66${num.padStart(6, "0")}`;   // 12 digits: útibú + höfuðbók 66 + kröfunúmer
   const body = JSON.stringify({
-    claimIdentifier: claim.profileCode,
-    debtorSsn: (claim.debtorKennitala || "").replace(/\D/g, ""),
+    claimKey: { claimantId: claimant, account, dueDate: claim.dueDate },
+    payorId: payor,
+    templateCode: (claim.templateCode || "").toUpperCase().slice(0, 3),
     amount: Math.round(Math.abs(claim.amount) || 0),
-    dueDate: claim.dueDate,
-    ...(claim.finalDueDate ? { finalDueDate: claim.finalDueDate } : {}),
+    finalDueDate: claim.finalDueDate,
+    expirationDate: claim.expirationDate,
+    claimType: "NormalClaim",
     ...(claim.reference ? { reference: claim.reference.slice(0, 16) } : {}),
+    ...(claim.billNumber ? { billNumber: digits(claim.billNumber).slice(0, 7) } : {}),
     ...(claim.customerNumber ? { customerNumber: claim.customerNumber.slice(0, 16) } : {}),
   });
   const r = await arionRequest(`${CLAIMS_BASE}/claims`, {
     method: "POST", body, bearerToken: opts.bearerToken, subscriptionKey: claimsSub(opts.subscriptionKey),
+    ...(claim.idempotencyKey ? { headers: { "X-Idempotency-Key": claim.idempotencyKey } } : {}),
   });
   const j = (() => { try { return JSON.parse(r.text || "{}") as Raw; } catch { return {} as Raw; } })();
   const ok = r.status >= 200 && r.status < 300;
+  const success = j.success && typeof j.success === "object" ? (j.success as Raw) : undefined;
+  const errObj = j.error && typeof j.error === "object" ? (j.error as Raw) : undefined;
+
   if (!ok) {
-    return { ok: false, claimRef: "", status: "failed", error: pickStr(j, "error", "message", "villutexti", "errorText") || `HTTP ${r.status}: ${r.text.slice(0, 160)}` };
+    return { ok: false, claimRef: "", status: "failed", error: pickStr(j, "error", "message", "title", "detail") || `HTTP ${r.status}: ${r.text.slice(0, 160)}` };
   }
+  if (success) {
+    return { ok: true, claimRef: pickStr(success, "claimId") || account, status: "created" };
+  }
+  if (errObj) {
+    const code = pickStr(errObj, "resultCode");
+    // CLAIM_EXISTS: a retry hit a claim we already registered (e.g. after a crash mid-send) —
+    // that's a success for our purposes; recover the claimId so settlement tracking works.
+    if (code === "CLAIM_EXISTS") {
+      return { ok: true, claimRef: pickStr(errObj, "claimId") || account, status: "created" };
+    }
+    return { ok: false, claimRef: pickStr(errObj, "claimId"), status: "failed", error: `${code}: ${pickStr(errObj, "resultMessage", "resultSubCode")}`.slice(0, 300) };
+  }
+  // 2xx but neither envelope — legacy fallback parse; caller treats ok+empty claimRef as needs-review.
   return {
     ok: true,
-    claimRef: pickStr(j, "claimNumber", "claimRef", "claimId", "krofunumer", "id", "reference") || "",
+    claimRef: pickStr(j, "claimId", "claimNumber", "claimRef", "id") || "",
     status: pickStr(j, "status", "responseCode"),
-    error: pickStr(j, "error", "message"),
   };
 }
 
@@ -501,7 +542,10 @@ function claimTxRows(j: unknown): Raw[] {
   return [];
 }
 
-/** Fetch settlements against a claim (greiðsluskrá). Sum of amounts ≥ claim amount ⇒ paid. */
+/** Fetch settlements against a claim (greiðsluskrá). Sum of amounts ≥ claim amount ⇒ paid.
+ *  NOTE: this subresource is NOT in the published reference excerpt — confirm the exact path
+ *  against the claims sandbox when Arion releases it (autumn 2026). The documented alternative
+ *  is GET /claims?dateFrom&dateTo&status=Paid, which the sync loop can switch to if needed. */
 export async function getArionClaimTransactions(claimRef: string, opts: { bearerToken?: string; subscriptionKey?: string } = {}): Promise<ArionClaimPayment[]> {
   const r = await arionRequest(`${CLAIMS_BASE}/claims/${encodeURIComponent(claimRef)}/transactions`, {
     bearerToken: opts.bearerToken, subscriptionKey: claimsSub(opts.subscriptionKey),

@@ -4,7 +4,7 @@
 import { db, query } from "@/lib/db";
 import { createArionClaim, getArionClaimTransactions } from "@/lib/arion";
 import { claimsEnabled } from "@/lib/claims";
-import { getDefaultProfile } from "@/lib/collection";
+import { getDefaultProfile, getCollectionSettings } from "@/lib/collection";
 
 interface Auth { bearerToken?: string; subscriptionKey?: string }
 
@@ -27,6 +27,19 @@ export async function sendQueuedClaims(auth: Auth = {}): Promise<SendResult> {
   }
   const profile = await getDefaultProfile();
   if (!profile) return { sent: 0, failed: 0, skipped: 0, requeued: 0, reason: "no_profile" };
+  // The claimKey needs the store's kennitala + the 4-digit útibú from the innheimtusamningur —
+  // both live in kröfustillingar. Missing config must not touch (and mass-fail) the queue.
+  const settings = await getCollectionSettings();
+  const claimant = (settings.kennitala_krofuhafa || "").replace(/\D/g, "");
+  const bank = (settings.claim_bank || "").replace(/\D/g, "");
+  if (claimant.length !== 10 || bank.length !== 4) {
+    return { sent: 0, failed: 0, skipped: 0, requeued: 0, reason: "no_settings" };
+  }
+  const addDays = (iso: string, n: number) => {
+    const d = new Date(iso + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
 
   const rows = await query<{ id: string; kennitala: string | null; amount: string; due_date: string | null; series_code: string | null; voucher_number: string | null }>(
     `select cl.id, cl.kennitala, cl.amount::text as amount, cl.due_date::text as due_date, v.series_code, v.voucher_number::text as voucher_number
@@ -43,11 +56,29 @@ export async function sendQueuedClaims(auth: Auth = {}): Promise<SendResult> {
       `update acc.claims set status='sending', sent_at=now() where id=$1 and status='queued' returning id`, [c.id]);
     if (!took.length) { skipped++; continue; }
 
+    // Kröfunúmer = the voucher number (6 digits) — the invoice IS the claim, RB-style.
+    const voucherDigits = (c.voucher_number || "").replace(/\D/g, "");
+    if (!voucherDigits || voucherDigits.length > 6) {
+      await query(`update acc.claims set status='failed', last_error=$2 where id=$1 and status='sending'`,
+        [c.id, voucherDigits ? "Fylgiskjalsnúmer passar ekki sem 6 stafa kröfunúmer." : "Vantar fylgiskjalsnúmer fyrir kröfunúmer."]);
+      failed++; continue;
+    }
     // tilvísun = the invoice number; omit rather than send a meaningless truncated UUID.
     const reference = c.series_code && c.voucher_number ? `${c.series_code}-${c.voucher_number}` : undefined;
     try {
       const res = await createArionClaim({
-        profileCode: profile.code, debtorKennitala: kt, amount, dueDate: c.due_date, reference,
+        claimantKennitala: claimant,
+        claimBank: bank,
+        claimNumber: voucherDigits,
+        templateCode: profile.code,
+        debtorKennitala: kt,
+        amount,
+        dueDate: c.due_date,
+        finalDueDate: addDays(c.due_date, Math.max(0, settings.final_due_days)),
+        expirationDate: addDays(c.due_date, Math.max(1, settings.expires_after_days)),
+        reference,
+        billNumber: voucherDigits,
+        idempotencyKey: c.id, // claim row uuid — a crash-resend is idempotent at the bank
       }, auth);
       if (res.claimRef) {
         await query(`update acc.claims set status='created', arion_ref=$2, profile_id=$3, last_error=null where id=$1 and status='sending'`,

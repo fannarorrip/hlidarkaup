@@ -44,3 +44,22 @@ Sandkassi: `ARION_SANDBOX=true` + „Generate Token“ úr gáttinni (`ARION_ACC
 - **Sandkassi:** Cards til núna; **Claims-sandkassi væntanlegur haust 2026**.
 - **SOAP** (eldri hreyfingaryfirlit/millifærslur á ws.b2b.is): þarf engan sérstakan aðgang —
   kerfið notar hins vegar **PSD2 REST** fyrir yfirlit og greiðslur, ekki SOAP.
+
+## Svör frá Arion (Kristján, 2026-07-05) — Claims
+
+- **Innheimtusamningur + kröfusnið:** gengið frá í **netbankanum** (fyrirtækjabanki); ef það
+  gengur ekki → fyrirtækjaþjónustan, fyrirtaeki@arionbanki.is.
+- **Opinber Claims API-skjölun (request/response á öllum endapunktum):**
+  https://arionbanki.gitbook.io/arion-banki/business-apis/claims-api/claims-api-refererence
+  Kóðinn (lib/arion.ts createArionClaim) fylgir nú þessari skjölun: claimKey =
+  { claimantId (kt), account (4 stafa útibú + '66' + 6 stafa kröfunúmer), dueDate },
+  payorId, templateCode (kröfusnið), amount, finalDueDate + expirationDate (SKYLDA),
+  X-Idempotency-Key. Svar: { success: { claimId } } / { error: { resultCode } };
+  CLAIM_EXISTS er meðhöndlað sem árangur (endursending eftir hrun).
+- **Claims-sandkassi er EKKI klár — væntanlegur haust 2026.** Þar til: ARION_CLAIMS_ENABLED
+  helst af; fyrsta prófun verður varfærin framleiðsluprófun (ein lítil krafa á eigin kt).
+- **Kröfustillingar sem þarf að fylla út áður en kröfur virka** (acc.collection_settings):
+  kennitala_krofuhafa, claim_bank (4 stafa útibú úr innheimtusamningnum), final_due_days,
+  expires_after_days — og kröfusnið (templateCode) í collection_profiles.code.
+- **Óstaðfest þar til sandkassi opnar:** greiðsluskrár-endapunkturinn
+  (GET /claims/{id}/transactions) — skjalaði kosturinn er GET /claims?status=Paid.
