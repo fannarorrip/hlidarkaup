@@ -99,8 +99,23 @@ export async function deleteCollectionProfile(id: string): Promise<void> {
   await query(`delete from acc.collection_profiles where id = $1`, [id]);
 }
 
-export async function saveCollectionSettings(s: { kennitala_krofuhafa?: string; agreement_signed?: boolean; agreement_note?: string }): Promise<void> {
+export async function saveCollectionSettings(s: {
+  kennitala_krofuhafa?: string; agreement_signed?: boolean; agreement_note?: string;
+  claim_bank?: string | null; final_due_days?: number; expires_after_days?: number;
+}): Promise<void> {
+  const bank = (s.claim_bank || "").replace(/\D/g, "");
+  if (bank && bank.length !== 4) throw new CollectionValidationError("Útibú kröfureiknings verður að vera 4 tölustafir.");
   await query(
-    `update acc.collection_settings set kennitala_krofuhafa=$1, agreement_signed=$2, agreement_note=$3, updated_at=now() where id=1`,
-    [(s.kennitala_krofuhafa || "").replace(/\D/g, "") || null, !!s.agreement_signed, s.agreement_note?.trim() || null]);
+    `update acc.collection_settings
+        set kennitala_krofuhafa=$1, agreement_signed=$2, agreement_note=$3,
+            claim_bank=$4, final_due_days=$5, expires_after_days=$6, updated_at=now()
+      where id=1`,
+    [
+      (s.kennitala_krofuhafa || "").replace(/\D/g, "") || null,
+      !!s.agreement_signed,
+      s.agreement_note?.trim() || null,
+      bank || null,
+      Math.max(0, Math.round(Number(s.final_due_days) || 0)),
+      Math.max(1, Math.round(Number(s.expires_after_days) || 90)),
+    ]);
 }

@@ -8,7 +8,10 @@ interface Profile {
   late_fee: number; dunning: boolean; dunning_count: number; to_collection_days: number | null;
   print_mode: string; is_default: boolean; is_active: boolean;
 }
-interface Settings { kennitala_krofuhafa: string | null; agreement_signed: boolean; agreement_note: string | null }
+interface Settings {
+  kennitala_krofuhafa: string | null; agreement_signed: boolean; agreement_note: string | null;
+  claim_bank: string | null; final_due_days: number; expires_after_days: number;
+}
 interface BankAcct { account_number: string; name: string }
 
 const blank: Partial<Profile> = { code: "", name: "", claim_type: "krafa", print_mode: "rb", is_default: false, is_active: true, dunning: false };
@@ -67,6 +70,18 @@ export default function CollectionProfiles({ profiles, settings, bankAccounts }:
           <div>
             <label className="block text-[11px] text-gray-500 mb-0.5">Kennitala kröfuhafa</label>
             <input value={set.kennitala_krofuhafa || ""} onChange={(e) => setSet({ ...set, kennitala_krofuhafa: e.target.value })} className="w-40 border border-gray-300 rounded-lg px-3 py-1.5 text-sm tabular-nums" placeholder="6507250420" />
+          </div>
+          <div>
+            <label className="block text-[11px] text-gray-500 mb-0.5">Útibú kröfureiknings (4 stafir)</label>
+            <input value={set.claim_bank || ""} onChange={(e) => setSet({ ...set, claim_bank: e.target.value })} className="w-28 border border-gray-300 rounded-lg px-3 py-1.5 text-sm tabular-nums" placeholder="t.d. 0329" maxLength={4} />
+          </div>
+          <div>
+            <label className="block text-[11px] text-gray-500 mb-0.5">Eindagi (dögum eftir gjalddaga)</label>
+            <input type="number" min={0} value={set.final_due_days} onChange={(e) => setSet({ ...set, final_due_days: Math.max(0, Math.round(Number(e.target.value) || 0)) })} className="w-24 border border-gray-300 rounded-lg px-3 py-1.5 text-sm tabular-nums" />
+          </div>
+          <div>
+            <label className="block text-[11px] text-gray-500 mb-0.5">Lokadagur (dögum eftir gjalddaga)</label>
+            <input type="number" min={1} value={set.expires_after_days} onChange={(e) => setSet({ ...set, expires_after_days: Math.max(1, Math.round(Number(e.target.value) || 90)) })} className="w-24 border border-gray-300 rounded-lg px-3 py-1.5 text-sm tabular-nums" />
           </div>
           <label className="flex items-center gap-2 text-sm pb-1.5">
             <input type="checkbox" checked={set.agreement_signed} onChange={(e) => setSet({ ...set, agreement_signed: e.target.checked })} /> Samningur undirritaður

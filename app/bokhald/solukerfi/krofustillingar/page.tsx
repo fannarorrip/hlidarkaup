@@ -1,10 +1,7 @@
-import Placeholder from "../../Placeholder";
-export const dynamic = "force-dynamic";
+import { redirect } from "next/navigation";
+
+// Kröfustillingar live with the rest of the bank wiring (innheimtusamningur, kröfusnið,
+// útibú, eindagi/lokadagur) on the bankatenging page — one home for all of it.
 export default function Page() {
-  return (
-    <Placeholder title="Kröfustillingar" phase="síðari áfanga (kröfu- og innheimtukerfi)">
-      Stillingar fyrir kröfur: kröfuhafanúmer og bankasamningur, sjálfgefinn gjalddagi,
-      dráttarvextir, kröfu-/seðilgjald og innheimtuferli. Notað þegar bankakröfur eru stofnaðar.
-    </Placeholder>
-  );
+  redirect("/bokhald/bankatenging");
 }
