@@ -63,3 +63,17 @@ Sandkassi: `ARION_SANDBOX=true` + „Generate Token“ úr gáttinni (`ARION_ACC
   expires_after_days — og kröfusnið (templateCode) í collection_profiles.code.
 - **Óstaðfest þar til sandkassi opnar:** greiðsluskrár-endapunkturinn
   (GET /claims/{id}/transactions) — skjalaði kosturinn er GET /claims?status=Paid.
+
+## Ákvörðun (2026-07-05): PSD2 er EKKI leiðin í framleiðslu
+
+- Arion-skjölunin: PSD2 er „restricted to payment service providers regulated by the financial
+  supervision of the Central Bank of Iceland" — þ.e. aðeins eftirlitsskyldir aðilar með
+  QWAC/eIDAS-skilríki (krefst AISP/PISP-skráningar hjá Seðlabankanum). Á EKKI við um okkur og
+  verður ekki sótt um.
+- Framleiðsluleiðin okkar er fyrirtækjaleiðin með búnaðarskilríki: Cards + Claims + Documents
+  Business API (staðfest í authentication/production-skjöluninni) og B2B-rásin (SOAP ws.b2b.is,
+  „þarf engan sérstakan aðgang") fyrir hreyfingayfirlit + millifærslur — B2B er á leið inn í
+  Business API fjölskylduna skv. skjöluninni.
+- TODO: svar frá Arion um hvort yfirlit/millifærslur eigi að fara um B2B SOAP eða væntanlegt
+  Accounts Business API → þá er PSD2-yfirlitstengingin (ArionPsd2/consents) endursmíðuð á þá rás.
+  PSD2-kóðinn er áfram nothæfur í sandkassa til prófana en fer aldrei í framleiðslu.
