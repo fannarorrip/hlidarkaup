@@ -520,7 +520,7 @@ export async function createArionClaim(claim: ArionClaimInput, opts: { bearerTok
     if (code === "CLAIM_EXISTS") {
       return { ok: true, claimRef: pickStr(errObj, "claimId") || account, status: "created" };
     }
-    return { ok: false, claimRef: pickStr(errObj, "claimId"), status: "failed", error: `${code}: ${pickStr(errObj, "resultMessage", "resultSubCode")}`.slice(0, 300) };
+    return { ok: false, claimRef: pickStr(errObj, "claimId") || "", status: "failed", error: `${code}: ${pickStr(errObj, "resultMessage", "resultSubCode")}`.slice(0, 300) };
   }
   // 2xx but neither envelope — legacy fallback parse; caller treats ok+empty claimRef as needs-review.
   return {
