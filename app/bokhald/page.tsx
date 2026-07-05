@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getSummary, getRecentVouchers } from "@/lib/accounting-queries";
-import { kr, num, vType, dags, STATUS_LABEL } from "@/lib/format";
+import { kr, num, vType, dags, STATUS_LABEL, vNr } from "@/lib/format";
 import YfirlitCharts from "./YfirlitCharts";
 
 export const dynamic = "force-dynamic";
@@ -73,7 +73,7 @@ export default async function Dashboard() {
               <tr key={v.id} className="border-t border-gray-100 hover:bg-gray-50">
                 <td className="px-4 py-2">
                   <Link href={`/bokhald/fylgiskjol/${v.id}`} className="font-mono text-red-700 hover:underline">
-                    {v.series_code}-{v.voucher_number}
+                    {vNr(v.series_code, v.voucher_number)}
                   </Link>
                 </td>
                 <td className="px-4 py-2 text-gray-600">{dags(v.voucher_date)}</td>

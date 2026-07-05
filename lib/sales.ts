@@ -2,6 +2,7 @@
 // Modes: 'card' (debit card receivable 7716) or 'account' (debit customer AR, á reikning).
 import { db } from "@/lib/db";
 import { handleAccountSaleBilling } from "@/lib/billing";
+import { SERIES_PREFIX } from "@/lib/format";
 
 const CARD_ACCOUNT = process.env.KASSI_CARD_ACCOUNT ?? "7716";       // Óskilgreind kreditkort
 const CASH_ACCOUNT = process.env.KASSI_CASH_ACCOUNT ?? "7850";       // Sjóður (reiðufé)
@@ -167,7 +168,7 @@ export async function postSale(items: SaleItem[], opts: PostSaleOpts): Promise<{
       await handleAccountSaleBilling(v.id, opts.customerId);
     }
 
-    const prefix = series === "KASSI" ? "HK" : series; // HK = Hlíðarkaup (receipt series; number sequence unbroken)
+    const prefix = SERIES_PREFIX[series] ?? series; // HK for kassasala etc. — same map as all displays
     return { invoiceNumber: `${prefix}-${String(v.voucher_number).padStart(6, "0")}`, voucherNumber: String(v.voucher_number), voucherId: v.id };
   } catch (err) {
     await client.query("rollback");

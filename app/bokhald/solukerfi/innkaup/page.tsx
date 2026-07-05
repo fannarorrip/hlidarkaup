@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getPurchases, getPostableAccounts, getBankAccounts } from "@/lib/accounting-queries";
-import { dags, kr } from "@/lib/format";
+import { dags, kr, vNr } from "@/lib/format";
 import PurchaseForm from "./PurchaseForm";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +36,7 @@ export default async function InnkaupPage() {
             ) : purchases.map((v) => (
               <tr key={v.id} className="border-t border-gray-100 hover:bg-gray-50">
                 <td className="px-4 py-2">
-                  <Link href={`/bokhald/fylgiskjol/${v.id}`} className="font-mono text-red-700 hover:underline">{v.series_code}-{v.voucher_number}</Link>
+                  <Link href={`/bokhald/fylgiskjol/${v.id}`} className="font-mono text-red-700 hover:underline">{vNr(v.series_code, v.voucher_number)}</Link>
                 </td>
                 <td className="px-4 py-2 text-gray-600">{dags(v.voucher_date)}</td>
                 <td className="px-4 py-2 text-gray-600">{v.description?.replace(/^Innkaup – /, "")}</td>

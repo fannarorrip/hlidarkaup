@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { VoucherListRow } from "@/lib/accounting-queries";
-import { dags, kr, vType, STATUS_LABEL } from "@/lib/format";
+import { dags, kr, vType, STATUS_LABEL, vNr } from "@/lib/format";
 
 const badge = (status: string) => {
   const map: Record<string, string> = {
@@ -70,7 +70,7 @@ export default function VouchersTable({ vouchers }: { vouchers: VoucherListRow[]
               <tr key={v.id} className="border-t border-gray-100 hover:bg-gray-50">
                 <td className="px-4 py-2">
                   <Link href={`/bokhald/fylgiskjol/${v.id}`} className="font-mono text-red-700 hover:underline whitespace-nowrap">
-                    {v.series_code}-{v.voucher_number}
+                    {vNr(v.series_code, v.voucher_number)}
                   </Link>
                 </td>
                 <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{dags(v.voucher_date)}</td>

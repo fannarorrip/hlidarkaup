@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getVoucher } from "@/lib/accounting-queries";
-import { dags, kr, vType, STATUS_LABEL } from "@/lib/format";
+import { dags, kr, vType, STATUS_LABEL, vNr } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,7 @@ export default async function VoucherDetail({ params }: { params: Promise<{ id: 
       <Link href="/bokhald/fylgiskjol" className="text-sm text-gray-500 hover:underline">← Fylgiskjöl</Link>
 
       <div className="flex items-center gap-3 mt-2 mb-1">
-        <h1 className="text-2xl font-bold font-mono">{v.series_code}-{v.voucher_number}</h1>
+        <h1 className="text-2xl font-bold font-mono">{vNr(v.series_code, v.voucher_number)}</h1>
         <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">{STATUS_LABEL[v.status] ?? v.status}</span>
       </div>
       <p className="text-sm text-gray-500 mb-4">{vType(v.voucher_type)} · {dags(v.voucher_date)}</p>

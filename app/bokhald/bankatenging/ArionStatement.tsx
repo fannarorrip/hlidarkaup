@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { dags } from "@/lib/format";
+import { dags, vNr } from "@/lib/format";
 
 interface Account { id: string; iban?: string; name?: string; currency?: string; balance?: number }
 interface Row {
@@ -243,7 +243,7 @@ export default function ArionStatement({ bankAccounts, defaultBank, contraIn, co
                   </td>
                   <td className="py-1.5">
                     {r.status === "booked" ? (
-                      <span className="text-xs text-green-700">✓ {r.series_code}-{r.voucher_number}</span>
+                      <span className="text-xs text-green-700">✓ {vNr(r.series_code, r.voucher_number)}</span>
                     ) : (
                       <input value={contra[r.id] ?? defContra(r)} onChange={(e) => setContra((p) => ({ ...p, [r.id]: e.target.value }))}
                         placeholder={inbound ? "t.d. 7600" : "t.d. 9300"}

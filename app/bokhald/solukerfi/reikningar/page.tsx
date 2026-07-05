@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getSalesInvoices } from "@/lib/accounting-queries";
-import { dags, kr, vType, sourceLabel, STATUS_LABEL } from "@/lib/format";
+import { dags, kr, vType, sourceLabel, STATUS_LABEL, vNr } from "@/lib/format";
 import EinvoiceSendButton from "./EinvoiceSendButton";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +32,7 @@ export default async function ReikningarPage() {
             ) : rows.map((v) => (
               <tr key={v.id} className="border-t border-gray-100 hover:bg-gray-50">
                 <td className="px-4 py-2">
-                  <Link href={`/bokhald/solukerfi/reikningar/${v.id}`} className="font-mono text-red-700 hover:underline">{v.series_code}-{v.voucher_number}</Link>
+                  <Link href={`/bokhald/solukerfi/reikningar/${v.id}`} className="font-mono text-red-700 hover:underline">{vNr(v.series_code, v.voucher_number)}</Link>
                 </td>
                 <td className="px-4 py-2 text-gray-600">{dags(v.voucher_date)}</td>
                 <td className="px-4 py-2">{vType(v.voucher_type)}</td>

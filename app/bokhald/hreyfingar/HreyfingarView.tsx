@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import type { LedgerAccount } from "@/lib/ledger-report";
+import { vNr } from "@/lib/format";
 
 const isk = (n: number) => Math.round(Number(n)).toLocaleString("is-IS") + " kr.";
 const fmtD = (iso: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso); return m ? `${m[3]}.${m[2]}.${m[1]}` : iso; };
@@ -75,7 +76,7 @@ export default function HreyfingarView({ accounts, from, to }: { accounts: Ledge
                         <tr key={i} className="border-b border-gray-50 hover:bg-gray-50/50">
                           <td className="px-5 py-2 text-gray-600 whitespace-nowrap">{fmtD(l.voucher_date)}</td>
                           <td className="px-3 py-2">
-                            <Link href={`/bokhald/fylgiskjol/${l.voucher_id}`} className="font-mono text-red-700 hover:underline">{l.series_code}-{l.voucher_number}</Link>
+                            <Link href={`/bokhald/fylgiskjol/${l.voucher_id}`} className="font-mono text-red-700 hover:underline">{vNr(l.series_code, l.voucher_number)}</Link>
                           </td>
                           <td className="px-3 py-2 text-gray-500 truncate max-w-[16rem]">{l.description ?? ""}</td>
                           <td className="px-3 py-2 text-right">{l.debit ? isk(l.debit) : ""}</td>

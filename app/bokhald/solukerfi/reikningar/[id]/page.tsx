@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSaleReceipt } from "@/lib/accounting-queries";
-import { dags, kr, vType, vatLetter } from "@/lib/format";
+import { dags, kr, vType, vatLetter, vNr } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +28,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
         <div className="px-6 py-5">
           <div className="flex justify-between text-sm text-gray-500 mb-1">
             <span>{vType(v.voucher_type)}</span>
-            <span className="font-mono">{v.series_code}-{v.voucher_number}</span>
+            <span className="font-mono">{vNr(v.series_code, v.voucher_number)}</span>
           </div>
           <div className="flex justify-between text-sm text-gray-500 mb-3">
             <span>{dags(v.voucher_date)}</span>

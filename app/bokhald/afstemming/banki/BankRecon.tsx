@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { dags, kr } from "@/lib/format";
+import { dags, kr, vNr } from "@/lib/format";
 import type { ReconEntry } from "@/lib/accounting-queries";
 
 interface Bank { account_number: string; name: string; }
@@ -122,7 +122,7 @@ export default function BankRecon({ banks, account, acctName, date, entries, led
                     <tr key={e.id} className={`border-t border-gray-100 ${on ? "bg-green-50/40" : ""}`}>
                       <td className="px-3 py-2 text-center"><input type="checkbox" checked={on} onChange={() => toggle(e.id)} className="accent-green-600" /></td>
                       <td className="px-3 py-2 text-gray-600">{dags(e.voucher_date)}</td>
-                      <td className="px-3 py-2"><Link href={`/bokhald/fylgiskjol/${e.voucher_id}`} className="font-mono text-red-700 hover:underline">{e.series_code}-{e.voucher_number}</Link></td>
+                      <td className="px-3 py-2"><Link href={`/bokhald/fylgiskjol/${e.voucher_id}`} className="font-mono text-red-700 hover:underline">{vNr(e.series_code, e.voucher_number)}</Link></td>
                       <td className="px-3 py-2 text-gray-600">{e.line_description || e.description}</td>
                       <td className="px-3 py-2 text-right">{Number(e.debit) ? kr(e.debit) : ""}</td>
                       <td className="px-3 py-2 text-right">{Number(e.credit) ? kr(e.credit) : ""}</td>

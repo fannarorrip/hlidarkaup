@@ -46,12 +46,30 @@ export const VOUCHER_TYPE_LABEL: Record<string, string> = {
   sales_invoice: "Sölureikningur",
   credit_note: "Kreditreikningur",
   purchase: "Innkaup",
+  purchase_return: "Skil til birgja",
   journal: "Dagbók",
   reversal: "Bakfærsla",
   payment: "Greiðsla",
   receipt: "Innborgun",
+  card_purchase: "Kreditkort",
+  payroll: "Laun",
 };
 export const vType = (t: string) => VOUCHER_TYPE_LABEL[t] ?? t;
+
+// Icelandic display prefixes for the voucher series — the DB keys stay English (they're
+// referenced by code), only what humans see changes: INN-000016 instead of PURCHASE-16.
+export const SERIES_PREFIX: Record<string, string> = {
+  JOURNAL: "DB",    // dagbók
+  KASSI: "HK",      // kassasala — same prefix as printed receipts
+  SALES: "SR",      // sölureikningur
+  CREDIT: "KR",     // kreditreikningur
+  PURCHASE: "INN",  // innkaup
+  PAYROLL: "LN",    // laun
+};
+
+/** Voucher number as displayed everywhere: HK-000123, INN-000016, DB-000009… */
+export const vNr = (series: string, num: number | string | null | undefined) =>
+  `${SERIES_PREFIX[series] ?? series}-${String(num ?? "").padStart(6, "0")}`;
 
 // Sales channel (voucher source) labels.
 export const SOURCE_LABEL: Record<string, string> = {

@@ -1,4 +1,5 @@
 "use client";
+import { vNr } from "@/lib/format";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -30,7 +31,7 @@ export default function VskActions({ year, period, settled }: {
         className="px-3 py-2 rounded-lg bg-green-700 text-white text-sm font-semibold hover:bg-green-800">📊 Excel</a>
       {settled?.voucher_number ? (
         <a href={`/bokhald/fylgiskjol/${settled.series_code}-${settled.voucher_number}`}
-          className="px-3 py-2 rounded-lg bg-green-50 text-green-700 text-sm font-semibold">✓ Gert upp · {settled.series_code}-{settled.voucher_number}</a>
+          className="px-3 py-2 rounded-lg bg-green-50 text-green-700 text-sm font-semibold">✓ Gert upp · {vNr(settled.series_code, settled.voucher_number)}</a>
       ) : (
         <button onClick={settle} disabled={busy}
           className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-40">

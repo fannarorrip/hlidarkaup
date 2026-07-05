@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAccountLedger } from "@/lib/accounting-queries";
-import { dags, kr, vType, ACCOUNT_TYPE_LABEL } from "@/lib/format";
+import { dags, kr, vType, ACCOUNT_TYPE_LABEL, vNr } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +43,7 @@ export default async function AccountLedger({ params }: { params: Promise<{ acco
                 <td className="px-4 py-2 text-gray-600">{dags(e.voucher_date)}</td>
                 <td className="px-4 py-2">
                   <Link href={`/bokhald/fylgiskjol/${e.voucher_id}`} className="font-mono text-red-700 hover:underline">
-                    {e.series_code}-{e.voucher_number}
+                    {vNr(e.series_code, e.voucher_number)}
                   </Link>
                   <span className="text-gray-400 text-xs ml-2">{vType(e.voucher_type)}</span>
                 </td>

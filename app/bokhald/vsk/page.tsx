@@ -2,7 +2,7 @@ import { getVatVeltaByRate, getVatAccountsPeriod } from "@/lib/accounting-querie
 import { vatPeriods, currentVatPeriod } from "@/lib/vat-periods";
 import { buildVatReport } from "@/lib/vat-report";
 import { getVatSettlement } from "@/lib/vat-settlement";
-import { kr } from "@/lib/format";
+import { kr, vNr } from "@/lib/format";
 import VskPeriodPicker from "./VskPeriodPicker";
 import VskActions from "./VskActions";
 
@@ -81,7 +81,7 @@ export default async function VskPage({ searchParams }: { searchParams: Promise<
       </div>
 
       {settlement?.voucher_number ? (
-        <p className="text-xs text-green-700">✓ Tímabilið hefur verið gert upp (fylgiskjal {settlement.series_code}-{settlement.voucher_number}). Uppgjörið færist á 9535 Uppgjörsreikningur VSK.</p>
+        <p className="text-xs text-green-700">✓ Tímabilið hefur verið gert upp (fylgiskjal {vNr(settlement.series_code, settlement.voucher_number)}). Uppgjörið færist á 9535 Uppgjörsreikningur VSK.</p>
       ) : (
         <p className="text-xs text-gray-400">Tölur miðast við bókaðar færslur á völdu tímabili. „Bóka VSK-uppgjör“ stofnar færslu: Debet útskattur / Kredit innskattur, mismunur á 9535.</p>
       )}
