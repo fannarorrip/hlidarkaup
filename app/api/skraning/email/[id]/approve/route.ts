@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { findBookedInvoice, recordSupplierInvoice } from "@/lib/invoice-dedup";
+import { findBookedInvoice, recordSupplierInvoice, dedupKey } from "@/lib/invoice-dedup";
 
 // Approve an emailed invoice draft: post the (possibly edited) dagbók entry to the
 // ledger, attach the stored source document as the fylgiskjal, and mark the draft
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Duplicate-invoice hard block (supplier kennitala + invoice number).
   const invNo = draft.extracted?.invoiceNumber ?? "";
   const kt = draft.extracted?.supplierKennitala ?? "";
-  if (invNo && (await findBookedInvoice(kt, invNo))) {
+  if (invNo && (await findBookedInvoice(dedupKey(kt, supplier_id || null, null), invNo))) {
     return NextResponse.json({ error: `Reikningur nr. ${invNo} frá þessum birgi er þegar bókaður (tvíbókun varin).` }, { status: 409 });
   }
 
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     await db.query(`update acc.email_invoices set status='approved', voucher_id=$1, error=null, processed_at=now() where id=$2`, [voucherId, id]);
-    if (invNo) { try { await recordSupplierInvoice(db, kt, invNo, voucherId, supplier_id || null, "email"); } catch { /* race only; pre-check guards the normal path */ } }
+    if (invNo) { try { await recordSupplierInvoice(db, dedupKey(kt, supplier_id || null, null), invNo, voucherId, supplier_id || null, "email"); } catch { /* race only; pre-check guards the normal path */ } }
     return NextResponse.json({ ok: true, voucherId, voucherNumber: n, invoiceNumber: `J-${String(n).padStart(6, "0")}` });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";

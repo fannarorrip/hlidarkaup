@@ -3,7 +3,7 @@
 // (logged in stock_movements) + book the invoice (supplier-tagged) + store the fylgiskjal.
 import { db } from "@/lib/db";
 import { findSupplierByKennitala } from "@/lib/accounting-queries";
-import { findBookedInvoice, recordSupplierInvoice, DuplicateInvoiceError } from "@/lib/invoice-dedup";
+import { findBookedInvoice, recordSupplierInvoice, DuplicateInvoiceError, dedupKey } from "@/lib/invoice-dedup";
 import { recordPayable } from "@/lib/payables";
 import type { ParsedInvoice, ParsedLine } from "@/lib/peppol";
 
@@ -93,7 +93,7 @@ export async function confirmReceipt(receiptId: string): Promise<{ voucherId: st
     const kt = rec.supplier_id
       ? (await client.query<{ kennitala: string | null }>(`select kennitala from acc.suppliers where id = $1`, [rec.supplier_id])).rows[0]?.kennitala ?? ""
       : "";
-    if (rec.invoice_number && (await findBookedInvoice(kt, rec.invoice_number, client))) {
+    if (rec.invoice_number && (await findBookedInvoice(dedupKey(kt, rec.supplier_id, rec.supplier_name), rec.invoice_number, client))) {
       throw new ReceiptError(`Reikningur nr. ${rec.invoice_number} frá þessum birgi er þegar bókaður (tvíbókun varin).`, 409);
     }
 
@@ -133,7 +133,7 @@ export async function confirmReceipt(receiptId: string): Promise<{ voucherId: st
       [rec.invoice_date || new Date().toISOString().slice(0, 10), `Innkaup – ${rec.supplier_name ?? ""}`,
        rec.invoice_number || `MOT-${receiptId.slice(0, 8)}`, JSON.stringify(vlines), rec.supplier_id])).rows[0];
 
-    if (rec.invoice_number) await recordSupplierInvoice(client, kt, rec.invoice_number, v.id, rec.supplier_id, "mottaka");
+    if (rec.invoice_number) await recordSupplierInvoice(client, dedupKey(kt, rec.supplier_id, rec.supplier_name), rec.invoice_number, v.id, rec.supplier_id, "mottaka");
 
     // Register the open payable (móttaka always books á reikning → 9300). Due date from the receipt,
     // else invoice date + supplier terms.

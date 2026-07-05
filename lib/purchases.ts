@@ -3,7 +3,7 @@
 //   Debit  innskattur (input VAT)  9510 (24%) / 9512 (11%)
 //   Credit Lánadrottnar 9300 (á reikning)  OR  a bank/cash account (greitt)
 import { db } from "@/lib/db";
-import { findBookedInvoice, recordSupplierInvoice } from "@/lib/invoice-dedup";
+import { findBookedInvoice, recordSupplierInvoice, dedupKey } from "@/lib/invoice-dedup";
 import { recordPayable } from "@/lib/payables";
 
 const INPUT_VAT: Record<number, string> = { 24: "9510", 11: "9512" };
@@ -28,6 +28,7 @@ export async function postPurchase(input: PostPurchaseInput): Promise<{ invoiceN
   const lines = (input.lines ?? []).filter((l) => l.account && Number(l.net) > 0);
   if (!lines.length) throw new PurchaseError("Engar gildar línur");
   if (!input.supplierName?.trim()) throw new PurchaseError("Vantar birgja");
+  if (!input.supplierInvoiceNo?.trim()) throw new PurchaseError("Vantar reikningsnúmer birgja — skylda svo sami reikningur bókist aldrei tvisvar.");
 
   const client = await db.connect();
   try {
@@ -37,7 +38,8 @@ export async function postPurchase(input: PostPurchaseInput): Promise<{ invoiceN
     const kt = input.supplierId
       ? (await client.query<{ kennitala: string | null }>(`select kennitala from acc.suppliers where id = $1`, [input.supplierId])).rows[0]?.kennitala ?? ""
       : "";
-    if (input.supplierInvoiceNo && (await findBookedInvoice(kt, input.supplierInvoiceNo, client))) {
+    const dkey = dedupKey(kt, input.supplierId || null, input.supplierName);
+    if (input.supplierInvoiceNo && (await findBookedInvoice(dkey, input.supplierInvoiceNo, client))) {
       throw new PurchaseError(`Reikningur nr. ${input.supplierInvoiceNo} frá þessum birgi er þegar bókaður (tvíbókun varin).`, 409);
     }
 
@@ -73,13 +75,13 @@ export async function postPurchase(input: PostPurchaseInput): Promise<{ invoiceN
     const missing = accs.filter((a) => !found.includes(a));
     if (missing.length) throw new PurchaseError(`Lyklar finnast ekki: ${missing.join(", ")}`);
 
-    const ref = input.supplierInvoiceNo || `INNK-${Date.now()}`;
+    const ref = input.supplierInvoiceNo.trim();
     const date = input.date || new Date().toISOString().slice(0, 10);
     const v = (await client.query<{ id: string; voucher_number: string }>(
       `select id, voucher_number from acc.post_voucher($1,$2::date,$3,$4,$5,$6,$7::jsonb, p_supplier_id => $8::uuid)`,
       ["PURCHASE", date, "purchase", `Innkaup – ${input.supplierName.trim()}`, ref, "bokhald", JSON.stringify(allLines), input.supplierId || null])).rows[0];
 
-    if (input.supplierInvoiceNo) await recordSupplierInvoice(client, kt, input.supplierInvoiceNo, v.id, input.supplierId || null, "manual");
+    if (input.supplierInvoiceNo) await recordSupplierInvoice(client, dkey, input.supplierInvoiceNo, v.id, input.supplierId || null, "manual");
 
     // Register the open payable (only when booked á reikning — a "paid" purchase has no debt).
     if (input.payment === "credit") {

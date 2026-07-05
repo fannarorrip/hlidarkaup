@@ -60,7 +60,7 @@ export default function PurchaseForm({ accounts, banks }: { accounts: Acct[]; ba
         <SupplierPicker key={pickerKey} onChange={(id, name) => { setSupplierId(id); setSupplier(name || ""); }} />
       </div>
       <div className="grid md:grid-cols-2 gap-3 mb-4 max-w-md">
-        <input value={invNo} onChange={(e) => setInvNo(e.target.value)} placeholder="Reikningsnúmer birgja" className={inp} />
+        <input value={invNo} onChange={(e) => setInvNo(e.target.value)} placeholder="Reikningsnúmer birgja *" required className={inp} />
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inp} />
       </div>
 
