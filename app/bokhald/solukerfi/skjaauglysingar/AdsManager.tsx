@@ -73,7 +73,8 @@ export default function AdsManager() {
           {[...ads].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id).map((ad, i, arr) => (
             <div key={ad.id} className={`bg-white border rounded-xl overflow-hidden ${ad.is_active ? "border-gray-200" : "border-gray-200 opacity-50"}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={ad.image_url} alt="" className="w-full aspect-video object-cover" />
+              {/* 4:3 preview = exactly how the 1024×768 screen crops it */}
+              <img src={ad.image_url} alt="" className="w-full aspect-[4/3] object-cover" />
               <div className="flex items-center justify-between px-3 py-2 text-sm">
                 <div className="flex items-center gap-1">
                   <button onClick={() => move(ad, -1)} disabled={i === 0} className="w-7 h-7 rounded bg-gray-100 hover:bg-gray-200 disabled:opacity-30" aria-label="Færa framar">↑</button>
