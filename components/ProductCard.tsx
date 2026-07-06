@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Product } from "@/lib/types";
 import { useCart } from "@/lib/cart-context";
 import { MinusIcon, PlusIcon, CheckIcon } from "@heroicons/react/24/solid";
@@ -55,8 +56,11 @@ export default function ProductCard({ product }: { product: Product }) {
         soldOut ? "border-gray-200 opacity-70" : "border-gray-100"
       } ${justAdded ? "scale-[1.03]" : "scale-100"} transition-transform duration-200`}
     >
-      {/* Image / emoji area */}
-      <div className="relative bg-gradient-to-br from-red-50 to-white h-32 rounded-t-2xl flex items-center justify-center text-5xl select-none">
+      {/* Image / emoji area — opens the product page (innihald + næringargildi) */}
+      <Link
+        href={`/vefverslun/vara/${encodeURIComponent(product.id)}`}
+        className="relative bg-gradient-to-br from-red-50 to-white h-32 rounded-t-2xl flex items-center justify-center text-5xl select-none"
+      >
         {product.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={product.image} alt={product.name} className="h-24 w-full object-contain p-2" />
@@ -64,7 +68,7 @@ export default function ProductCard({ product }: { product: Product }) {
           emoji
         )}
         {product.stock !== undefined && <StockBadge stock={product.stock} />}
-      </div>
+      </Link>
 
       <div className="p-3 flex flex-col flex-1">
         {product.category && (
@@ -73,7 +77,9 @@ export default function ProductCard({ product }: { product: Product }) {
           </span>
         )}
         <h3 className="font-semibold text-gray-900 text-sm leading-snug mt-0.5 flex-1">
-          {product.name}
+          <Link href={`/vefverslun/vara/${encodeURIComponent(product.id)}`} className="hover:text-brand-red">
+            {product.name}
+          </Link>
         </h3>
         <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{product.description}</p>
 

@@ -24,7 +24,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ pr
        is_active           = coalesce($11, is_active),
        description         = $12,
        reorder_point       = $13,
-       reorder_qty         = $14
+       reorder_qty         = $14,
+       innihald            = $15,
+       ofnaemisvaldar      = $16,
+       naeringargildi      = $17::jsonb,
+       netto_magn          = $18,
+       uppruni             = $19,
+       info_source         = case when coalesce($15,'') <> '' or $17 is not null then coalesce($20, info_source, 'manual') else info_source end,
+       info_updated_at     = case when coalesce($15,'') <> '' or $17 is not null then now() else info_updated_at end
      where product_number = $1
      returning product_number, price_gross`,
     [
@@ -42,6 +49,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ pr
       b.description !== undefined ? String(b.description) : null,
       b.reorder_point !== undefined && b.reorder_point !== "" ? Number(b.reorder_point) : null,
       b.reorder_qty !== undefined && b.reorder_qty !== "" ? Number(b.reorder_qty) : null,
+      b.innihald !== undefined ? String(b.innihald).trim() || null : null,
+      b.ofnaemisvaldar !== undefined ? String(b.ofnaemisvaldar).trim() || null : null,
+      b.naeringargildi && typeof b.naeringargildi === "object" ? JSON.stringify(b.naeringargildi) : null,
+      b.netto_magn !== undefined ? String(b.netto_magn).trim() || null : null,
+      b.uppruni !== undefined ? String(b.uppruni).trim() || null : null,
+      b.info_source ? String(b.info_source) : null,
     ],
   );
   if (!rows.length) return NextResponse.json({ error: "Vara fannst ekki" }, { status: 404 });

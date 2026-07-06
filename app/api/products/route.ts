@@ -14,9 +14,9 @@ export async function GET(req: NextRequest) {
 
   const rows = await query<{
     product_number: string; name: string; description: string | null; price_gross: number;
-    product_group: string | null; stock_quantity: string; is_stock_controlled: boolean; total: string;
+    product_group: string | null; stock_quantity: string; is_stock_controlled: boolean; image_url: string | null; total: string;
   }>(`
-    select p.product_number, p.name, p.description, p.price_gross, p.product_group, p.stock_quantity, p.is_stock_controlled,
+    select p.product_number, p.name, p.description, p.price_gross, p.product_group, p.stock_quantity, p.is_stock_controlled, p.image_url,
            count(*) over() as total
     from shop.products p
     where p.is_active and p.price_gross > 0
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     price: Number(r.price_gross),
     category: r.product_group ? (CAT_NAMES[r.product_group] ?? r.product_group) : "",
     stock: r.is_stock_controlled ? Math.max(0, Math.floor(Number(r.stock_quantity))) : undefined,
-    image: undefined as string | undefined,
+    image: r.image_url ?? undefined,
   }));
 
   return NextResponse.json({ products, total, page, limit });

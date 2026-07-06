@@ -7,6 +7,19 @@ import { kbHealth, kbScanEvents } from "@/lib/kassabru";
 
 const inp = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-red-400";
 
+// Næringargildistaflan í 100 g/ml — röðin fylgir reglugerð (EU 1169/2011).
+const NUTRITION_FIELDS: [string, string][] = [
+  ["orka_kj", "Orka (kJ)"],
+  ["orka_kcal", "Orka (kcal)"],
+  ["fita", "Fita (g)"],
+  ["mettadar_fitusyrur", "þar af mettaðar fitusýrur (g)"],
+  ["kolvetni", "Kolvetni (g)"],
+  ["sykrur", "þar af sykrur (g)"],
+  ["trefjar", "Trefjar (g)"],
+  ["protein", "Prótein (g)"],
+  ["salt", "Salt (g)"],
+];
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-5">
@@ -56,6 +69,19 @@ export default function ProductForm({ product, barcodes: initialBarcodes, salesH
   const [uploading, setUploading] = useState(false);
   const [imgError, setImgError] = useState("");
 
+  const [innihald, setInnihald] = useState(product.innihald ?? "");
+  const [allergens, setAllergens] = useState(product.ofnaemisvaldar ?? "");
+  const [nutrition, setNutrition] = useState<Record<string, string>>(() => {
+    const n = (product.naeringargildi ?? {}) as Record<string, number | null>;
+    return Object.fromEntries(NUTRITION_FIELDS.map(([k]) => [k, n[k] != null ? String(n[k]) : ""]));
+  });
+  const [nettoMagn, setNettoMagn] = useState(product.netto_magn ?? "");
+  const [uppruni, setUppruni] = useState(product.uppruni ?? "");
+  const [infoSource, setInfoSource] = useState(product.info_source ?? "");
+  const [labelReading, setLabelReading] = useState(false);
+  const [labelError, setLabelError] = useState("");
+  const [labelOk, setLabelOk] = useState(false);
+
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -75,6 +101,8 @@ export default function ProductForm({ product, barcodes: initialBarcodes, salesH
           is_stock_controlled: stockControlled, stock_quantity: Number(stock),
           use_scale: useScale, allow_discount: allowDiscount, is_active: isActive,
           reorder_point: reorderPoint, reorder_qty: reorderQty,
+          innihald, ofnaemisvaldar: allergens, naeringargildi: buildNutrition(),
+          netto_magn: nettoMagn, uppruni, info_source: infoSource || "manual",
         }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.error ?? "Vistun mistókst"); return; }
@@ -99,6 +127,43 @@ export default function ProductForm({ product, barcodes: initialBarcodes, salesH
     const res = await fetch(`/api/products/${product.product_number}/photo`, { method: "DELETE" });
     if (res.ok) setImageUrl(null);
     else setImgError("Tókst ekki að fjarlægja mynd");
+  }
+
+  /** Nutrition inputs → jsonb object (Icelandic decimal comma accepted); null when all empty. */
+  function buildNutrition(): Record<string, number | null> | null {
+    const obj: Record<string, number | null> = {};
+    let any = false;
+    for (const [k] of NUTRITION_FIELDS) {
+      const raw = (nutrition[k] ?? "").trim().replace(",", ".");
+      const v = raw === "" ? NaN : Number(raw);
+      obj[k] = Number.isFinite(v) ? v : null;
+      if (Number.isFinite(v)) any = true;
+    }
+    return any ? obj : null;
+  }
+
+  // AI: photos of the packaging → innihald + ofnæmisvaldar + næringartafla fill the
+  // fields below for review. Nothing is saved until the normal "Vista breytingar".
+  async function readLabel(files: FileList) {
+    setLabelReading(true); setLabelError(""); setLabelOk(false);
+    try {
+      const fd = new FormData();
+      Array.from(files).slice(0, 6).forEach((f) => fd.append("file", f));
+      const res = await fetch(`/api/products/${product.product_number}/label`, { method: "POST", body: fd });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { setLabelError(d.error ?? "Lestur mistókst"); return; }
+      const info = d.info ?? {};
+      if (info.innihald) setInnihald(info.innihald);
+      if (Array.isArray(info.ofnaemisvaldar) && info.ofnaemisvaldar.length) setAllergens(info.ofnaemisvaldar.join(", "));
+      if (info.naeringargildi) {
+        const n = info.naeringargildi as Record<string, number | null>;
+        setNutrition(Object.fromEntries(NUTRITION_FIELDS.map(([k]) => [k, n[k] != null ? String(n[k]) : ""])));
+      }
+      if (info.netto_magn) setNettoMagn(info.netto_magn);
+      if (info.uppruni) setUppruni(info.uppruni);
+      setInfoSource("label_ai");
+      setLabelOk(true);
+    } catch { setLabelError("Samband rofnaði"); } finally { setLabelReading(false); }
   }
 
   // Physical barcode scanner (kassabrú, when this page is open on the till PC): a scan fills
@@ -201,6 +266,61 @@ export default function ProductForm({ product, barcodes: initialBarcodes, salesH
             </div>
             <p className="text-xs text-gray-400">JPG/PNG/WebP, hámark 6MB. Sérstaklega gagnlegt fyrir ávexti og grænmeti (vörur án strikamerkis).</p>
           </div>
+        </div>
+      </Section>
+
+      <Section title="Innihald & næring (birtist í vefverslun — skylda fyrir matvöru í fjarsölu)">
+        <div className="flex flex-wrap items-center gap-3 mb-4 p-3 rounded-lg bg-red-50/60 border border-red-100">
+          <label className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer ${labelReading ? "bg-gray-200 text-gray-400" : "bg-red-600 text-white hover:bg-red-700"}`}>
+            {labelReading ? "Les af mynd…" : "📷 Lesa af mynd (AI)"}
+            <input
+              type="file" accept="image/jpeg,image/png,image/webp" multiple capture="environment"
+              disabled={labelReading} className="hidden"
+              onChange={(e) => { if (e.target.files?.length) readLabel(e.target.files); e.target.value = ""; }}
+            />
+          </label>
+          <p className="text-xs text-gray-500 flex-1 min-w-[200px]">
+            Taktu mynd af <b>bakhlið umbúðanna</b> (innihaldslýsing + næringargildistafla) — gervigreindin fyllir svæðin hér fyrir neðan. Yfirfarðu og vistaðu.
+          </p>
+          {labelOk && <span className="text-sm text-green-700">✓ Lesið af mynd — yfirfarðu</span>}
+          {labelError && <span className="text-sm text-red-600">{labelError}</span>}
+        </div>
+
+        <div className="space-y-4">
+          <Field label="Innihaldslýsing (ofnæmisvaldar í HÁSTÖFUM)">
+            <textarea value={innihald} onChange={(e) => setInnihald(e.target.value)} rows={4} className={inp}
+              placeholder="Hveiti, sykur, MJÓLKURDUFT, kakósmjör…" />
+          </Field>
+          <Field label="Ofnæmisvaldar (aðgreindir með kommu)">
+            <input value={allergens} onChange={(e) => setAllergens(e.target.value)} placeholder="MJÓLK, GLÚTEN (HVEITI), EGG" className={inp} />
+          </Field>
+
+          <div>
+            <p className="text-sm text-gray-500 mb-2">Næringargildi í 100 g / 100 ml</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {NUTRITION_FIELDS.map(([key, label]) => (
+                <Field key={key} label={label}>
+                  <input
+                    inputMode="decimal" value={nutrition[key] ?? ""}
+                    onChange={(e) => setNutrition((p) => ({ ...p, [key]: e.target.value }))}
+                    placeholder="—" className={inp}
+                  />
+                </Field>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <Field label="Nettómagn"><input value={nettoMagn} onChange={(e) => setNettoMagn(e.target.value)} placeholder='t.d. "500 g" / "1 l"' className={inp} /></Field>
+            <Field label="Upprunaland"><input value={uppruni} onChange={(e) => setUppruni(e.target.value)} placeholder="—" className={inp} /></Field>
+          </div>
+
+          {product.info_updated_at && (
+            <p className="text-xs text-gray-400">
+              Síðast uppfært {new Date(product.info_updated_at).toLocaleDateString("is-IS")}
+              {product.info_source === "label_ai" ? " — lesið af mynd (AI)" : product.info_source === "supplier" ? " — frá birgja" : product.info_source === "off" ? " — Open Food Facts" : ""}
+            </p>
+          )}
         </div>
       </Section>
 
