@@ -6,9 +6,9 @@
 //   • Development: OFF by default (so you can keep building the shop). Set COMING_SOON=true to preview.
 //   • Override anywhere with the COMING_SOON env: "true" = force closed, "false" = force open early.
 //
-// Iceland runs on UTC year-round (Atlantic/Reykjavik, no DST), so this is 31 July 2026, 00:00 local.
-// (Opening moved up from 1 September.)
-export const OPENS_AT = new Date("2026-07-31T00:00:00Z");
+// Iceland runs on UTC year-round (Atlantic/Reykjavik, no DST), so this is 1 Sept 2026, 00:00 local.
+// (The team moves into the store 31 July; the PUBLIC opening stays 1 September.)
+export const OPENS_AT = new Date("2026-09-01T00:00:00Z");
 
 export function isComingSoon(): boolean {
   const flag = process.env.COMING_SOON;
