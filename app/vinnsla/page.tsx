@@ -15,7 +15,12 @@ export default function Vinnsla() {
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
     setNow(Date.now());
-    const t = setInterval(() => setNow(Date.now()), 1000);
+    const t = setInterval(() => {
+      setNow(Date.now());
+      // Opening moment: a tab parked on the countdown reloads itself into the open shop
+      // (the middleware gate opens per-request the second OPENS_AT passes).
+      if (Date.now() >= OPENS_AT.getTime()) window.location.reload();
+    }, 1000);
     return () => clearInterval(t);
   }, []);
 
