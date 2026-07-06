@@ -35,3 +35,12 @@ Merktu viðskiptamann **„rafræn viðskipti"** í Viðskiptamannalista/Viðski
 
 ## Webhook (valkvætt)
 inExchange/milliliður má einnig POST-a UBL beint á `POST /api/inexchange/webhook` með haus `x-inexchange-secret: <INEXCHANGE_WEBHOOK_SECRET>`.
+
+## Staða (6. júlí 2026)
+
+inExchange var að setja upp vefþjónustuaðgang fyrir SENDINGU rafrænna reikninga en gleymdi að
+haka við „test notanda" — aðgangurinn fór í framleiðslu fyrir mistök. Þeir bakfæra eftir helgina
+(vika 6.–12. júlí) og setja upp réttan TEST-aðgang. Engin áhætta okkar megin: INEXCHANGE_SEND_ENABLED
+er af og outbox sendir ekkert. Þegar nýi aðgangurinn kemur: lykilorð úr one-time-secret hlekk beint
+í .env.local á Rocky → keyra sannreyningarskrefin hér að ofan (Ping → GetTransactionList → prufureikningur)
+→ fyrst þá kveikja á INEXCHANGE_SEND_ENABLED.
