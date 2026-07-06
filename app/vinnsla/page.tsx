@@ -71,7 +71,7 @@ export default function Vinnsla() {
         <div>
           <h1 className="text-2xl sm:text-4xl font-extrabold text-white">Þessi síða er í vinnslu</h1>
           <p className="mt-3 text-white/95 text-lg sm:text-2xl">
-            Við opnum <strong className="text-white">1. september</strong>
+            Við opnum <strong className="text-white">31. júlí</strong>
           </p>
         </div>
 
