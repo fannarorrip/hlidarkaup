@@ -3,7 +3,7 @@ import { sendPaymentToTerminal, adyenEnabled } from "@/lib/adyen-terminal";
 
 // Run a card payment on the Adyen/Straumur terminal. Blocks until the customer completes.
 export const runtime = "nodejs";
-export const maxDuration = 140;
+export const maxDuration = 190; // holds the sync connection while the shopper taps (~150s Adyen window)
 
 export async function POST(req: NextRequest) {
   if (!adyenEnabled()) return NextResponse.json({ approved: false, error: "Posa-tenging er ekki uppsett." }, { status: 503 });
