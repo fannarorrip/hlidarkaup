@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, type CSSProperties } from "react";
+import { resolveRegister } from "@/lib/registers";
 
 interface CartLine {
   id: string;
@@ -174,6 +175,7 @@ export default function KassiPage() {
   const [terminalEnabled, setTerminalEnabled] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const [buffer, setBuffer] = useState("");
+  const [reg, setReg] = useState<string | null>(null);
 
   // Product search overlay (for items without barcode, e.g. produce)
   const [searchOpen, setSearchOpen] = useState(false);
@@ -200,6 +202,13 @@ export default function KassiPage() {
   const [lang, setLang] = useState<Lang>("is");
   const t = STR[lang];
   const otherLang = STR[lang === "is" ? "en" : "is"];
+  const registerName = resolveRegister(reg, "sjalfsafgreidsla").name;
+
+  // Which register is this device? (from the ?reg= link the kiosk homepage points at)
+  useEffect(() => {
+    const r = new URLSearchParams(window.location.search).get("reg");
+    if (r) setReg(r);
+  }, []);
 
   // Load the bag product once
   useEffect(() => {
@@ -397,7 +406,7 @@ export default function KassiPage() {
     if (terminalEnabled) {
       // Real Straumur/Adyen terminal
       try {
-        const tr = await fetch("/api/kassi/terminal/pay", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount: payTotal, ref: `kiosk-${Date.now()}` }) });
+        const tr = await fetch("/api/kassi/terminal/pay", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount: payTotal, ref: `kiosk-${Date.now()}`, reg }) });
         const td = await tr.json().catch(() => ({}));
         if (!td.approved) { setPayError(td.error ? `Posi: ${td.error}` : "Greiðslu hafnað"); setScreen("payError"); return; }
         payment = { approved: true, processor: "ADYEN", stan: String(Date.now()).slice(-6), poiTxId: td.poiTxId };
@@ -672,7 +681,7 @@ export default function KassiPage() {
           <p className="text-gray-400 text-2xl">{t.orTouch}</p>
         </div>
 
-        <p className="absolute bottom-6 z-10 text-gray-400 text-sm">Akurhlíð 1 · Sauðárkrókur</p>
+        <p className="absolute bottom-6 z-10 text-gray-400 text-sm">{registerName} · Akurhlíð 1 · Sauðárkrókur</p>
       </div>
     );
   }

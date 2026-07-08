@@ -53,14 +53,17 @@ function requestedAmount(amountKr: number, currency: string): number {
 
 export interface TerminalResult { approved: boolean; error?: string; poiTxId?: string }
 
-/** Run a card payment on the terminal. Blocks until the customer completes (or it times out). */
-export async function sendPaymentToTerminal(amountKr: number, ref: string): Promise<TerminalResult> {
+/** Run a card payment on the terminal. Blocks until the customer completes (or it times out).
+ *  `opts` lets a specific register override the terminal (POIID) and SaleID it charges. */
+export async function sendPaymentToTerminal(amountKr: number, ref: string, opts?: { poiid?: string; saleId?: string }): Promise<TerminalResult> {
   const c = adyenConfig();
   if (!adyenEnabled()) return { approved: false, error: "Posa-tenging er ekki uppsett." };
+  const poiId = opts?.poiid || c.poiId;
+  const saleId = opts?.saleId || c.saleId;
 
   const body = {
     SaleToPOIRequest: {
-      MessageHeader: { ProtocolVersion: "3.0", MessageClass: "Service", MessageCategory: "Payment", MessageType: "Request", SaleID: c.saleId, ServiceID: String(Date.now()).slice(-10), POIID: c.poiId },
+      MessageHeader: { ProtocolVersion: "3.0", MessageClass: "Service", MessageCategory: "Payment", MessageType: "Request", SaleID: saleId, ServiceID: String(Date.now()).slice(-10), POIID: poiId },
       PaymentRequest: {
         SaleData: { SaleTransactionID: { TransactionID: ref, TimeStamp: new Date().toISOString() } },
         PaymentTransaction: { AmountsReq: { Currency: c.currency, RequestedAmount: requestedAmount(amountKr, c.currency) } },
