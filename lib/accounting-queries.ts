@@ -63,10 +63,11 @@ export const getVouchers = (limit = 200) =>
 export interface VoucherListRow extends VoucherRow {
   supplier_name: string | null;
   external_reference: string | null;
+  register_id: string | null;
 }
 const VOUCHER_LIST_SELECT = `
   select v.id, v.series_code, v.voucher_number, v.voucher_date::text, v.voucher_type,
-         v.status, v.description, v.source, v.external_reference, s.name as supplier_name,
+         v.status, v.description, v.source, v.register_id, v.external_reference, s.name as supplier_name,
          coalesce(sum(le.debit),0) as amount
   from acc.vouchers v
   join acc.ledger_entries le on le.voucher_id=v.id
@@ -112,11 +113,11 @@ export const getSalesInvoices = (limit = 200) =>
 export async function getVoucher(id: string) {
   const v = (await query<VoucherRow & {
     external_reference: string | null; posted_at: string | null; posted_by: string | null;
-    supplier_name: string | null;
+    supplier_name: string | null; register_id: string | null;
     has_document: boolean; document_name: string | null; document_skjalanumer: string | null;
   }>(`
     select v.id, v.series_code, v.voucher_number, v.voucher_date::text, v.voucher_type, v.status,
-           v.description, v.external_reference, v.posted_at::text, v.posted_by,
+           v.description, v.source, v.register_id, v.external_reference, v.posted_at::text, v.posted_by,
            (select name from acc.suppliers s where s.id = v.supplier_id) as supplier_name,
            coalesce((select sum(debit) from acc.ledger_entries where voucher_id=v.id),0) as amount,
            exists(select 1 from acc.documents d where d.voucher_id=v.id) as has_document,

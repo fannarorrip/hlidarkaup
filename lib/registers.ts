@@ -25,6 +25,16 @@ export function resolveRegister(reg?: string | null, type?: RegisterType): Regis
   return (type ? REGISTERS.find((r) => r.type === type) : undefined) ?? REGISTERS[0];
 }
 
+/** The register id to STORE on a sale — a known id, else null (don't invent an attribution). */
+export function knownRegisterId(reg?: string | null): string | null {
+  return reg && REGISTERS.some((r) => r.id === reg) ? reg : null;
+}
+
+/** Display name for a stored register id (e.g. "kassi1" → "Kassi 1"); null if unknown/empty. */
+export function registerName(id?: string | null): string | null {
+  return REGISTERS.find((r) => r.id === id)?.name ?? null;
+}
+
 /** The card terminal (posi) for a register — per-register env override, else the single
  *  configured terminal. SaleID defaults to the register id so each register is distinct in Adyen.
  *  Server-only (reads env); the client imports only REGISTERS / resolveRegister. */

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { postKassiSale, SaleError, type SaleItem, type PaymentInfo } from "@/lib/sales";
+import { knownRegisterId } from "@/lib/registers";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest) {
   if (!payment.approved) return NextResponse.json({ error: "Greiðsla ekki staðfest" }, { status: 402 });
 
   try {
-    const { invoiceNumber } = await postKassiSale(items, payment);
+    const { invoiceNumber } = await postKassiSale(items, payment, { registerId: knownRegisterId(body.reg) });
     return NextResponse.json({ invoiceNumber });
   } catch (err) {
     if (err instanceof SaleError) {

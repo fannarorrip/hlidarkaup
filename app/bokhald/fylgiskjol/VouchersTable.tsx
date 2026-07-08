@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { VoucherListRow } from "@/lib/accounting-queries";
 import { dags, kr, vType, STATUS_LABEL, vNr } from "@/lib/format";
+import { registerName } from "@/lib/registers";
 
 const badge = (status: string) => {
   const map: Record<string, string> = {
@@ -56,6 +57,7 @@ export default function VouchersTable({ vouchers }: { vouchers: VoucherListRow[]
               <th className="px-4 py-2 font-medium">Nr.</th>
               <th className="px-4 py-2 font-medium">Dags.</th>
               <th className="px-4 py-2 font-medium">Tegund</th>
+              <th className="px-4 py-2 font-medium">Kassi</th>
               <th className="px-4 py-2 font-medium">Lýsing</th>
               <th className="px-4 py-2 font-medium">Lánadrottinn</th>
               <th className="px-4 py-2 font-medium">Reikningsnr.</th>
@@ -65,7 +67,7 @@ export default function VouchersTable({ vouchers }: { vouchers: VoucherListRow[]
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-6 text-center text-gray-400">{results ? "Ekkert fannst" : "Engin fylgiskjöl enn"}</td></tr>
+              <tr><td colSpan={9} className="px-4 py-6 text-center text-gray-400">{results ? "Ekkert fannst" : "Engin fylgiskjöl enn"}</td></tr>
             ) : rows.map((v) => (
               <tr key={v.id} className="border-t border-gray-100 hover:bg-gray-50">
                 <td className="px-4 py-2">
@@ -75,6 +77,7 @@ export default function VouchersTable({ vouchers }: { vouchers: VoucherListRow[]
                 </td>
                 <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{dags(v.voucher_date)}</td>
                 <td className="px-4 py-2">{vType(v.voucher_type)}</td>
+                <td className="px-4 py-2 text-gray-500 text-xs whitespace-nowrap">{registerName(v.register_id) ?? "—"}</td>
                 <td className="px-4 py-2 text-gray-600 truncate max-w-[16rem]">{v.description}</td>
                 <td className="px-4 py-2 text-gray-600 truncate max-w-[12rem]">{v.supplier_name ?? "—"}</td>
                 <td className="px-4 py-2 text-gray-600 font-mono text-xs">{v.external_reference ?? "—"}</td>

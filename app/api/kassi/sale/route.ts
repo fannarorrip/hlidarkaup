@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { postSale, SaleError, type SaleItem, type PaymentInfo, type PayMode } from "@/lib/sales";
+import { knownRegisterId } from "@/lib/registers";
 
 // Staffed till: card / cash / transfer / account ("á reikning") sale.
 const MODES: PayMode[] = ["card", "account", "cash", "transfer"];
@@ -26,6 +27,7 @@ export async function POST(req: NextRequest) {
       customerId: b.customerId ?? null,
       payment,
       source: "till",
+      registerId: knownRegisterId(b.reg),
       voucherType: kind === "return" ? "credit_note" : mode === "account" ? "account_sale" : "kassi_sale",
       description: kind === "return" ? `Skil – endurgreiðsla (${mode})` : DESC[mode],
     });

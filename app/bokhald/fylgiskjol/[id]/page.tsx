@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getVoucher } from "@/lib/accounting-queries";
 import { dags, kr, vType, STATUS_LABEL, vNr } from "@/lib/format";
+import { registerName } from "@/lib/registers";
 
 export const dynamic = "force-dynamic";
 
@@ -26,15 +27,22 @@ export default async function VoucherDetail({ params }: { params: Promise<{ id: 
       </div>
       <p className="text-sm text-gray-500 mb-4">{vType(v.voucher_type)} · {dags(v.voucher_date)}</p>
 
-      {v.has_document && (
-        <a href={`/api/skraning/document/${id}`} target="_blank" rel="noopener"
-          className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700">
-          📄 Sækja reikning{skjalanr ? ` #${skjalanr}` : ""}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <a href={`/api/fylgiskjol/${id}/pdf`} target="_blank" rel="noopener"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700">
+          📄 Sækja PDF
         </a>
-      )}
+        {v.has_document && (
+          <a href={`/api/skraning/document/${id}`} target="_blank" rel="noopener"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50">
+            📎 Frumrit reiknings{skjalanr ? ` #${skjalanr}` : ""}
+          </a>
+        )}
+      </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 text-sm">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6 text-sm">
         <Field label="Lýsing" value={v.description ?? "—"} />
+        <Field label="Kassi" value={registerName(v.register_id) ?? "—"} />
         <Field label="Lánadrottinn" value={v.supplier_name ?? "—"} />
         <Field label="Reikningsnr. (tilvísun)" value={v.external_reference ?? "—"} />
         <Field label="Bókað af" value={v.posted_by ?? "—"} />

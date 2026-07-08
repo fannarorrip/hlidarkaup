@@ -37,6 +37,7 @@ export interface PostSaleOpts {
   extraLines?: ExtraLine[];
   decrementStock?: boolean;
   source?: string; // sales channel: 'till' | 'kiosk' | 'web' | 'eldhus'
+  registerId?: string | null; // which register rang it (kassi1-3 / sjalfsafgreidsla1-2)
 }
 
 interface ProductRow {
@@ -125,9 +126,9 @@ export async function postSale(items: SaleItem[], opts: PostSaleOpts): Promise<{
     const ref = opts.reference ?? `${series}-${opts.payment?.stan ?? Date.now()}`;
     const today = new Date().toISOString().slice(0, 10);
     const v = (await client.query<{ id: string; voucher_number: string }>(
-      `select id, voucher_number from acc.post_voucher($1,$2::date,$3,$4,$5,$6,$7::jsonb,null,$8,$9)`,
+      `select id, voucher_number from acc.post_voucher($1,$2::date,$3,$4,$5,$6,$7::jsonb,null,$8,$9, p_register_id => $10)`,
       [series, today, opts.voucherType ?? "kassi_sale", opts.description ?? "Sala", ref, "kassi",
-       JSON.stringify(lines), opts.customerId ?? null, opts.source ?? null])).rows[0];
+       JSON.stringify(lines), opts.customerId ?? null, opts.source ?? null, opts.registerId ?? null])).rows[0];
 
     // Record the per-product sale lines for the receipt
     let ln = 0;
@@ -179,9 +180,9 @@ export async function postSale(items: SaleItem[], opts: PostSaleOpts): Promise<{
 }
 
 /** Self-checkout (card) — unchanged interface. */
-export async function postKassiSale(items: SaleItem[], payment: PaymentInfo, opts: { ignoreStock?: boolean } = {}) {
+export async function postKassiSale(items: SaleItem[], payment: PaymentInfo, opts: { ignoreStock?: boolean; registerId?: string | null } = {}) {
   return postSale(items, {
-    mode: "card", payment, ignoreStock: opts.ignoreStock,
+    mode: "card", payment, ignoreStock: opts.ignoreStock, registerId: opts.registerId ?? null,
     voucherType: "kassi_sale", source: "kiosk",
     description: `Kassasala${payment.stan ? " · STAN " + payment.stan : ""}`,
     reference: `KASSI-${payment.stan ?? Date.now()}`,

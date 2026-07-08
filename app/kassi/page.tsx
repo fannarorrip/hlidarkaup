@@ -421,7 +421,7 @@ export default function KassiPage() {
       const res = await fetch("/api/kassi/checkout", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ items: finalCart.map(({ id, quantity }) => ({ id, quantity })), payment }),
+        body: JSON.stringify({ items: finalCart.map(({ id, quantity }) => ({ id, quantity })), payment, reg }),
       });
       const data = await res.json();
       if (!res.ok) {
