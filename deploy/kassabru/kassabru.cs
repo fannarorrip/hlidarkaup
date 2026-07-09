@@ -22,7 +22,14 @@
 //
 // Build (no tooling needed — uses the compiler built into Windows):
 //   C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /out:kassabru.exe kassabru.cs
-// Run:  kassabru.exe [printerPort] [scannerPort] [httpPort]   (defaults COM3 COM4 8974)
+// Run:  kassabru.exe [printerPort] [scannerPort] [httpPort] [codepage]
+//   defaults: COM3 COM4 8974 8
+//   printerPort: a COM port (serial, e.g. NCR 7197) OR "win:<queue name>" for a
+//     USB printer installed as a Windows printer (e.g. Volcora → win:POS80).
+//   scannerPort: a COM port, or "none" when the till has no serial scanner
+//     (USB scanners type like keyboards and need no bridge).
+//   codepage: the ESC t value for Icelandic text — 8 on the NCR 7197,
+//     16 (WPC1252) on Epson-compatible printers like Volcora.
 // See install.ps1 for one-shot install (compile + URL ACL + autostart).
 // ============================================================================
 using System;
@@ -31,6 +38,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Ports;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
@@ -41,6 +49,10 @@ namespace Kassabru
         static string PrinterPort = "COM3";
         static string ScannerPort = "COM4";
         static int HttpPort = 8974;
+        static byte CodePage = 0x08;   // ESC t n: 8 = CP1252 on NCR 7197; 16 = WPC1252 on Epson/Volcora
+
+        static bool IsWinPrinter { get { return PrinterPort.StartsWith("win:", StringComparison.OrdinalIgnoreCase); } }
+        static string WinPrinterName { get { return PrinterPort.Substring(4); } }
 
         // Only these web origins may talk to the bridge (the till page).
         static readonly string[] AllowedOrigins = new string[] {
@@ -83,8 +95,9 @@ namespace Kassabru
             if (args.Length > 0) PrinterPort = args[0];
             if (args.Length > 1) ScannerPort = args[1];
             if (args.Length > 2) HttpPort = int.Parse(args[2]);
+            if (args.Length > 3) CodePage = (byte)int.Parse(args[3]);
 
-            Log("Kassabrú startar — prentari={0} skanni/vigt={1} http={2}", PrinterPort, ScannerPort, HttpPort);
+            Log("Kassabrú startar — prentari={0} skanni/vigt={1} http={2} codepage={3}", PrinterPort, ScannerPort, HttpPort, CodePage);
 
             TryOpenPrinter();
             TryOpenScanner();
@@ -237,6 +250,7 @@ namespace Kassabru
                 if (printer != null && printer.IsOpen) return true;
                 try
                 {
+                    if (IsWinPrinter) return WinRaw.QueueExists(WinPrinterName);
                     if (printer != null) { try { printer.Dispose(); } catch { } }
                     printer = new SerialPort(PrinterPort, 9600, Parity.None, 8, StopBits.One);
                     // Handshake deliberately None: the 7197's default flow control is DTR/DSR, which
@@ -264,29 +278,26 @@ namespace Kassabru
             if (!TryOpenPrinter()) { WriteJson(resp, 503, "{\"ok\":false,\"error\":\"prentari ekki tengdur\"}"); return; }
             try
             {
-                lock (printerLock)
+                var buf = new List<byte>();
+                buf.AddRange(new byte[] { 0x1B, 0x40 });            // ESC @  init
+                buf.AddRange(new byte[] { 0x1B, 0x74, CodePage });  // ESC t — codepage for á é í ó ú ý þ æ ö ð
+                var cp1252 = Encoding.GetEncoding(1252);
+                foreach (var rawLine in text.Replace("\r\n", "\n").Split('\n'))
                 {
-                    var buf = new List<byte>();
-                    buf.AddRange(new byte[] { 0x1B, 0x40 });        // ESC @  init
-                    buf.AddRange(new byte[] { 0x1B, 0x74, 0x08 });  // ESC t 8 = CP1252 (á é í ó ú ý þ æ ö ð)
-                    var cp1252 = Encoding.GetEncoding(1252);
-                    foreach (var rawLine in text.Replace("\r\n", "\n").Split('\n'))
-                    {
-                        string line = rawLine;
-                        bool big = false, bold = false, center = false;
-                        if (line.StartsWith("!BIG!")) { big = true; bold = true; center = true; line = line.Substring(5); }
-                        else if (line.StartsWith("!B!")) { bold = true; line = line.Substring(3); }
-                        else if (line.StartsWith("!C!")) { center = true; line = line.Substring(3); }
-                        buf.AddRange(new byte[] { 0x1B, 0x61, (byte)(center ? 1 : 0) });      // ESC a
-                        buf.AddRange(new byte[] { 0x1D, 0x21, (byte)(big ? 0x11 : 0x00) });   // GS ! size
-                        buf.AddRange(new byte[] { 0x1B, 0x45, (byte)(bold ? 1 : 0) });        // ESC E bold
-                        buf.AddRange(cp1252.GetBytes(line));
-                        buf.Add(0x0A);
-                    }
-                    buf.AddRange(new byte[] { 0x1D, 0x56, 0x42, 0x00 });                       // GS V 66 0: feed + cut
-                    if (drawer) buf.AddRange(new byte[] { 0x1B, 0x70, 0x00, 0x32, 0xFA });     // ESC p drawer kick
-                    printer.Write(buf.ToArray(), 0, buf.Count);
+                    string line = rawLine;
+                    bool big = false, bold = false, center = false;
+                    if (line.StartsWith("!BIG!")) { big = true; bold = true; center = true; line = line.Substring(5); }
+                    else if (line.StartsWith("!B!")) { bold = true; line = line.Substring(3); }
+                    else if (line.StartsWith("!C!")) { center = true; line = line.Substring(3); }
+                    buf.AddRange(new byte[] { 0x1B, 0x61, (byte)(center ? 1 : 0) });      // ESC a
+                    buf.AddRange(new byte[] { 0x1D, 0x21, (byte)(big ? 0x11 : 0x00) });   // GS ! size
+                    buf.AddRange(new byte[] { 0x1B, 0x45, (byte)(bold ? 1 : 0) });        // ESC E bold
+                    buf.AddRange(cp1252.GetBytes(line));
+                    buf.Add(0x0A);
                 }
+                buf.AddRange(new byte[] { 0x1D, 0x56, 0x42, 0x00 });                       // GS V 66 0: feed + cut
+                if (drawer) buf.AddRange(new byte[] { 0x1B, 0x70, 0x00, 0x32, 0xFA });     // ESC p drawer kick
+                if (!WritePrinterData(buf.ToArray())) { WriteJson(resp, 500, "{\"ok\":false,\"error\":\"prentun mistókst\"}"); return; }
                 WriteJson(resp, 200, "{\"ok\":true}");
             }
             catch (Exception ex)
@@ -301,7 +312,8 @@ namespace Kassabru
             if (!TryOpenPrinter()) { WriteJson(resp, 503, "{\"ok\":false,\"error\":\"prentari ekki tengdur\"}"); return; }
             try
             {
-                lock (printerLock) printer.Write(new byte[] { 0x1B, 0x70, 0x00, 0x32, 0xFA }, 0, 5);
+                if (!WritePrinterData(new byte[] { 0x1B, 0x70, 0x00, 0x32, 0xFA }))
+                { WriteJson(resp, 500, "{\"ok\":false,\"error\":\"skúffa mistókst\"}"); return; }
                 WriteJson(resp, 200, "{\"ok\":true}");
             }
             catch (Exception ex)
@@ -311,9 +323,18 @@ namespace Kassabru
             }
         }
 
+        /** Route bytes to the printer — serial COM port or a Windows print queue (win:). */
+        static bool WritePrinterData(byte[] data)
+        {
+            if (IsWinPrinter) return WinRaw.Send(WinPrinterName, data);
+            lock (printerLock) { printer.Write(data, 0, data.Length); }
+            return true;
+        }
+
         // ---------------------------------------------------- scanner/scale --
         static bool TryOpenScanner()
         {
+            if (string.Equals(ScannerPort, "none", StringComparison.OrdinalIgnoreCase)) return false;
             lock (scannerWriteLock)
             {
                 if (scanner != null && scanner.IsOpen) return true;
@@ -513,6 +534,72 @@ namespace Kassabru
             string line = string.Format("[{0:HH:mm:ss}] {1}", DateTime.Now, string.Format(fmt, args));
             Console.WriteLine(line);
             try { File.AppendAllText("kassabru.log", line + "\r\n"); } catch { }
+        }
+    }
+
+    // RAW ESC/POS to a Windows print queue (USB printers, e.g. Volcora installed
+    // with its Windows driver). The classic winspool RawPrinterHelper pattern.
+    static class WinRaw
+    {
+        [DllImport("winspool.Drv", EntryPoint = "OpenPrinterA", SetLastError = true, CharSet = CharSet.Ansi)]
+        static extern bool OpenPrinter(string szPrinter, out IntPtr hPrinter, IntPtr pd);
+        [DllImport("winspool.Drv", SetLastError = true)]
+        static extern bool ClosePrinter(IntPtr hPrinter);
+        [DllImport("winspool.Drv", EntryPoint = "StartDocPrinterA", SetLastError = true, CharSet = CharSet.Ansi)]
+        static extern bool StartDocPrinter(IntPtr hPrinter, int level, ref DOCINFOA di);
+        [DllImport("winspool.Drv", SetLastError = true)]
+        static extern bool EndDocPrinter(IntPtr hPrinter);
+        [DllImport("winspool.Drv", SetLastError = true)]
+        static extern bool StartPagePrinter(IntPtr hPrinter);
+        [DllImport("winspool.Drv", SetLastError = true)]
+        static extern bool EndPagePrinter(IntPtr hPrinter);
+        [DllImport("winspool.Drv", SetLastError = true)]
+        static extern bool WritePrinter(IntPtr hPrinter, IntPtr pBytes, int dwCount, out int dwWritten);
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+        struct DOCINFOA
+        {
+            [MarshalAs(UnmanagedType.LPStr)] public string pDocName;
+            [MarshalAs(UnmanagedType.LPStr)] public string pOutputFile;
+            [MarshalAs(UnmanagedType.LPStr)] public string pDataType;
+        }
+
+        public static bool QueueExists(string name)
+        {
+            IntPtr h;
+            if (!OpenPrinter(name, out h, IntPtr.Zero)) return false;
+            ClosePrinter(h);
+            return true;
+        }
+
+        public static bool Send(string name, byte[] data)
+        {
+            IntPtr h;
+            if (!OpenPrinter(name, out h, IntPtr.Zero)) return false;
+            try
+            {
+                var di = new DOCINFOA();
+                di.pDocName = "Kassabru kvittun";
+                di.pOutputFile = null;
+                di.pDataType = "RAW";
+                if (!StartDocPrinter(h, 1, ref di)) return false;
+                try
+                {
+                    if (!StartPagePrinter(h)) return false;
+                    IntPtr p = Marshal.AllocHGlobal(data.Length);
+                    try
+                    {
+                        Marshal.Copy(data, 0, p, data.Length);
+                        int written;
+                        if (!WritePrinter(h, p, data.Length, out written)) return false;
+                        bool pageOk = EndPagePrinter(h);
+                        return written == data.Length && pageOk;
+                    }
+                    finally { Marshal.FreeHGlobal(p); }
+                }
+                finally { EndDocPrinter(h); }
+            }
+            finally { ClosePrinter(h); }
         }
     }
 }
