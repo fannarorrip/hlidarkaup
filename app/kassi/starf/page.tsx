@@ -171,30 +171,58 @@ export default function StaffTill() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Kassabrú: local hardware bridge (NCR scanner/scale + printer + drawer on this PC).
-  // When present, scans arrive over SSE instead of the keyboard wedge — same overlay gating.
+  // Which register this till is (?reg=kassi1..3) — drives the sale tag AND which
+  // network printer the server prints to (PRINTER_IP_<REG>).
+  const regRef = useRef<string | null>(null);
+  const netPrintRef = useRef(false);
+
+  // Hardware detection: kassabrú local bridge (NCR serial gear) if present;
+  // otherwise ask the server whether a network printer (Volcora) is configured.
   useEffect(() => {
+    regRef.current = new URLSearchParams(window.location.search).get("reg");
     let stop = false;
     let cleanup: (() => void) | undefined;
     kbHealth().then((ok) => {
-      if (stop || !ok) return;
-      bridgeRef.current = true; setBridge(true);
-      cleanup = kbScanEvents((code) => { if (!overlayRef.current) addByCodeRef.current(code); });
+      if (stop) return;
+      if (ok) {
+        bridgeRef.current = true; setBridge(true);
+        cleanup = kbScanEvents((code) => { if (!overlayRef.current) addByCodeRef.current(code); });
+        return;
+      }
+      fetch(`/api/kassi/print?reg=${encodeURIComponent(regRef.current ?? "")}`)
+        .then((r) => r.json())
+        .then((d) => { if (!stop && d.configured) { netPrintRef.current = true; setBridge(true); } })
+        .catch(() => {});
     });
     return () => { stop = true; cleanup?.(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Print via the bridge (real receipt printer) with browser print as fallback.
+  // Print a receipt: kassabrú bridge if present, else the server prints to the
+  // network printer (Volcora, TCP) — browser print as last resort.
   function printReceipt(d: NonNullable<typeof done>, kickDrawer = false) {
     const text = formatReceipt({
       invoiceNumber: d.invoiceNumber, total: d.total, mode: d.mode, change: d.change, isReturn: d.isReturn,
       lines: d.lines.map((l) => ({ name: l.name, quantity: l.quantity, price: effUnit(l), vatPct: l.vatPct, discount: l.discount })),
     });
-    kbPrint(text, { drawer: kickDrawer }).then(async (ok) => {
+    const serverPrint = async (): Promise<boolean> => {
+      const r = await fetch("/api/kassi/print", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ reg: regRef.current, text, drawer: kickDrawer }),
+      }).catch(() => null);
+      const j = r ? await r.json().catch(() => ({})) : {};
+      return !!j.ok;
+    };
+    (bridgeRef.current ? kbPrint(text, { drawer: kickDrawer }) : serverPrint()).then(async (ok) => {
+      if (!ok && bridgeRef.current) ok = await serverPrint(); // bridge died → try network path
       if (!ok) {
         // print failed → the drawer kick riding on it never happened; open it separately
-        if (kickDrawer && !(await kbDrawer())) fetch("/api/kassi/drawer", { method: "POST" }).catch(() => {});
+        if (kickDrawer && !(await kbDrawer())) {
+          fetch("/api/kassi/drawer", {
+            method: "POST", headers: { "content-type": "application/json" },
+            body: JSON.stringify({ reg: regRef.current }),
+          }).catch(() => {});
+        }
         window.print();
       }
     });
@@ -205,13 +233,13 @@ export default function StaffTill() {
     if (mode === "account" && (!customer || !customer.is_account)) { setError("Veldu reikningsviðskiptamann"); return; }
     setBusy(true); setError("");
     const snapshot = cart;
-    const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: cart.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, customerId: customer?.id, payment: { approved: true, processor: "STAFF" } }) });
+    const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: cart.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, customerId: customer?.id, reg: regRef.current, payment: { approved: true, processor: "STAFF" } }) });
     const d = await r.json(); setBusy(false);
     if (!r.ok) { setError(d.error ?? "Villa við að skrá söluna"); return; }
     const doneObj = { invoiceNumber: d.invoiceNumber, total, mode, change, lines: snapshot };
     setDone(doneObj);
-    if (bridgeRef.current) printReceipt(doneObj, mode === "cash"); // receipt + drawer kick in one go
-    else if (mode === "cash") fetch("/api/kassi/drawer", { method: "POST" }).catch(() => {}); // auto-open on cash
+    if (bridgeRef.current || netPrintRef.current) printReceipt(doneObj, mode === "cash"); // receipt + drawer kick in one go
+    else if (mode === "cash") fetch("/api/kassi/drawer", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reg: regRef.current }) }).catch(() => {}); // auto-open on cash
     setCart([]); setCustomer(null); setCashFor(false); setCashGot("");
   }
   function pay(mode: Mode) {
@@ -245,7 +273,10 @@ export default function StaffTill() {
       setTimeout(() => setToast(""), 4500);
       return;
     }
-    const r = await fetch("/api/kassi/drawer", { method: "POST" }).catch(() => null);
+    const r = await fetch("/api/kassi/drawer", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reg: regRef.current }),
+    }).catch(() => null);
     const d = r ? await r.json().catch(() => ({})) : {};
     setToast(d.ok ? "Skúffa opnuð" : (d.message ?? d.error ?? "Skúffa ekki tengd"));
     setTimeout(() => setToast(""), 4500);
@@ -255,12 +286,12 @@ export default function StaffTill() {
     if (!cart.length) return;
     setBusy(true); setError("");
     const snapshot = cart;
-    const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: cart.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, kind: "return", customerId: customer?.id, payment: { approved: true, processor: "STAFF" } }) });
+    const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: cart.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, kind: "return", customerId: customer?.id, reg: regRef.current, payment: { approved: true, processor: "STAFF" } }) });
     const d = await r.json(); setBusy(false);
     if (!r.ok) { setError(d.error ?? "Villa við skil"); return; }
     const doneObj = { invoiceNumber: d.invoiceNumber, total, mode, lines: snapshot, isReturn: true };
     setDone(doneObj);
-    if (bridgeRef.current) printReceipt(doneObj);
+    if (bridgeRef.current || netPrintRef.current) printReceipt(doneObj);
     setCart([]); setCustomer(null); setReturnMode(false);
   }
 

@@ -1,17 +1,24 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { netDrawer } from "@/lib/printer-net";
 
-// Open the cash drawer. A browser can't kick an ESC/POS drawer directly — it's opened either by
-// the receipt printer (printer setting "open drawer on print") or by a small local print agent.
-// If DRAWER_KICK_URL is set (the agent's endpoint) we POST to it; otherwise this is a no-op that
-// explains the setup. Gated like the other hardware integrations.
+// Open the cash drawer. Preferred path: the network receipt printer kicks it
+// (ESC p over TCP — see lib/printer-net.ts), per-register via body {reg}.
+// Legacy fallback: DRAWER_KICK_URL (a local print agent endpoint).
 export const runtime = "nodejs";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const b = await req.json().catch(() => ({} as { reg?: string }));
+
+  const viaPrinter = await netDrawer(b?.reg ?? null);
+  if (viaPrinter.configured) {
+    return NextResponse.json(viaPrinter, { status: viaPrinter.ok ? 200 : 502 });
+  }
+
   const url = process.env.DRAWER_KICK_URL;
   if (!url) {
     return NextResponse.json({
       ok: false, configured: false,
-      message: "Skúffan er ekki tengd. Stilltu kvittanaprentarann á að opna skúffuna við prentun, eða settu DRAWER_KICK_URL á staðbundinn prentþjón.",
+      message: "Skúffan er ekki tengd — settu PRINTER_IP (skúffan opnast gegnum prentarann).",
     });
   }
   try {
