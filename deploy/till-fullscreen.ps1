@@ -29,10 +29,16 @@ New-Item -ItemType Directory -Force "C:\kassabru" | Out-Null
 $vbs = @"
 Set sh = CreateObject("WScript.Shell")
 sh.Run """$edge"" --app=$Url --no-first-run", 1, False
-WScript.Sleep 9000
-sh.AppActivate "Hlíðarkaup"
-WScript.Sleep 500
-sh.SendKeys "{F11}"
+ok = False
+For i = 1 To 60
+  WScript.Sleep 500
+  ok = sh.AppActivate("Hlíðarkaup")
+  If ok Then Exit For
+Next
+If ok Then
+  WScript.Sleep 400
+  sh.SendKeys "{F11}"
+End If
 "@
 Set-Content -Path "C:\kassabru\kassi-start.vbs" -Value $vbs -Encoding Default
 "OK: launcher C:\kassabru\kassi-start.vbs -> $Url"
