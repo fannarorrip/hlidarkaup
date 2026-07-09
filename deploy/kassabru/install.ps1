@@ -19,7 +19,9 @@ $src = Join-Path $PSScriptRoot "kassabru.cs"
 
 if (-not (Test-Path $src)) { throw "kassabru.cs vantar í $PSScriptRoot" }
 New-Item -ItemType Directory -Force $dir | Out-Null
-Copy-Item $src $dir -Force
+# Skip the copy when the installer is already running FROM C:\kassabru
+$dest = Join-Path $dir "kassabru.cs"
+if ((Resolve-Path $src).Path -ne $dest) { Copy-Item $src $dest -Force }
 
 # 1. Compile with the in-box .NET Framework compiler
 $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
