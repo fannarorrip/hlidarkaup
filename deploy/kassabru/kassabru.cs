@@ -281,7 +281,7 @@ namespace Kassabru
                 var buf = new List<byte>();
                 buf.AddRange(new byte[] { 0x1B, 0x40 });            // ESC @  init
                 buf.AddRange(new byte[] { 0x1B, 0x74, CodePage });  // ESC t — codepage for á é í ó ú ý þ æ ö ð
-                var cp1252 = Encoding.GetEncoding(1252);
+                var cp1252 = PrinterEncoding();
                 foreach (var rawLine in text.Replace("\r\n", "\n").Split('\n'))
                 {
                     string line = rawLine;
@@ -320,6 +320,23 @@ namespace Kassabru
             {
                 Log("skúffa: {0}", ex.Message);
                 WriteJson(resp, 500, "{\"ok\":false,\"error\":\"skúffa mistókst\"}");
+            }
+        }
+
+        /** Text encoding matching the ESC t codepage table, so bytes land on the right glyphs. */
+        static Encoding PrinterEncoding()
+        {
+            switch (CodePage)
+            {
+                case 0: return Encoding.GetEncoding(437);   // PC437
+                case 2: return Encoding.GetEncoding(850);   // PC850 Multilingual
+                case 3: return Encoding.GetEncoding(860);   // PC860 Portuguese
+                case 4: return Encoding.GetEncoding(863);   // PC863 Canadian-French
+                case 5: return Encoding.GetEncoding(865);   // PC865 Nordic
+                case 17: return Encoding.GetEncoding(866);  // PC866 Cyrillic
+                case 18: return Encoding.GetEncoding(852);  // PC852 Latin 2
+                case 19: return Encoding.GetEncoding(858);  // PC858 (850 + €)
+                default: return Encoding.GetEncoding(1252); // 8 (NCR) / 16 (Epson WPC1252)
             }
         }
 
