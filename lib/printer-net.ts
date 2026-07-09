@@ -33,12 +33,36 @@ export function registerPrinter(regId?: string | null): NetPrinter | null {
 const ESC = 0x1b;
 const GS = 0x1d;
 const codepageByte = () => {
-  const n = parseInt(process.env.PRINTER_CODEPAGE || "16", 10);
-  return Number.isFinite(n) ? n & 0xff : 16;
+  const n = parseInt(process.env.PRINTER_CODEPAGE || "2", 10);
+  return Number.isFinite(n) ? n & 0xff : 2;
 };
 
-/** CP1252 bytes — for Icelandic letters latin1 (ISO-8859-1) is byte-identical. */
-const enc = (s: string) => Buffer.from(s, "latin1");
+// CP850/858 bytes for the non-ASCII characters receipts actually use. The Volcora
+// (like many ESC/POS clones) is a CP850-family printer and cannot render 1252 —
+// discovered the hard way with a 0–31 codepage sampler strip.
+const CP850: Record<string, number> = {
+  "á": 0xa0, "é": 0x82, "í": 0xa1, "ó": 0xa2, "ú": 0xa3, "ý": 0xec,
+  "þ": 0xe7, "æ": 0x91, "ö": 0x94, "ð": 0xd0,
+  "Á": 0xb5, "É": 0x90, "Í": 0xd6, "Ó": 0xe0, "Ú": 0xe9, "Ý": 0xed,
+  "Þ": 0xe8, "Æ": 0x92, "Ö": 0x99, "Ð": 0xd1,
+  "ü": 0x81, "ä": 0x84, "å": 0x86, "à": 0x85, "è": 0x8a, "ê": 0x88,
+  "ç": 0x87, "ñ": 0xa4, "ß": 0xe1, "°": 0xf8, "·": 0xfa, "±": 0xf1,
+  "«": 0xae, "»": 0xaf, "½": 0xab, "¼": 0xac, "€": 0xd5, // € = 858 only
+};
+
+/** Encode text to match the selected table: CP850-family map for tables 0–15/17–19,
+ *  latin1 (byte-identical to CP1252 for Icelandic) for 8/16 (1252 tables). */
+function enc(s: string): Buffer {
+  const cp = codepageByte();
+  if (cp === 8 || cp === 16) return Buffer.from(s, "latin1");
+  const out = Buffer.alloc(s.length);
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    const code = ch.charCodeAt(0);
+    out[i] = code < 0x80 ? code : (CP850[ch] ?? 0x3f); // unknown → '?'
+  }
+  return out;
+}
 
 /** Build the ESC/POS job — mirrors deploy/kassabru/kassabru.cs exactly:
  *  init, codepage, per-line !BIG!/!B!/!C! (size/bold/align), feed+cut, drawer kick. */
