@@ -20,6 +20,17 @@ FILE="$OUT_DIR/hlidarkaup_${STAMP}.sql.gz"
 pg_dump --no-owner --no-privileges "$DB" | gzip -9 > "$FILE"
 echo "[$(date)] wrote $FILE ($(du -h "$FILE" | cut -f1))"
 
+# Secrets snapshot (.env.local) — root-only copy next to the dumps, so an editing
+# accident is always one `cp` away from recovery. Rotated with the same retention.
+# NB the offsite copy of THESE files should be to an encrypted destination.
+ENV_FILE="${ENV_FILE:-/opt/hlidarkaup/.env.local}"
+if [ -f "$ENV_FILE" ]; then
+  ENV_BAK="$OUT_DIR/env_${STAMP}.local"
+  install -m 600 "$ENV_FILE" "$ENV_BAK"
+  echo "[$(date)] wrote $ENV_BAK"
+  find "$OUT_DIR" -maxdepth 1 -name 'env_*.local' -mtime +"$KEEP_DAYS" -delete
+fi
+
 # Keep one archive per month, retained long-term
 MONTH="$(date +%Y%m)"
 [ -f "$ARCHIVE_DIR/hlidarkaup_${MONTH}.sql.gz" ] || cp "$FILE" "$ARCHIVE_DIR/hlidarkaup_${MONTH}.sql.gz"
