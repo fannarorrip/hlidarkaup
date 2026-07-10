@@ -1,0 +1,45 @@
+supplier,vnr,ean,name,default_qty,unit,note
+Arna,2007,,Léttmjólk,2,pakkning,
+Arna,2008,,Nýmjólk,2,pakkning,
+Arna,2013,,AB mjólk óbragðbætt 1 ltr.,1,pakkning,
+Arna,2015,,AB mjólk m.jarðarberjab. 1 ltr,5,stk,
+Arna,2017,,AB mjólk m.banana og vanillubragði 1 ltr,5,stk,
+Arna,2020,,"Rjómi 36% 0,5 ltr.",4,pakkning,
+Arna,2021,,Sýrður rjómi 180 gr,,,
+Arna,2038,,AB Jógúrt jarðarb. 200 ml.dós,1,pakkning,
+Arna,2039,,AB Jógúrt peru 200 ml.dós,1,pakkning,
+Arna,2040,,AB Jógúrt karamellu 200 ml.dós,,,
+Arna,2109,,Örnuskyr hreint 170 gr,,,
+Arna,2110,,Örnuskyr bláberja 170 gr,1,pakkning,
+Arna,2111,,Örnuskyr jarðarberja 170 gr,1,pakkning,
+Arna,2112,,Örnuskyr ferskju 170 gr,,,
+Arna,2113,,Örnuskyr vanilla 170 gr,,,
+Arna,2114,,"Örnuskyr, hreint 500 gr.",3,stk,
+Arna,2115,,"Örnuskyr, vanillu 500 gr.",3,stk,
+Arna,2125,,Kaffiskyr kaffi og karamella 170 gr,1,pakkning,
+Arna,2126,,Kaffiskyr kaffi og vanilla 170 gr,1,pakkning,
+Arna,2143,,Jógúrt m.jarðarberjum og ab gerl. 500 gr.,5,stk,
+Arna,2198,,Jógúrt hreint m. Ab gerlum 500 gr.,,,
+Arna,2240,,Hrein grísk jógúrt 1kg,15,stk,"Ef Hrein ekki til, þá 25 Létt"
+Arna,2241,,Létt grísk jógúrt 1kg,15,stk,"Ef Létt ekki til, þá 25 Hrein"
+Arna,2271,,Grísk jógúrt Stracciatella 180gr,2,pakkning,
+Arna,2272,,Grísk jógúrt jarðarberja/vanillu 180 gr,1,pakkning,
+Arna,2273,,Grísk jógúrt ferskju/ástaraldin 180 gr,1,pakkning,
+Arna,2274,,Grísk jógúrt karamellu/peru 180 gr,1,pakkning,
+Arna,2275,,Grísk jógúrt súkkulaði/ferskju 180 gr,1,pakkning,
+Arna,2276,,Grísk jógúrt kaffi/súkkulaði 180 gr,1,pakkning,
+Arna,2277,,Grísk jógúrt hrein 180 gr,1,pakkning,
+Arna,2286,,"Grísk jógúrt, vanillu og kókos 500g.",1,pakkning,
+Arna,2288,,"Grísk jógúrt kaffi,súkkul. 500g",,,
+Arna,2289,,Grísk jógúrt hrein 500g,1,pakkning,
+Arna,2290,,"Grísk jógúrt, jarðarb.van 500g",1,pakkning,
+Arna,2291,,"Grísk jógúrt,ferskj.ástaraldin 500g",,,
+Arna,2532,,Hafrajógúrt grísk hrein 400 gr,1,pakkning,
+Arna,2270,,Sumarjógúrt með hindberjum og sítrónu 180 gr,2,pakkning,
+Arna,2804,,"Arna prótein+kollagen, jarðarb.vanillu",2,pakkning,
+Arna,2803,,Arna prótein+kollagen súkkulaði,,,
+Arna,2305,,Íslensk haustjógúrt með aðalbláberjum 170gr,,,árstíðabundið
+Arna,2321,,Jólajógúrt með piparkökubragði 170gr,,,árstíðabundið
+Arna,2322,,Jólajógúrt með eplum og kanil 170gr,,,árstíðabundið
+Arna,2370,,Vorjógúrt með sítrónuostakökubragði,,,árstíðabundið
+Arna,2380,,Íslensk jógúrt með íslenskum jarðarberjum 170 gr,,,árstíðabundið

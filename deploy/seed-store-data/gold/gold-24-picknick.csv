@@ -1,0 +1,129 @@
+supplier,vnr,ean,name,cost,retail,unit,note
+Pick Nick,1010,5694230170067,"Pick Nick Samloka, Roastbeef",,,stk,Pick Nick Samlokur
+Pick Nick,1011,5694230170074,"Pick Nick Samloka, Rækjusalat",,,stk,Pick Nick Samlokur
+Pick Nick,1012,5694230170081,"Pick Nick Samloka, Hangikjöt & Salat",,,stk,Pick Nick Samlokur
+Pick Nick,1013,5694230170234,"Pick Nick Samloka, Túnfisksalat",,,stk,Pick Nick Samlokur
+Pick Nick,1014,5694230170241,Pick Nick Grænmetissamloka,,,stk,Pick Nick Samlokur
+Pick Nick,1030,5694230170258,"Pick Nick Langloka, Pepperoni Taco",,,stk,Pick Nick Langlokur
+Pick Nick,1031,5694230170265,"Pick Nick Langloka, Skinka & Pítusósa",,,stk,Pick Nick Langlokur
+Pick Nick,1087,5694311279146,Meira Club í boxi,,,stk,Meira Samlokur
+Pick Nick,1088,5694311279153,Meira BLT í boxi,,,stk,Meira Samlokur
+Pick Nick,1089,5694311279160,Meira Veggie í boxi,,,stk,Meira Samlokur
+Pick Nick,1090,5694311279177,Meira Tuna í boxi,,,stk,Meira Samlokur
+Pick Nick,2002,5694230170029,"Ham, brie & Cranberry",,,stk,Fitness Baguette (gróft)
+Pick Nick,2005,5694230170050,California Club / Kjúklingur & Beikon,,,stk,Fitness Baguette (gróft)
+Pick Nick,2016,5694230171033,Veggie Classie,,,stk,Fitness Baguette (gróft)
+Pick Nick,2068,5694230171286,Eatali / kjúklingur & Pestó,,,stk,Fitness Baguette (gróft)
+Pick Nick,2022,5694230170227,Spicy Chicken,,,stk,Focaccia
+Pick Nick,2023,5694230171064,VEGAN Avocado (Vegan),,,stk,Focaccia
+Pick Nick,2071,5694311270839,XL Pepperoni Taco,,,stk,XL langlokur
+Pick Nick,2072,5694311270846,XL Hot Wings,,,stk,XL langlokur
+Pick Nick,2173,5694311276121,Chicken Club wrap,,,stk,Wraps
+Pick Nick,2174,5694311276138,Mexico Fajitas wrap,,,stk,Wraps
+Pick Nick,2175,5694311276145,Chicken Shawarma wrap,,,stk,Wraps
+Pick Nick,2176,5694311276152,Tasty Vegan wrap,,,stk,Wraps
+Pick Nick,2177,5694311276169,Italian Wrap,,,stk,Wraps
+Pick Nick,2178,5694311276176,BBQ Caesar wrap,,,stk,Wraps
+Pick Nick,7070,5694311276596,Keto box,,,stk,Wraps
+Pick Nick,2501,5694311270860,Smurbrauð með rækju,,,stk,Smurbrauð
+Pick Nick,2502,5694311270877,Smurbrauð með hangikjöti,,,stk,Smurbrauð
+Pick Nick,2503,5694311270884,Smurbrauð með roast beef,,,stk,Smurbrauð
+Pick Nick,2512,5694311278361,Smurbrauðsþrenna,,,stk,Smurbrauð
+Pick Nick,2301,5694311270655,Big burger,,,stk,Hamborgarar + flatbrauð
+Pick Nick,5097,5694230171811,Spicy Chicken í Líbönsku Flatbrauði,,,stk,Hamborgarar + flatbrauð
+Pick Nick,6010,5694311275667,Sésame núðlur með kjúkling,,,stk,"Pasta, núðlur, próteinbox ofl."
+Pick Nick,5110,5694311278248,Chicken Caesar Salad,,,stk,Oval salöt
+Pick Nick,5111,5694311278255,Chicken & Wasabi Salad,,,stk,Oval salöt
+Pick Nick,5112,5694311278262,Chicken & Tabbouleh Salad,,,stk,Oval salöt
+Pick Nick,5113,5694311278279,Chicken & Barley Salad,,,stk,Oval salöt
+Pick Nick,5114,5694311278286,Kimchi Shrimp Salad,,,stk,Oval salöt
+Pick Nick,7080,5694230170807,Orku Grautur,,,stk,Grautar
+Pick Nick,7081,5694230170814,Chia Grautur,,,stk,Grautar
+Pick Nick,7082,5694230170821,"Grísk Jógurt, Hunanang & músli",,,stk,Grautar
+Pick Nick,7084,5694230170845,Wildberry skyr & Musli,,,stk,Grautar
+Pick Nick,7085,5694230170852,Sunshine skyr & Musli,,,stk,Grautar
+Pick Nick,5700,5694311270129,Þessi venjulegi með hnetusmjöri 200gr,,,stk,Hummus og brauðsalöt
+Pick Nick,5702,5694311270143,Chili og hvítlauks hummus 200gr,,,stk,Hummus og brauðsalöt
+Pick Nick,5703,5694311270914,Avocado Jalapeno hummus 200gr,,,stk,Hummus og brauðsalöt
+Pick Nick,5705,5694311270938,Spicy Chicken salat 200gr,,,stk,Hummus og brauðsalöt
+Pick Nick,5706,5694311270945,Spicy Tuna salat 200gr,,,stk,Hummus og brauðsalöt
+Pick Nick,5716,5694311276619,Sumac hummus,,,stk,Hummus og brauðsalöt
+Pick Nick,5717,5694311276626,Basil pesto,,,stk,Hummus og brauðsalöt
+Pick Nick,1055,5694311275414,Ostabakki,,,stk,Ostabakki
+Pick Nick,8618,5694311276893,Tapasbakki,,,stk,Ostabakki
+Pick Nick,1210,5694311276480,Rúnstykki með osti,,,stk,Rúnstykki
+Pick Nick,1211,5694311276497,Rúnstykki með kornum,,,stk,Rúnstykki
+Pick Nick,1212,5694311276503,Rúnstykki með birki,,,stk,Rúnstykki
+Pick Nick,5225,5694311277043,"Dos Amigos m/ kjúkling, hrísgrjónum, salsa",,,stk,Burrito
+Pick Nick,5226,5694311277050,"BBQ m/ kjúkling, hrisgrjónum & grænmeti",,,stk,Burrito
+Pick Nick,5227,5694311277067,Kjútling Sweet Chilli,,,stk,Burrito
+Pick Nick,5228,5694311277074,Kjúkling Shawarma,,,stk,Burrito
+Pick Nick,5400,5694311277005,Baka Kúrekabaka m/ Nautakjöti,,,stk,Bökur
+Pick Nick,5401,5694311277012,Baka Mexikóbaka m/ THAI Kjúklingi,,,stk,Bökur
+Pick Nick,5402,5694311277029,Baka Pizzabaka m/ Skinku & Pepparóni,,,stk,Bökur
+Pick Nick,5403,5694311277036,Baka Marrókósk Grænmetisbaka Vegan,,,stk,Bökur
+Pick Nick,5221,5694311276947,Ítalskar hakkbollur,,,stk,NúllVes Tilbúnir réttir
+Pick Nick,5222,5694311276954,Eggjanúðlur með kjúkling,,,stk,NúllVes Tilbúnir réttir
+Pick Nick,5223,5694311276961,Carbonara kjúklingapasta,,,stk,NúllVes Tilbúnir réttir
+Pick Nick,5224,5694311276978,Ítalskar bollur í sveppasósu,,,stk,NúllVes Tilbúnir réttir
+Pick Nick,5229,5694311276985,Steikt Hrísgrjón með kjúkling,,,stk,NúllVes Tilbúnir réttir
+Pick Nick,5230,5694311276992,Hakkabollur í brúnni sósu,,,stk,NúllVes Tilbúnir réttir
+Pick Nick,5231,5694311279344,Lasagne,,,stk,NúllVes Tilbúnir réttir
+Pick Nick,5232,5694311279351,Bjúgu með uppstúf,,,stk,NúllVes Tilbúnir réttir
+Pick Nick,5233,5694311279368,Kjötbollur í brúnni sósu,,,stk,NúllVes Tilbúnir réttir
+Pick Nick,7132,5694311277982,Gúllassúpa,,,stk,NúllVes Súpur
+Pick Nick,7134,5694311278002,Kókos Karrí súpa,,,stk,NúllVes Súpur
+Pick Nick,7133,5694311277999,Mexíkó Súpa,,,stk,NúllVes Súpur
+Pick Nick,7135,5694311278019,Íslensk Kjötsúpa,,,stk,NúllVes Súpur
+Pick Nick,7136,5694311278026,Tælensk Grænmetissúpa,,,stk,Móðir Náttúra Súpur
+Pick Nick,7137,5694311278033,Gulrótasúpa,,,stk,Móðir Náttúra Súpur
+Pick Nick,7138,5694311279085,Miðjarðarhafssúpa,,,stk,Móðir Náttúra Súpur
+Pick Nick,6087,5694311277425,Fresh fruits (melon + blueberry),,,stk,Móðir Náttúra Fruits
+Pick Nick,6088,5694311277432,Mango & Lime,,,stk,Móðir Náttúra Fruits
+Pick Nick,6089,5694311279313,Ávastabox með Ananas,,,stk,Móðir Náttúra Fruits
+Pick Nick,7096,5694311277340,Coconut Yogurt-Banana Split,,,stk,Móðir Náttúra Grautar
+Pick Nick,7097,5694311277357,Coconut Yogurt-Apple Pie,,,stk,Móðir Náttúra Grautar
+Pick Nick,7098,5694311277364,Coconut Yogurt-Blueberry Parfait,,,stk,Móðir Náttúra Grautar
+Pick Nick,9660,5694311278040,Green power 250ml,,,stk,Móðir Náttúra Safar
+Pick Nick,9661,5694311278057,Beetroot Carrot 250 ml,,,stk,Móðir Náttúra Safar
+Pick Nick,9662,5694311278064,Ginger Apple 250 ml,,,stk,Móðir Náttúra Safar
+Pick Nick,9663,5694311278071,Strawberry Mint 250 ml,,,stk,Móðir Náttúra Safar
+Pick Nick,9664,5694311278088,Lemon Mint 250 ml,,,stk,Móðir Náttúra Safar
+Pick Nick,9665,5694311278095,Orange 250 ml,,,stk,Móðir Náttúra Safar
+Pick Nick,9666,5694311278101,Spírulina Shot 125ml,,,stk,Móðir Náttúra Safar
+Pick Nick,9667,5694311278118,Gut Shot 125ml,,,stk,Móðir Náttúra Safar
+Pick Nick,9668,5694311278125,Ginger Shot 125ml,,,stk,Móðir Náttúra Safar
+Pick Nick,9669,5694311278132,Turmeric Cayenne Shot 125ml,,,stk,Móðir Náttúra Safar
+Pick Nick,6052,5694311277456,Napoli pasta,,,stk,Móðir Náttúra Pasta
+Pick Nick,6053,5694311277463,Greek Pasta,,,stk,Móðir Náttúra Pasta
+Pick Nick,26,5690330061083,MN Svartbaunabuff pk,,,stk,Grunnvörur Móðir Náttúra
+Pick Nick,57,5690330061571,MN Kjúklingabaunabuff m.sólþ.tómötum pk,,,stk,Grunnvörur Móðir Náttúra
+Pick Nick,28,5690330061281,MN Tortillur m. linsufyllingu pk,,,stk,Grunnvörur Móðir Náttúra
+Pick Nick,29,5690330061298,MN Indverskar pönnukökur pk,,,stk,Grunnvörur Móðir Náttúra
+Pick Nick,44,5690330061441,MN Hnetusteik pk,,,stk,Grunnvörur Móðir Náttúra
+Pick Nick,75,5690330061755,MN Dehli kofta 400gr,,,stk,Grunnvörur Móðir Náttúra
+Pick Nick,11,5690330061113,MN Vegan lasagne 500gr,,,stk,Grunnvörur Móðir Náttúra
+Pick Nick,30,5690330061304,MN Sólskinssósa 200 ml.,,,stk,Grunnvörur Móðir Náttúra
+Pick Nick,204,5690330061045,"MN Gulrótarsúpa 0,5 lítra",,,stk,Grunnvörur Móðir Náttúra
+Pick Nick,205,5690330061052,"MN Thaí súpa 0,5 lítra",,,stk,Grunnvörur Móðir Náttúra
+Pick Nick,17,5690330061038,MN BBQ Borgarinn pk,,,stk,Grunnvörur Móðir Náttúra
+Pick Nick,74,5690330061229,MN Hátíðarhnetusteik 500 gr,,,stk,Grunnvörur Móðir Náttúra
+Pick Nick,9070,5201044011105,Instabar Apricot Cashew Bites,,,stk,Innflutningur
+Pick Nick,9071,5201044011082,Instabar Cranberry Almond Bites,,,stk,Innflutningur
+Pick Nick,9072,5201044011112,Instabar Pistachio Cranberry Bites,,,stk,Innflutningur
+Pick Nick,9073,5201044011099,Instabar Raisin Hazelnut Bites,,,stk,Innflutningur
+Pick Nick,9074,5201044010733,LOV Apple Oat Cinnamon & Almond Bites,,,stk,Innflutningur
+Pick Nick,9075,5201044010757,LOV Coconut Almond & Oat Bites,,,stk,Innflutningur
+Pick Nick,9076,5201044010764,LOV Raspberry Almond & Oat Bites,,,stk,Innflutningur
+Pick Nick,9077,5201044010740,LOV Banana Chocolate & Almond Bites,,,stk,Innflutningur
+Pick Nick,9058,5949040201044,ELEPHANT Sea Salt,,,stk,Elephant snakk
+Pick Nick,9059,5949040201068,ELEPHANT Black & White Sesame,,,stk,Elephant snakk
+Pick Nick,9060,5949040203000,ELEPHANT Honey Mustard Onion,,,stk,Elephant snakk
+Pick Nick,9061,5949040202058,ELEPHANT Tomatoes and Herbs,,,stk,Elephant snakk
+Pick Nick,7091,0680569854124,Vanillu Kókosjógúrt,,,stk,Kókosjógúrt
+Pick Nick,7092,5060426810084,Natural Kókosjógúrt,,,stk,Kókosjógúrt
+Pick Nick,7190,5060426810114,Choc pots (4 stk í pakka),,,stk,Kókosjógúrt
+Pick Nick,7193,5060426811333,Salted caramel choc pots (4 stk í pakka),,,stk,Kókosjógúrt
+Pick Nick,7085,5694230170852,Sunshine skyr & Musli,,,stk,Kókosjógúrt (tvítekið í skjali - einnig undir Grautar)
+Pick Nick,7191,5060426812583,Raspberry coconut yog,,,stk,Kókosjógúrt
+Pick Nick,7192,5060426812309,Mango & passion fruit coconut yog,,,stk,Kókosjógúrt

@@ -1,0 +1,101 @@
+supplier,vnr,ean,name,default_qty,unit,note
+Kjarnafæði,,,Dönsk Lifrarkæfa ströngl.,,,Smurálegg
+Kjarnafæði,,,Dönsk Lifrarkæfa í formi,,,Smurálegg
+Kjarnafæði,,,Kindakæfa gamla góða,,,Smurálegg
+Kjarnafæði,,,Sveitakæfa,,,Smurálegg
+Kjarnafæði,,,Eldstafir 10,,,Smurálegg
+Kjarnafæði,,,Hamborgara 4 í pakka,,,Smurálegg
+Kjarnafæði,,,Söltuð Rúllupylsa Heil,,,Smurálegg
+Kjarnafæði,,,Reykt Rúllupylsa Heil,,,Smurálegg
+Kjarnafæði,,,Hamborgarhryggur,,,Álegg í bréfi
+Kjarnafæði,,,Hangikjöt,,,Álegg í bréfi
+Kjarnafæði,,,Kjúklingaálegg,,,Álegg í bréfi
+Kjarnafæði,,,Kjúklingaálegg léttr.,,,Álegg í bréfi
+Kjarnafæði,,,Lambarúllupylsa,,,Álegg í bréfi
+Kjarnafæði,,,Pepperoni,,,Álegg í bréfi
+Kjarnafæði,,,Skinka 1.Flokkur,,,Álegg í bréfi
+Kjarnafæði,,,Spægipylsa,,,Álegg í bréfi
+Kjarnafæði,,,Chorizo,,,Álegg í bréfi
+Kjarnafæði,,,Hangikurl (Hafdís) 1kg,,,Álegg í bréfi
+Kjarnafæði,,,Hamborgarar,,,Frost
+Kjarnafæði,,,Kjötfars,,,Frost
+Kjarnafæði,,,Kótilettur í raspi (pakkað),,,Frost
+Kjarnafæði,,,Lamba lærissneiðar í raspi,,,Frost
+Kjarnafæði,,,Vínarsnitsel í raspi (pakkað),,,Frost
+Kjarnafæði,,,Svið,,,Frost
+Kjarnafæði,,,Ömmufars,,,Frost
+Kjarnafæði,,,Sparhakk,,,Frost
+Kjarnafæði,,,Hakk,,,Frost
+Kjarnafæði,,,Krebenettur,,,Frost
+Kjarnafæði,,,Nautatunga reykt,,,Salt og Reykt
+Kjarnafæði,,,Reykt Folald,,,Salt og Reykt
+Kjarnafæði,,,Saltað Folald,,,Salt og Reykt
+Kjarnafæði,,,Saltað Hrossakjöt,,,Salt og Reykt
+Kjarnafæði,,,Saltað lambakjöt valið,,,Salt og Reykt
+Kjarnafæði,,,Saltað lambakjöt blandað,,,Salt og Reykt
+Kjarnafæði,,,Saltað lambakjöt ódýrt,,,Salt og Reykt
+Kjarnafæði,,,Bacon pakki,,,Álegg gas
+Kjarnafæði,,,Hangikjöt álegg (GAS),,,Álegg gas
+Kjarnafæði,,,Léttreykt brauðskinka (PAKKI),,,Álegg gas
+Kjarnafæði,,,Pepperoni mjótt sneitt (GAS),,,Álegg gas
+Kjarnafæði,,,Pizzaskinka (PAKKI),,,Álegg gas
+Kjarnafæði,,,Skinka (GAS),,,Álegg gas
+Kjarnafæði,,,Spægipylsa (GAS),,,Álegg gas
+Kjarnafæði,,,Svínarúllupylsa (GAS),,,Álegg gas
+Kjarnafæði,,,Lambaframhryggjasn.,,,Grillkjöt
+Kjarnafæði,,,Lambalærisneiðar 1.fl Heiðakrydd,,,Grillkjöt
+Kjarnafæði,,,Lambaprime Hvítlauk&Rósmarín,,,Grillkjöt
+Kjarnafæði,,,Lamba Ribeye Black Garlic,,,Grillkjöt
+Kjarnafæði,,,Lamba Sirloin heiðakryddað,,,Grillkjöt
+Kjarnafæði,,,Lambakótilettur Suðrænt ávaxtak,,,Grillkjöt
+Kjarnafæði,,,Grísafillet grill-piparmix,,,Grillkjöt
+Kjarnafæði,,,Grísahnakkasneiðar Black Garlic,,,Grillkjöt
+Kjarnafæði,,,Grísakótilettur Suðrænt Ávaxtakr.,,,Grillkjöt
+Kjarnafæði,,,Svínakótilettur,,,Grillkjöt
+Kjarnafæði,,,Nauta mínútusteik,,,Grillkjöt
+Kjarnafæði,,,Folalda Grillbrilliant Kæli,,,Grillkjöt
+Kjarnafæði,,,Beikonbúðingur,,,Búðingar
+Kjarnafæði,,,Kjötbúðingur,,,Búðingar
+Kjarnafæði,,,Medisterpylsa,,,Búðingar
+Kjarnafæði,,,Pylsur Goða 5stk,,,Pylsur
+Kjarnafæði,,,Pylsur Goða 10stk,,,Pylsur
+Kjarnafæði,,,Pylsur Kjarnafæði 5stk,,,Pylsur
+Kjarnafæði,,,Pylsur Pólskar,,,Pylsur
+Kjarnafæði,,,Pylsur Bratwurst,,,Pylsur
+Kjarnafæði,,,Pylsur Mexíkó,,,Pylsur
+Kjarnafæði,,,Pylsur Kielbasa,,,Pylsur
+Kjarnafæði,,,Pylsur Beikonpylsur,,,Pylsur
+Kjarnafæði,,,Blóðmör,,,Þorramatur
+Kjarnafæði,,,Grillsneiðar,,,Þorramatur
+Kjarnafæði,,,Grísasulta,,,Þorramatur
+Kjarnafæði,,,Hrútspungar,,,Þorramatur
+Kjarnafæði,,,Lifrarpylsa,,,Þorramatur
+Kjarnafæði,,,Lundabaggi,,,Þorramatur
+Kjarnafæði,,,Magáll,,,Þorramatur
+Kjarnafæði,,,Soðin svið,,,Þorramatur
+Kjarnafæði,,,Súr Blóðmör,,,Þorramatur
+Kjarnafæði,,,Súr Grísasulta,,,Þorramatur
+Kjarnafæði,,,Súr Hvalur,,,Þorramatur
+Kjarnafæði,,,Súrir Hrútspungar,,,Þorramatur
+Kjarnafæði,,,Súrmatur fata,,,Þorramatur
+Kjarnafæði,,,Súrmatur Sviðasulta,,,Þorramatur
+Kjarnafæði,,,Sviðasulta,,,Þorramatur
+Kjarnafæði,,,Páskalamb (úrb),,,Hátíðarkjöt
+Kjarnafæði,,,Bayonneskinka,,,Hátíðarkjöt
+Kjarnafæði,,,Hangiframp. bitar poki,,,Hátíðarkjöt
+Kjarnafæði,,,Hangikjöt m/ beini,,,Hátíðarkjöt
+Kjarnafæði,,,Hangikjöt úrb. framp.,,,Hátíðarkjöt
+Kjarnafæði,,,Hangikjöt úrb. læri,,,Hátíðarkjöt
+Kjarnafæði,,,Kryddaður Hryggur,,,Hátíðarkjöt
+Kjarnafæði,,,Lambalæri Heiðarkrydd,,,Hátíðarkjöt
+Kjarnafæði,,,Lambalæri Suðrænt krydd,,,Hátíðarkjöt
+Kjarnafæði,,,Londonlamb,,,Hátíðarkjöt
+Kjarnafæði,,,Reyktur Hryggur,,,Hátíðarkjöt
+Kjarnafæði,,,Svína hamb.hryggur,,,Hátíðarkjöt
+Kjarnafæði,4254,,Hrossabjúgu fín,,,Bjúgu
+Kjarnafæði,4251,,Hrossabjúgu hringlaga,,,Bjúgu
+Kjarnafæði,7572,,Kindabjúgu,,,Bjúgu
+Kjarnafæði,,,Sveitabjúgu,,,Bjúgu
+Kjarnafæði,,,Lambasneiðar,,,Mánudagur Prepack
+Kjarnafæði,,,Gordon Blu,,,Mánudagur Prepack
+Kjarnafæði,,,Nautahakk,,,Mánudagur Prepack

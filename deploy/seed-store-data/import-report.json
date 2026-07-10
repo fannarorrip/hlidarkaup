@@ -1,0 +1,3693 @@
+{
+ "costUpdated": 732,
+ "barcodesAdded": 1,
+ "unmatched": [
+  {
+   "file": "gold-04-atvr.csv",
+   "supplier": "ÁTVR",
+   "ean": "",
+   "name": "Agio Petitos 5x10's"
+  },
+  {
+   "file": "gold-04-atvr.csv",
+   "supplier": "ÁTVR",
+   "ean": "",
+   "name": "Bali Shag Mellow Taste Virginia 5x40g"
+  },
+  {
+   "file": "gold-04-atvr.csv",
+   "supplier": "ÁTVR",
+   "ean": "",
+   "name": "Bali Shag Rounded Virginia 5x40g"
+  },
+  {
+   "file": "gold-04-atvr.csv",
+   "supplier": "ÁTVR",
+   "ean": "1230739",
+   "name": "Camel Blue Box"
+  },
+  {
+   "file": "gold-04-atvr.csv",
+   "supplier": "ÁTVR",
+   "ean": "",
+   "name": "Marlboro Micro touch blue super slim 100's"
+  },
+  {
+   "file": "gold-04-atvr.csv",
+   "supplier": "ÁTVR",
+   "ean": "8606020370769",
+   "name": "Nero Red 100's"
+  },
+  {
+   "file": "gold-04-atvr.csv",
+   "supplier": "ÁTVR",
+   "ean": "8720400000210",
+   "name": "Signature 10x10's"
+  },
+  {
+   "file": "gold-04-atvr.csv",
+   "supplier": "ÁTVR",
+   "ean": "5712341130173",
+   "name": "Skandinavik Regular 5x50g"
+  },
+  {
+   "file": "gold-04-atvr.csv",
+   "supplier": "ÁTVR",
+   "ean": "1231932",
+   "name": "Winston Blue Box"
+  },
+  {
+   "file": "gold-04-atvr.csv",
+   "supplier": "ÁTVR",
+   "ean": "8035539",
+   "name": "Winston Classic Red 100's Box"
+  },
+  {
+   "file": "gold-04-atvr.csv",
+   "supplier": "ÁTVR",
+   "ean": "1231233",
+   "name": "Winston Classic Red Box"
+  },
+  {
+   "file": "gold-04-atvr.csv",
+   "supplier": "ÁTVR",
+   "ean": "",
+   "name": "Lucky Strike Original Red Box"
+  },
+  {
+   "file": "gold-04-atvr.csv",
+   "supplier": "ÁTVR",
+   "ean": "",
+   "name": "Prince Menthol"
+  },
+  {
+   "file": "gold-04-atvr.csv",
+   "supplier": "ÁTVR",
+   "ean": "",
+   "name": "Prince Red Box"
+  },
+  {
+   "file": "gold-04-atvr.csv",
+   "supplier": "ÁTVR",
+   "ean": "",
+   "name": "Signature Green Boost 10x10's"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230170067",
+   "name": "Pick Nick Samloka, Roastbeef"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230170074",
+   "name": "Pick Nick Samloka, Rækjusalat"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230170081",
+   "name": "Pick Nick Samloka, Hangikjöt & Salat"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230170234",
+   "name": "Pick Nick Samloka, Túnfisksalat"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230170241",
+   "name": "Pick Nick Grænmetissamloka"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230170258",
+   "name": "Pick Nick Langloka, Pepperoni Taco"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230170265",
+   "name": "Pick Nick Langloka, Skinka & Pítusósa"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311279146",
+   "name": "Meira Club í boxi"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311279153",
+   "name": "Meira BLT í boxi"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311279160",
+   "name": "Meira Veggie í boxi"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311279177",
+   "name": "Meira Tuna í boxi"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230170029",
+   "name": "Ham, brie & Cranberry"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230170050",
+   "name": "California Club / Kjúklingur & Beikon"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230171033",
+   "name": "Veggie Classie"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230171286",
+   "name": "Eatali / kjúklingur & Pestó"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230170227",
+   "name": "Spicy Chicken"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230171064",
+   "name": "VEGAN Avocado (Vegan)"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311270839",
+   "name": "XL Pepperoni Taco"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311270846",
+   "name": "XL Hot Wings"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276121",
+   "name": "Chicken Club wrap"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276138",
+   "name": "Mexico Fajitas wrap"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276145",
+   "name": "Chicken Shawarma wrap"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276152",
+   "name": "Tasty Vegan wrap"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276169",
+   "name": "Italian Wrap"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276176",
+   "name": "BBQ Caesar wrap"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276596",
+   "name": "Keto box"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311270860",
+   "name": "Smurbrauð með rækju"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311270877",
+   "name": "Smurbrauð með hangikjöti"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311270884",
+   "name": "Smurbrauð með roast beef"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278361",
+   "name": "Smurbrauðsþrenna"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311270655",
+   "name": "Big burger"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230171811",
+   "name": "Spicy Chicken í Líbönsku Flatbrauði"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311275667",
+   "name": "Sésame núðlur með kjúkling"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278248",
+   "name": "Chicken Caesar Salad"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278255",
+   "name": "Chicken & Wasabi Salad"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278262",
+   "name": "Chicken & Tabbouleh Salad"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278279",
+   "name": "Chicken & Barley Salad"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278286",
+   "name": "Kimchi Shrimp Salad"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230170807",
+   "name": "Orku Grautur"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230170814",
+   "name": "Chia Grautur"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230170821",
+   "name": "Grísk Jógurt, Hunanang & músli"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230170845",
+   "name": "Wildberry skyr & Musli"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230170852",
+   "name": "Sunshine skyr & Musli"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311270129",
+   "name": "Þessi venjulegi með hnetusmjöri 200gr"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311270143",
+   "name": "Chili og hvítlauks hummus 200gr"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311270914",
+   "name": "Avocado Jalapeno hummus 200gr"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311270938",
+   "name": "Spicy Chicken salat 200gr"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311270945",
+   "name": "Spicy Tuna salat 200gr"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276619",
+   "name": "Sumac hummus"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276626",
+   "name": "Basil pesto"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311275414",
+   "name": "Ostabakki"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276893",
+   "name": "Tapasbakki"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276480",
+   "name": "Rúnstykki með osti"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276497",
+   "name": "Rúnstykki með kornum"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276503",
+   "name": "Rúnstykki með birki"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311277043",
+   "name": "Dos Amigos m/ kjúkling, hrísgrjónum, salsa"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311277050",
+   "name": "BBQ m/ kjúkling, hrisgrjónum & grænmeti"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311277067",
+   "name": "Kjútling Sweet Chilli"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311277074",
+   "name": "Kjúkling Shawarma"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311277005",
+   "name": "Baka Kúrekabaka m/ Nautakjöti"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311277012",
+   "name": "Baka Mexikóbaka m/ THAI Kjúklingi"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311277029",
+   "name": "Baka Pizzabaka m/ Skinku & Pepparóni"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311277036",
+   "name": "Baka Marrókósk Grænmetisbaka Vegan"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276947",
+   "name": "Ítalskar hakkbollur"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276954",
+   "name": "Eggjanúðlur með kjúkling"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276961",
+   "name": "Carbonara kjúklingapasta"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276978",
+   "name": "Ítalskar bollur í sveppasósu"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276985",
+   "name": "Steikt Hrísgrjón með kjúkling"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311276992",
+   "name": "Hakkabollur í brúnni sósu"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311279344",
+   "name": "Lasagne"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311279351",
+   "name": "Bjúgu með uppstúf"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311279368",
+   "name": "Kjötbollur í brúnni sósu"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311277982",
+   "name": "Gúllassúpa"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278002",
+   "name": "Kókos Karrí súpa"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311277999",
+   "name": "Mexíkó Súpa"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278019",
+   "name": "Íslensk Kjötsúpa"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278026",
+   "name": "Tælensk Grænmetissúpa"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278033",
+   "name": "Gulrótasúpa"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311279085",
+   "name": "Miðjarðarhafssúpa"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311277425",
+   "name": "Fresh fruits (melon + blueberry)"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311277432",
+   "name": "Mango & Lime"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311279313",
+   "name": "Ávastabox með Ananas"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311277340",
+   "name": "Coconut Yogurt-Banana Split"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311277357",
+   "name": "Coconut Yogurt-Apple Pie"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311277364",
+   "name": "Coconut Yogurt-Blueberry Parfait"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278040",
+   "name": "Green power 250ml"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278057",
+   "name": "Beetroot Carrot 250 ml"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278064",
+   "name": "Ginger Apple 250 ml"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278071",
+   "name": "Strawberry Mint 250 ml"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278088",
+   "name": "Lemon Mint 250 ml"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278095",
+   "name": "Orange 250 ml"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278101",
+   "name": "Spírulina Shot 125ml"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278118",
+   "name": "Gut Shot 125ml"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278125",
+   "name": "Ginger Shot 125ml"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311278132",
+   "name": "Turmeric Cayenne Shot 125ml"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311277456",
+   "name": "Napoli pasta"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694311277463",
+   "name": "Greek Pasta"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5690330061083",
+   "name": "MN Svartbaunabuff pk"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5690330061571",
+   "name": "MN Kjúklingabaunabuff m.sólþ.tómötum pk"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5690330061281",
+   "name": "MN Tortillur m. linsufyllingu pk"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5690330061298",
+   "name": "MN Indverskar pönnukökur pk"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5690330061441",
+   "name": "MN Hnetusteik pk"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5690330061755",
+   "name": "MN Dehli kofta 400gr"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5690330061113",
+   "name": "MN Vegan lasagne 500gr"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5690330061304",
+   "name": "MN Sólskinssósa 200 ml."
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5690330061045",
+   "name": "MN Gulrótarsúpa 0,5 lítra"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5690330061052",
+   "name": "MN Thaí súpa 0,5 lítra"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5690330061038",
+   "name": "MN BBQ Borgarinn pk"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5201044011105",
+   "name": "Instabar Apricot Cashew Bites"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5201044011082",
+   "name": "Instabar Cranberry Almond Bites"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5201044011112",
+   "name": "Instabar Pistachio Cranberry Bites"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5201044011099",
+   "name": "Instabar Raisin Hazelnut Bites"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5201044010733",
+   "name": "LOV Apple Oat Cinnamon & Almond Bites"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5201044010757",
+   "name": "LOV Coconut Almond & Oat Bites"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5201044010764",
+   "name": "LOV Raspberry Almond & Oat Bites"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5201044010740",
+   "name": "LOV Banana Chocolate & Almond Bites"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5949040201044",
+   "name": "ELEPHANT Sea Salt"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5949040201068",
+   "name": "ELEPHANT Black & White Sesame"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5949040203000",
+   "name": "ELEPHANT Honey Mustard Onion"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5949040202058",
+   "name": "ELEPHANT Tomatoes and Herbs"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "0680569854124",
+   "name": "Vanillu Kókosjógúrt"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5060426810084",
+   "name": "Natural Kókosjógúrt"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5060426810114",
+   "name": "Choc pots (4 stk í pakka)"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5060426811333",
+   "name": "Salted caramel choc pots (4 stk í pakka)"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5694230170852",
+   "name": "Sunshine skyr & Musli"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5060426812583",
+   "name": "Raspberry coconut yog"
+  },
+  {
+   "file": "gold-24-picknick.csv",
+   "supplier": "Pick Nick",
+   "ean": "5060426812309",
+   "name": "Mango & passion fruit coconut yog"
+  },
+  {
+   "file": "gold-30-ferskar-kjotvorur.csv",
+   "supplier": "Ferskar Kjötvörur",
+   "ean": "",
+   "name": "FK Piparosta rjómasósa 10x550ml"
+  },
+  {
+   "file": "gold-30-ferskar-kjotvorur.csv",
+   "supplier": "Ferskar Kjötvörur",
+   "ean": "",
+   "name": "FK Rjómasveppasósa"
+  },
+  {
+   "file": "gold-30-ferskar-kjotvorur.csv",
+   "supplier": "Ferskar Kjötvörur",
+   "ean": "",
+   "name": "FK Brún Sælkerasósa"
+  },
+  {
+   "file": "gold-30-ferskar-kjotvorur.csv",
+   "supplier": "Ferskar Kjötvörur",
+   "ean": "",
+   "name": "FK ÍN Smash Style 2x120gr skin"
+  },
+  {
+   "file": "gold-30-ferskar-kjotvorur.csv",
+   "supplier": "Ferskar Kjötvörur",
+   "ean": "",
+   "name": "FK ÍN Smash Style 2x140gr skin"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "2,25% Tuborg Grön 0,33L dós"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "2.25% Egils Pilsner 0,5L dós"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Carlsberg 0,0% 33cl 4x6 gler"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Carlsberg 0,0% 33cl 4x6dósir"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Collab Ananas og Kókos 0,33L 4x6dósir"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Collab Vatnsmelónu og Kaktusaldin"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Heiða Barista 6x1L"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Heiða Haframjólk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Hvítöl 0,33L gler"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Iceland Spring 1L"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Iceland Spring m/ sporttappa 0,5L"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Illy Espresso púðar 6x18stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Illy hylki Classic Espresso 10stk 57g"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Illy hylki Forte Espresso 10stk 57g"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Illy hylki Intenso Espresso 57g"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Illy Espressobaunir 6x250gr"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Kristall án bragðefna 500ml plast"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Kristall Mexican Lime 0,5L 12 plastfl."
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Kristall Nektarínu og Sítrus 0,5L plast"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Kristall Sítrónu 0,5L plast"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Lays BBQ"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Lay's Bugles Original 125g"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Lay's Cheese and Onion 175gr"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Lays Flat ch. Paprika 175g"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Lay's Max Cheddar/Onion 185g"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Lay's Max Salted 185gr"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Lay's Salted 175g"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "L'Or Brazil Origin 10x10stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "L'Or Espresso Lungo Profondo 08 10stk (52gr)"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "L'OR hylki koffínlaust 10x10stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Malt og appelsín gler 0,33L"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Mist Uppbygging Apríkósa og Rifsber 4x6pk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Mist Uppbygging Indónesískt Lime"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Páskaöl sykurskert 0,33L dós"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Pepsi Original 2L"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Pepsi Original 0,5L plast"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Pepsi Original 0,33L dós 4x6pk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Pepsi Max 24 dósir rúta"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Pickw Finest Camomil 4x25x2g"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Pickw Finest Earl Grey 4x25x2"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Pickw Finest English Breakfast 4x25x2"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "PickW Finest ForestFr Tea 4x25x2gr"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Pickw Finest Ginger Tea 4x25x2gr"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Pickw Finest Green Tea 4x25x2gr"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Pickw Tms Greenpur Tea 4x25x1,5gr"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Pickw Tms Mint Tea 4x25x1,5gr"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Pickw Finest Rooibos 4x25x2g"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Senseo Classic 10x 16stk (111gr)"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Senseo Latte 92gr"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Senseo Stór Classic 10x36stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Senseo XL Classic 375gr"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Sódavatn 0,5L plastfl."
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Ölgerðin",
+   "ean": "",
+   "name": "Tuborg Nul 0,0% 33cl dós"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Red Bull",
+   "ean": "",
+   "name": "Red Bull ED 24x250ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Red Bull",
+   "ean": "",
+   "name": "RB SeaBlue Edition 24x250ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Red Bull",
+   "ean": "",
+   "name": "San Pellegrino Límonata"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Red Bull",
+   "ean": "",
+   "name": "Happy Monkey Apple&Black"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "CCEP",
+   "ean": "",
+   "name": "Coke 0,33L dós 20stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "CCEP",
+   "ean": "",
+   "name": "Coke Zero 330ml dós 20pakk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "CCEP",
+   "ean": "5449000350930",
+   "name": "Fanta Grape Zero 0,5L 12stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "CCEP",
+   "ean": "",
+   "name": "Hvít Jól léttöl 0.33L dós"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "CCEP",
+   "ean": "5690351231649",
+   "name": "Icelandic Glacial Sparkling 0,33L 10pk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "CCEP",
+   "ean": "",
+   "name": "Monster Aussie Lemonade"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "CCEP",
+   "ean": "",
+   "name": "Monster Lando Norris Zero Sugar"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "CCEP",
+   "ean": "",
+   "name": "Víking Gylltur Áfengislaus 0,33L gler"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "",
+   "name": "5 Hnetu Toppís Heimilis"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "",
+   "name": "6stk Lúxus Dubai súkkul. Heimilis pk(5)"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "",
+   "name": "8 Mix pinna heimilis pk(5)"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "",
+   "name": "8 Rebba (Appels.) flaugar heimilispk (5)"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "",
+   "name": "8 Tulipop heimilis pk(5)"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "",
+   "name": "Bestís Dýfa pk(13)"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "",
+   "name": "Flaugar Blue Ige Guys 20stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "",
+   "name": "Flaugar Ice Guys Íspinni pk(20)"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "",
+   "name": "Gulliver Almond 120ml pk(24)"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "",
+   "name": "Gulliver Classic 120ml pk(30)"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "",
+   "name": "Gulliver White 120ml pk(30)"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "",
+   "name": "Heit Karamellusósa"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "",
+   "name": "Heit Súkkulaðisósa"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "5690581340302",
+   "name": "Hvítir Mjúkís Pinnar Pk(16)"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "",
+   "name": "Íssósa Karamellu 250ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "",
+   "name": "Íssósa Lakkrísbragð 250ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "",
+   "name": "Jólaískúlan súkkulaði 1ltr Pk(4)"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "5690581340203",
+   "name": "Klassísk Mjúkís Pinnar Pk(16)"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "",
+   "name": "Mjúkís Banana 1L"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "",
+   "name": "Mjúkís pekan og karamellu 2L"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "5690581340104",
+   "name": "Möndlu Mjúkís Pinnar Pk(16)"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Kjörís",
+   "ean": "5690581303000",
+   "name": "Vulcano Toppís Pk(16)"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "B&J Caramel Brownie Party 465ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "B&J Chocco-lotta Cheesecake 465ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "B&J Chocolatey Love A Fair 465ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "B&J Chunky Monkey 465ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "B&J Cookie Vermont-ster 427ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "B&J Dulce De-Lish 465ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "B&J Netflix and Chill"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "B&J Peanutbuttercup 465ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "B&J StrawberryCheeseCake"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "B&J Sundae Marshmallow & s'more"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "B&J Vegan Cookies on Cookie Dough"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "B&J Vegan Sundae Oat of this swirled"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Daimtoppar 125ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Djæf Daim 110ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Djæf Vanillu 110ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Frisko Daim cone classic 160ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Frisko Family Mix Hpk 7stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Frisko Haribo Push Up 85ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Frisko Hpk ND Twister mini dream marsh"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Frisko Hpk ND Twister mini Tropical"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Frisko Hpk. Sandwich ís 6stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Frisko Sandwich Ís 100ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Frisko Twister Cosmixx 70ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Frisko Twister Monster 70ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Frisko Twister Peek-a-blue Hpk 5stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Frisko Vegan Pineapple Twister Spirello"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Hnetutoppskurl 70gr"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Hpk. Ávaxtastöng 16stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Hpk. Daimtoppar 4stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Hpk. Djæf Daim 4stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Hpk. Djæf vanilla 4stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Hpk. Jarðarberjabangsi 10stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Hpk. Hátíðar Karamellutoppur 4stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Hpk. Jóla Krakkanammitoppur"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "5690535140385",
+   "name": "Hpk. Kanilsnúðatoppur 4stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Hpk. Tívolí Lurkur 8stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Hpk. Vanillubangsi 10stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Ísblóm Daim"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Ísblóm Hrekkjavöku Hindberja 2025"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Ísblóm Piparmyntu"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Ísblóm Sörublóm 2025"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Ísmolar 2kg"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Ístrukkur 14pk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Magnum askja Classic 110ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Magnum Classic 110ml Hpk 3stk"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Magnum Askja Mandel 100ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Magnum White Choc&Strawberry"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Magnum White Choco&Cookie 90ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Rjómaís Brúnköku 1.3L"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Rjómaís Brúnköku 460ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Rjómaís Daim 1.3L"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Rjómaís daim 460ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Rjómaís heslihnetusúkkulaði"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Rjómaís Hnetutoppur 1.3L"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Rjómaís Súkkulaði 460ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Rjómaís vanilla 460ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Saltlakkríssósa 280ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Skuggatoppur 125ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Tívolí Lurkar 95ml"
+  },
+  {
+   "file": "gold-31-mixed.csv",
+   "supplier": "Emmessís",
+   "ean": "",
+   "name": "Veisluís 1.3L"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "NÓA KROPP 240G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "HREKKJAVÖKUHLAUP TRÍTLANA 18X150G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "OPAL HLAUPHRINGIR BERJABLANDA 150G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "NÓA KODDAR M.KARAMELLU 12X150G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "NÓA EITT SETT KÚLUR 150G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "NÓA TROMP BITAR PIPARFYLLTIR 170G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "SÍRÍUS RJÓMASÚKKULAÐI 200G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "PLATA ÁRSINS 1 18X140G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "PLATA ÁRSINS 2 18X140G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "PLATA ÁRSINS 3 18X140G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "5690576572046",
+   "name": "EITT SETT 5PAKK 190G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "NÓA BÍÓKROPP MEÐ STERKUM BRJÓSTSYKRI 180GR"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "NÓA HJÚPLAKKRÍS 285G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "GULL EITT SETT BITAR 24X285G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "5053990107308",
+   "name": "PRINGLES SMALL PAPRIKA 12X40G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "5053990107438",
+   "name": "PRINGLES HOT&SPICY 12X40G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "PRINGLES CHEESY CHEESE 19X165G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "5053990190041",
+   "name": "FALLOUT PRINGLES"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "KELLOGGS CHOCOS DUO 10X340G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "KELLOGGS POKÉMON 4X350G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "KELLOGGS EXTRA CHOCO NUT GRANOLA 8X450G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "KELLOGGS EXTRA CLASSIC GRANOLA 8X450G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "KELLOGGS CORN FLAKES 12X450G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "5059319024202",
+   "name": "KELLOGGS FROSTIES 16X470G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "5059319024479",
+   "name": "KELLOGGS COCO POPS 14X650G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "KELLOGGS CRUNCHY NUT MUSLI CHOCO 6X380G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "KELLOGGS RICE KRISPIES 14X430G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "5059319029023",
+   "name": "KELLOGGS SPECIAL K 18X440G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "5059319033518",
+   "name": "KELLOGGS CORN FLAKES 12X670G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "5053827209779",
+   "name": "KELLOGGS CRUNCHY NUT FLAKES 300G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "PEDRO SUPER MIX HLAUP 20X80G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "8594044243483",
+   "name": "PEDRO SUPER SOUR MIX HLAUP 20X80G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "PEDRO FUN BURGERS 20X80G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "8594044243421",
+   "name": "PEDRO EPLAHRINGIR SÚRIR 20X80G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "8594044244602",
+   "name": "PEDRO TROPICAL MIX 20X80G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "8594044245982",
+   "name": "PEDRO RAINBOW ÁVAXTALAKKRÍS 20X80G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "8594044243513",
+   "name": "PEDRO WORMEES 20X80G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "7037710121919",
+   "name": "STRATOS ORIGINAL STÓR PLATA 13X150G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "7037710120301",
+   "name": "STRATOS SALTY CARAMEL 13X185G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "7037710190052",
+   "name": "SMASH SÚKKULAÐISNAKK 21X100G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "7037710121995",
+   "name": "SMASH! SÚKKULAÐISNAKK 14X200G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "7037710150230",
+   "name": "SMASH! SÚKKULAÐISNAKK 10X350G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "7393077081601",
+   "name": "BUBS GOODY HLAUP BANANA & KARMELLU 12X90G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "7393077081618",
+   "name": "BUBS GOODY HLAUP HINDBERJA OG BLÁBERJA 12X90G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "7393077081656",
+   "name": "BUBS HINDBERJA OG LAKKRÍS HAUSKÚPUR 16X90G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "7393077081687",
+   "name": "BUBS SÚRAR HAUSKÚPUR 16X90G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "7393077081700",
+   "name": "BUBS COOL HINDBERJA HAUSKÚPUR SKÚMM 12X90G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "7393077081731",
+   "name": "BUBS COOL COLA HAUSKÚPUR 16X90G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "7393077181455",
+   "name": "BUBS COOL HINDBERJA SÚRAR HAUSKÚPUR 12X175G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "57310520000298",
+   "name": "BALLERINA BROWNIE 205G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "GÖTEBORGS UTVALDA SALINAS 12X200G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "PANDA CHOCO & LAKRITS 14X120G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "6412501032901",
+   "name": "PANDA CHOCO & LAKRITS SALTY CARAMEL 14X120G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "6412501032932",
+   "name": "PANDA CHOCO & LAKRITS STRAWBERRY 14X120G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "6412501032987",
+   "name": "PANDA CHOCO & LAKRITS SALMIAK 14X120G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "0075172088965",
+   "name": "PANDA NATURAL ORIGINAL LIQUORICE 12X240G"
+  },
+  {
+   "file": "gold-56-noi-sirius.csv",
+   "supplier": "Nói Síríus",
+   "ean": "",
+   "name": "HLAUP 1KG BLAND ALLAR GERÐIR"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "5690542350065",
+   "name": "Bleyjuklútar 6 stk."
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "5690452320105",
+   "name": "Götukústur m/skafti"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "5701573419729",
+   "name": "Kústskaft"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "5690452360149",
+   "name": "Moppuklútur græn 45 cm"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "5690452360156",
+   "name": "Moppuklútur hvítur 45 cm"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "5690452315019",
+   "name": "Skrúbbhaus"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "5690452347140",
+   "name": "Töfrasvampur 2 stk."
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "5690452350270",
+   "name": "Þvottahanski 1st"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "5690515866434",
+   "name": "Gluggaþvara 30cm"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "",
+   "name": "Fata"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "",
+   "name": "Flöskubursti"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "4250560503909",
+   "name": "Handbursti"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "4250560507150",
+   "name": "Kuntstoff svampar"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "4250560514325",
+   "name": "Provida Stál"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "9551003450411",
+   "name": "Supermax Hanskar S-XL"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "9551003450428",
+   "name": "Supermax Hanskar S-XL"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "9551003450442",
+   "name": "Supermax Hanskar S-XL"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "739254110214",
+   "name": "Þvottapoki"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "4009028001453",
+   "name": "Stálull 1 stk. m/haldi"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "4009028000951",
+   "name": "Svampklútar 3 stk."
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "4043400522082",
+   "name": "Coronet Fatarúllsett"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "4009028000937",
+   "name": "Klútar 3stk"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "5701573178381",
+   "name": "Klemmur 24 stk. plast"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "7392754010224",
+   "name": "Klemmur 36 stk. tré"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "5705999003661",
+   "name": "Naglabursti"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "5038135105906",
+   "name": "WC bursti í statífi"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "5701573178381",
+   "name": "Klemmur 24stk"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "8710648092061",
+   "name": "Microfibre 6 stk."
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "8710648095147",
+   "name": "Stálull m/sápu 14 stk."
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "8710648056018",
+   "name": "Baðsvampur"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "8710648900175",
+   "name": "Gúmmihanskar"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "7394145133444",
+   "name": "Diskabursti"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "7394145133505",
+   "name": "Diskabursti refill"
+  },
+  {
+   "file": "gold-57-takk-hreinlaeti.csv",
+   "supplier": "Takk hreinlæti",
+   "ean": "3245422683074",
+   "name": "Gúmmíhanskar rauðir M"
+  },
+  {
+   "file": "gold-73-lysi.csv",
+   "supplier": "Lýsi",
+   "ean": "5690548869488",
+   "name": "OMEGA-3 FORTE+D&E"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690527030014",
+   "name": "Gouda sterkur 12+ 330 g"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "2351353004657",
+   "name": "Góðostur 26% í sneiðum stórnotenda"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690516031350",
+   "name": "Óðals-Maribo í sneiðum 300 g"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690516031657",
+   "name": "Óðals-ostur 460 g"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690516031756",
+   "name": "Óðals-ostur í sneiðum 300 g"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "2351201000008",
+   "name": "Brauðostur u.þ.b. kg"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690516033651",
+   "name": "Skólaostur 26% 460 g"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690516033859",
+   "name": "Skólaostur 26% í sneiðum 330 g"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690516034184",
+   "name": "Mozzarella ferskur - 500 g"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690527034531",
+   "name": "Mozzarella fersk Burrata dós 2 x 50 g"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "2351225000008",
+   "name": "Gotti 30% u.þ.b. kg"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690516036133",
+   "name": "Óðals-cheddar 8 sneiðar í pk (160g)"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690527036146",
+   "name": "Logi, cheddar með reykbragði, sneiðar 150 g"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690516036157",
+   "name": "Óðals-Cheddar 460 g"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690527039086",
+   "name": "Óðals-Hávarður í sneiðum 300 g"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690516039127",
+   "name": "Óðals-Hávarður  krydd 8 sn í pk (160g)"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690516039158",
+   "name": "Óðals-Hávarður krydd 460 g"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690527039475",
+   "name": "Tindur 12+  330 g"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690527039550",
+   "name": "Óðals-Tindur í sneiðum 300 g"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690527044608",
+   "name": "Ostaþrenna"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "56918458",
+   "name": "Smurostur 20 g (24 í pk)"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "56918472",
+   "name": "Sveppaostur 20 g (24 í pk)"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690527181006",
+   "name": "Létt G mjólk  1/1 l"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690527144001",
+   "name": "Súrmjólk fata 10 kg"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690527162005",
+   "name": "Mysa brúsi    5 L"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690527329002",
+   "name": "Óskajógúrt með blönduðum ávöxtum 150 g"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690527429009",
+   "name": "Smámál súkkulaðifrauð 3x2 stk í pk"
+  },
+  {
+   "file": "gold-78-MS.csv",
+   "supplier": "MS",
+   "ean": "5690527082167",
+   "name": "Ostakaka mokka 450g"
+  }
+ ],
+ "retailDeviations": [
+  {
+   "product": "120179",
+   "name": "Léttmjólk",
+   "supplier": "Arna",
+   "fileRetail": 325,
+   "ourPrice": 317
+  },
+  {
+   "product": "116430",
+   "name": "Rjómi 36% 0,5 ltr.",
+   "supplier": "Arna",
+   "fileRetail": 745,
+   "ourPrice": 888
+  },
+  {
+   "product": "116244",
+   "name": "AB Jógúrt jarðarb. 200 ml.dós",
+   "supplier": "Arna",
+   "fileRetail": 299,
+   "ourPrice": 289
+  },
+  {
+   "product": "116242",
+   "name": "AB Jógúrt peru 200 ml.dós",
+   "supplier": "Arna",
+   "fileRetail": 299,
+   "ourPrice": 289
+  },
+  {
+   "product": "116243",
+   "name": "AB Jógúrt karamellu 200 ml.dós",
+   "supplier": "Arna",
+   "fileRetail": 299,
+   "ourPrice": 289
+  },
+  {
+   "product": "134102",
+   "name": "Örnuskyr hreint 170 gr",
+   "supplier": "Arna",
+   "fileRetail": 339,
+   "ourPrice": 323
+  },
+  {
+   "product": "133770",
+   "name": "Örnuskyr bláberja 170 gr",
+   "supplier": "Arna",
+   "fileRetail": 339,
+   "ourPrice": 327
+  },
+  {
+   "product": "133799",
+   "name": "Örnuskyr jarðarberja 170 gr",
+   "supplier": "Arna",
+   "fileRetail": 339,
+   "ourPrice": 329
+  },
+  {
+   "product": "133800",
+   "name": "Örnuskyr ferskju 170 gr",
+   "supplier": "Arna",
+   "fileRetail": 339,
+   "ourPrice": 329
+  },
+  {
+   "product": "133875",
+   "name": "Örnuskyr vanilla 170 gr",
+   "supplier": "Arna",
+   "fileRetail": 339,
+   "ourPrice": 327
+  },
+  {
+   "product": "131363",
+   "name": "Kaffiskyr kaffi og karamella 200gr",
+   "supplier": "Arna",
+   "fileRetail": 369,
+   "ourPrice": 351
+  },
+  {
+   "product": "131364",
+   "name": "Kaffiskyr kaffi og vanilla 200gr",
+   "supplier": "Arna",
+   "fileRetail": 369,
+   "ourPrice": 351
+  },
+  {
+   "product": "117927",
+   "name": "Jógúrt m.karamellu, ab gerl. 500 gr.",
+   "supplier": "Arna",
+   "fileRetail": 539,
+   "ourPrice": 521
+  },
+  {
+   "product": "117979",
+   "name": "Jógúrt hreint m. Ab gerlum 500 gr.",
+   "supplier": "Arna",
+   "fileRetail": 539,
+   "ourPrice": 521
+  },
+  {
+   "product": "134846",
+   "name": "Létt hrein grísk 1 kg",
+   "supplier": "Arna",
+   "fileRetail": 1319,
+   "ourPrice": 1254
+  },
+  {
+   "product": "133768",
+   "name": "Grísk jógúrt jarðarberja/vanillu 180 gr",
+   "supplier": "Arna",
+   "fileRetail": 389,
+   "ourPrice": 373
+  },
+  {
+   "product": "133796",
+   "name": "Grísk jógúrt ferskju/ástaraldin 180 gr",
+   "supplier": "Arna",
+   "fileRetail": 389,
+   "ourPrice": 373
+  },
+  {
+   "product": "133864",
+   "name": "Grísk jógúrt karamellu/peru 180 gr",
+   "supplier": "Arna",
+   "fileRetail": 389,
+   "ourPrice": 373
+  },
+  {
+   "product": "133797",
+   "name": "Grísk jógúrt súkkulaði/ferskju 180 gr",
+   "supplier": "Arna",
+   "fileRetail": 389,
+   "ourPrice": 373
+  },
+  {
+   "product": "133767",
+   "name": "Grísk jógúrt kaffi/súkkulaði 180 gr",
+   "supplier": "Arna",
+   "fileRetail": 389,
+   "ourPrice": 373
+  },
+  {
+   "product": "133769",
+   "name": "Grísk jógúrt hrein 180 gr",
+   "supplier": "Arna",
+   "fileRetail": 399,
+   "ourPrice": 385
+  },
+  {
+   "product": "135712",
+   "name": "Örnu Sumarjógúrt 180gr Hindber&sítróna",
+   "supplier": "Arna",
+   "fileRetail": 389,
+   "ourPrice": 379
+  },
+  {
+   "product": "135713",
+   "name": "Arna prótein + kollagen, jarðarb.vanillu",
+   "supplier": "Arna",
+   "fileRetail": 429,
+   "ourPrice": 449
+  },
+  {
+   "product": "135714",
+   "name": "Arna prótein + kreatín, súkkulaðibragð",
+   "supplier": "Arna",
+   "fileRetail": 429,
+   "ourPrice": 449
+  },
+  {
+   "product": "127903",
+   "name": "Wewalka Pizzadeig 400gr",
+   "supplier": "Ferskar Kjötvörur",
+   "fileRetail": 329,
+   "ourPrice": 409
+  },
+  {
+   "product": "126358",
+   "name": "Wewalka Heilhveiti Pizzadeig 550gr",
+   "supplier": "Ferskar Kjötvörur",
+   "fileRetail": 419,
+   "ourPrice": 519
+  },
+  {
+   "product": "119757",
+   "name": "Wewalka Pizza Americano 550gr",
+   "supplier": "Ferskar Kjötvörur",
+   "fileRetail": 389,
+   "ourPrice": 479
+  },
+  {
+   "product": "129940",
+   "name": "Cheetos Chipito",
+   "supplier": "Ölgerðin",
+   "fileRetail": 409,
+   "ourPrice": 419
+  },
+  {
+   "product": "115634",
+   "name": "Floridana Goji 1L",
+   "supplier": "Ölgerðin",
+   "fileRetail": 879,
+   "ourPrice": 779
+  },
+  {
+   "product": "103065",
+   "name": "Gatorade Cool Blue 12x0,5L",
+   "supplier": "Ölgerðin",
+   "fileRetail": 269,
+   "ourPrice": 249
+  },
+  {
+   "product": "56919820",
+   "name": "Gatorade Fruit Punch sykurlaus 0,5L",
+   "supplier": "Ölgerðin",
+   "fileRetail": 269,
+   "ourPrice": 249
+  },
+  {
+   "product": "108312",
+   "name": "Gatorade NA Lemon 12x0,5L",
+   "supplier": "Ölgerðin",
+   "fileRetail": 269,
+   "ourPrice": 249
+  },
+  {
+   "product": "134335",
+   "name": "Gatorade NA Orange 0,5L plast",
+   "supplier": "Ölgerðin",
+   "fileRetail": 269,
+   "ourPrice": 249
+  },
+  {
+   "product": "56919837",
+   "name": "Gatorade Orange sykurlaus 0,5L",
+   "supplier": "Ölgerðin",
+   "fileRetail": 269,
+   "ourPrice": 249
+  },
+  {
+   "product": "134359",
+   "name": "Gatorade Red Orange 0,5L",
+   "supplier": "Ölgerðin",
+   "fileRetail": 269,
+   "ourPrice": 249
+  },
+  {
+   "product": "135343",
+   "name": "Gevalia Original 16x400gr",
+   "supplier": "Ölgerðin",
+   "fileRetail": 969,
+   "ourPrice": 1029
+  },
+  {
+   "product": "133645",
+   "name": "Guinness 0,0% 0,44L 24dós",
+   "supplier": "Ölgerðin",
+   "fileRetail": 489,
+   "ourPrice": 549
+  },
+  {
+   "product": "125485",
+   "name": "Jólaöl 0,33L dós",
+   "supplier": "Ölgerðin",
+   "fileRetail": 179,
+   "ourPrice": 159
+  },
+  {
+   "product": "129254",
+   "name": "Jólaöl sykurskert 0,33L dós",
+   "supplier": "Ölgerðin",
+   "fileRetail": 199,
+   "ourPrice": 159
+  },
+  {
+   "product": "135787",
+   "name": "Lay's Max Argentina Steak 22x185g",
+   "supplier": "Ölgerðin",
+   "fileRetail": 379,
+   "ourPrice": 439
+  },
+  {
+   "product": "104369",
+   "name": "Malt&Appelsín 0,5L dós",
+   "supplier": "Ölgerðin",
+   "fileRetail": 269,
+   "ourPrice": 279
+  },
+  {
+   "product": "024064",
+   "name": "Pepsi Max 2L plast",
+   "supplier": "Ölgerðin",
+   "fileRetail": 279,
+   "ourPrice": 289
+  },
+  {
+   "product": "104719",
+   "name": "Plús Blóðappelsínu 0,5L 12 plastfl.",
+   "supplier": "Ölgerðin",
+   "fileRetail": 229,
+   "ourPrice": 219
+  },
+  {
+   "product": "135787",
+   "name": "UPP Jarðarberja og Lime 6x4 dósir",
+   "supplier": "Ölgerðin",
+   "fileRetail": 359,
+   "ourPrice": 439
+  },
+  {
+   "product": "90474392",
+   "name": "Lilac 250ml 24x250ml",
+   "supplier": "Red Bull",
+   "fileRetail": 279,
+   "ourPrice": 289
+  },
+  {
+   "product": "90486357",
+   "name": "Winter Edition Fuji Apple 24x250ml",
+   "supplier": "Red Bull",
+   "fileRetail": 279,
+   "ourPrice": 289
+  },
+  {
+   "product": "131727",
+   "name": "Bonaqua án kolsýru Skógarberja 0,5L",
+   "supplier": "CCEP",
+   "fileRetail": 179,
+   "ourPrice": 189
+  },
+  {
+   "product": "130875",
+   "name": "Burn Original 250ml 24stk",
+   "supplier": "CCEP",
+   "fileRetail": 339,
+   "ourPrice": 329
+  },
+  {
+   "product": "135748",
+   "name": "Coke 0,5L Súperdós",
+   "supplier": "CCEP",
+   "fileRetail": 249,
+   "ourPrice": 309
+  },
+  {
+   "product": "024052",
+   "name": "Coke 0,33L dós 10stk rúta",
+   "supplier": "CCEP",
+   "fileRetail": 149,
+   "ourPrice": 179
+  },
+  {
+   "product": "024052",
+   "name": "Coke 0,33l Dós 6stk rúta",
+   "supplier": "CCEP",
+   "fileRetail": 189,
+   "ourPrice": 179
+  },
+  {
+   "product": "135749",
+   "name": "Coke án sykurs 500ml súperdós",
+   "supplier": "CCEP",
+   "fileRetail": 249,
+   "ourPrice": 309
+  },
+  {
+   "product": "106897",
+   "name": "Coke Zero 2L 4stk",
+   "supplier": "CCEP",
+   "fileRetail": 329,
+   "ourPrice": 319
+  },
+  {
+   "product": "115929",
+   "name": "Coke Zero 330ml dós Rúta 10stk",
+   "supplier": "CCEP",
+   "fileRetail": 149,
+   "ourPrice": 179
+  },
+  {
+   "product": "115929",
+   "name": "Coke Zero 330ml dós Rúta 6pakk",
+   "supplier": "CCEP",
+   "fileRetail": 189,
+   "ourPrice": 179
+  },
+  {
+   "product": "132690",
+   "name": "Coke Zero koffínlaus 0,33L dós 4pk",
+   "supplier": "CCEP",
+   "fileRetail": 189,
+   "ourPrice": 179
+  },
+  {
+   "product": "126141",
+   "name": "Einstök Pale Ale 2,25% 0,33l",
+   "supplier": "CCEP",
+   "fileRetail": 269,
+   "ourPrice": 259
+  },
+  {
+   "product": "132638",
+   "name": "Fanta Orange no sugar 0,33l Rúta10",
+   "supplier": "CCEP",
+   "fileRetail": 149,
+   "ourPrice": 169
+  },
+  {
+   "product": "135348",
+   "name": "Icelandic Glacial Lemon 0,33L 10pk",
+   "supplier": "CCEP",
+   "fileRetail": 169,
+   "ourPrice": 219
+  },
+  {
+   "product": "135354",
+   "name": "Icelandic Glacial Lime 0,33L 10pk",
+   "supplier": "CCEP",
+   "fileRetail": 169,
+   "ourPrice": 219
+  },
+  {
+   "product": "135352",
+   "name": "Icelandic Glacial B.Orange 0,33L 10pk",
+   "supplier": "CCEP",
+   "fileRetail": 169,
+   "ourPrice": 219
+  },
+  {
+   "product": "125772",
+   "name": "Icelandic Glacial 0,5L still",
+   "supplier": "CCEP",
+   "fileRetail": 149,
+   "ourPrice": 159
+  },
+  {
+   "product": "123008",
+   "name": "Icelandic Glacial 1,5L still",
+   "supplier": "CCEP",
+   "fileRetail": 249,
+   "ourPrice": 239
+  },
+  {
+   "product": "125521",
+   "name": "Monster Absolutely Zero",
+   "supplier": "CCEP",
+   "fileRetail": 299,
+   "ourPrice": 289
+  },
+  {
+   "product": "132688",
+   "name": "Monster Bad Apple",
+   "supplier": "CCEP",
+   "fileRetail": 349,
+   "ourPrice": 339
+  },
+  {
+   "product": "130968",
+   "name": "Monster Full Throttle ZS 500ml",
+   "supplier": "CCEP",
+   "fileRetail": 299,
+   "ourPrice": 289
+  },
+  {
+   "product": "134382",
+   "name": "Monster Juiced Rio Punch 500ml",
+   "supplier": "CCEP",
+   "fileRetail": 349,
+   "ourPrice": 339
+  },
+  {
+   "product": "112522",
+   "name": "Monster Original",
+   "supplier": "CCEP",
+   "fileRetail": 299,
+   "ourPrice": 289
+  },
+  {
+   "product": "126022",
+   "name": "Monster Mango Loco",
+   "supplier": "CCEP",
+   "fileRetail": 349,
+   "ourPrice": 339
+  },
+  {
+   "product": "134830",
+   "name": "Monster Mango Loco 4pk",
+   "supplier": "CCEP",
+   "fileRetail": 1259,
+   "ourPrice": 1229
+  },
+  {
+   "product": "126021",
+   "name": "Monster Pipeline Punch 0,5L",
+   "supplier": "CCEP",
+   "fileRetail": 349,
+   "ourPrice": 339
+  },
+  {
+   "product": "134816",
+   "name": "Monster Rossi zero Sugar 500ml",
+   "supplier": "CCEP",
+   "fileRetail": 299,
+   "ourPrice": 289
+  },
+  {
+   "product": "128675",
+   "name": "Monster Ultra Fiesta",
+   "supplier": "CCEP",
+   "fileRetail": 299,
+   "ourPrice": 289
+  },
+  {
+   "product": "129938",
+   "name": "Monster Ultra Gold",
+   "supplier": "CCEP",
+   "fileRetail": 299,
+   "ourPrice": 289
+  },
+  {
+   "product": "126990",
+   "name": "Monster Ultra Paradise",
+   "supplier": "CCEP",
+   "fileRetail": 299,
+   "ourPrice": 289
+  },
+  {
+   "product": "133186",
+   "name": "Monster Ultra Peachy Keen",
+   "supplier": "CCEP",
+   "fileRetail": 299,
+   "ourPrice": 309
+  },
+  {
+   "product": "130965",
+   "name": "Monster Ultra Rosa 500ml dós  24stk",
+   "supplier": "CCEP",
+   "fileRetail": 299,
+   "ourPrice": 289
+  },
+  {
+   "product": "135602",
+   "name": "Monster Ultra Ruby Red 500ml dós 24stk",
+   "supplier": "CCEP",
+   "fileRetail": 299,
+   "ourPrice": 289
+  },
+  {
+   "product": "133951",
+   "name": "Monster Ultra Strawberry Dreams",
+   "supplier": "CCEP",
+   "fileRetail": 299,
+   "ourPrice": 289
+  },
+  {
+   "product": "129477",
+   "name": "Monster Ultra Watermelon",
+   "supplier": "CCEP",
+   "fileRetail": 299,
+   "ourPrice": 289
+  },
+  {
+   "product": "122662",
+   "name": "Monster Ultra White 500ml dós",
+   "supplier": "CCEP",
+   "fileRetail": 299,
+   "ourPrice": 289
+  },
+  {
+   "product": "135405",
+   "name": "Monster Viking Berry 500ml dós",
+   "supplier": "CCEP",
+   "fileRetail": 349,
+   "ourPrice": 339
+  },
+  {
+   "product": "132468",
+   "name": "Monster Zero Sugar Green",
+   "supplier": "CCEP",
+   "fileRetail": 299,
+   "ourPrice": 289
+  },
+  {
+   "product": "117077",
+   "name": "Frekjudolla Bragðarefs 250ml",
+   "supplier": "Kjörís",
+   "fileRetail": 409,
+   "ourPrice": 398
+  },
+  {
+   "product": "106329",
+   "name": "Frekjudolla Súkkulaði 250ml",
+   "supplier": "Kjörís",
+   "fileRetail": 399,
+   "ourPrice": 379
+  },
+  {
+   "product": "038138",
+   "name": "Hlunkur Grænn",
+   "supplier": "Kjörís",
+   "fileRetail": 229,
+   "ourPrice": 219
+  },
+  {
+   "product": "110725",
+   "name": "Hlunkur Kirsuberja",
+   "supplier": "Kjörís",
+   "fileRetail": 229,
+   "ourPrice": 219
+  },
+  {
+   "product": "134473",
+   "name": "Íssósa Jarðarberja Kjörís 250ml",
+   "supplier": "Kjörís",
+   "fileRetail": 769,
+   "ourPrice": 739
+  },
+  {
+   "product": "114691",
+   "name": "Jólaís Karamellu 1L pk(4)",
+   "supplier": "Kjörís",
+   "fileRetail": 1119,
+   "ourPrice": 1189
+  },
+  {
+   "product": "135604",
+   "name": "Lúxus Dubai Súkkulaðiís Pk(16)",
+   "supplier": "Kjörís",
+   "fileRetail": 459,
+   "ourPrice": 449
+  },
+  {
+   "product": "133072",
+   "name": "Northern Twist pinnar Pk(16)",
+   "supplier": "Kjörís",
+   "fileRetail": 409,
+   "ourPrice": 339
+  },
+  {
+   "product": "127115",
+   "name": "B&J Caramel Chew 465ml",
+   "supplier": "Emmessís",
+   "fileRetail": 1069,
+   "ourPrice": 1149
+  },
+  {
+   "product": "038728",
+   "name": "B&J Choco Fudge Brownie 465ml",
+   "supplier": "Emmessís",
+   "fileRetail": 1069,
+   "ourPrice": 1149
+  },
+  {
+   "product": "126548",
+   "name": "B&J Cookie Dough 465ml",
+   "supplier": "Emmessís",
+   "fileRetail": 1069,
+   "ourPrice": 1149
+  },
+  {
+   "product": "126851",
+   "name": "B&J Cookie Dough S'whichup 465ml",
+   "supplier": "Emmessís",
+   "fileRetail": 1069,
+   "ourPrice": 1149
+  },
+  {
+   "product": "127699",
+   "name": "B&J Core Karamel Sutra 465ml",
+   "supplier": "Emmessís",
+   "fileRetail": 1069,
+   "ourPrice": 1149
+  },
+  {
+   "product": "126689",
+   "name": "B&J Half Baked 465ml",
+   "supplier": "Emmessís",
+   "fileRetail": 1069,
+   "ourPrice": 1149
+  },
+  {
+   "product": "126689",
+   "name": "B&J Phish Food 465ml",
+   "supplier": "Emmessís",
+   "fileRetail": 1069,
+   "ourPrice": 1149
+  },
+  {
+   "product": "124121",
+   "name": "B&J Vegan Choco Fudge Brownie",
+   "supplier": "Emmessís",
+   "fileRetail": 1069,
+   "ourPrice": 1149
+  },
+  {
+   "product": "133613",
+   "name": "Frisko Hpk ND Twister mini 50ml 6stk",
+   "supplier": "Emmessís",
+   "fileRetail": 689,
+   "ourPrice": 749
+  },
+  {
+   "product": "117297",
+   "name": "Gúffís Jarðarberja 250ml",
+   "supplier": "Emmessís",
+   "fileRetail": 489,
+   "ourPrice": 479
+  },
+  {
+   "product": "135645",
+   "name": "Hindberja og Saltlakkrístoppur 125ml",
+   "supplier": "Emmessís",
+   "fileRetail": 519,
+   "ourPrice": 598
+  },
+  {
+   "product": "134804",
+   "name": "Hpk. Collab Ísnál Skógarberja 5stk 90ml",
+   "supplier": "Emmessís",
+   "fileRetail": 1289,
+   "ourPrice": 1349
+  },
+  {
+   "product": "134471",
+   "name": "Hpk. Siríus Saltkaramellutoppur",
+   "supplier": "Emmessís",
+   "fileRetail": 1299,
+   "ourPrice": 1269
+  },
+  {
+   "product": "118934",
+   "name": "Ísblóm jarðarberja",
+   "supplier": "Emmessís",
+   "fileRetail": 939,
+   "ourPrice": 959
+  },
+  {
+   "product": "118936",
+   "name": "Ísblóm karamella",
+   "supplier": "Emmessís",
+   "fileRetail": 939,
+   "ourPrice": 959
+  },
+  {
+   "product": "132727",
+   "name": "Ísblóm Siríus saltkaramellukurl",
+   "supplier": "Emmessís",
+   "fileRetail": 939,
+   "ourPrice": 959
+  },
+  {
+   "product": "132555",
+   "name": "Ísblóm Te&Kaffi",
+   "supplier": "Emmessís",
+   "fileRetail": 939,
+   "ourPrice": 959
+  },
+  {
+   "product": "129019",
+   "name": "Magnum askja Double Gold Caram. Billionaire",
+   "supplier": "Emmessís",
+   "fileRetail": 499,
+   "ourPrice": 519
+  },
+  {
+   "product": "134131",
+   "name": "Rjómaís Hnetutoppur 460ml",
+   "supplier": "Emmessís",
+   "fileRetail": 919,
+   "ourPrice": 898
+  },
+  {
+   "product": "133074",
+   "name": "Rjómaís Nóakropp 460ml",
+   "supplier": "Emmessís",
+   "fileRetail": 919,
+   "ourPrice": 898
+  },
+  {
+   "product": "133351",
+   "name": "Rjómaís Síríus saltkaramellukurl 460ml",
+   "supplier": "Emmessís",
+   "fileRetail": 869,
+   "ourPrice": 898
+  },
+  {
+   "product": "038618",
+   "name": "Trúðaís 90ml",
+   "supplier": "Emmessís",
+   "fileRetail": 399,
+   "ourPrice": 369
+  },
+  {
+   "product": "101521",
+   "name": "Gólfsópur haus",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 1119,
+   "ourPrice": 998
+  },
+  {
+   "product": "033773",
+   "name": "Grillbursti m/skröfu",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 1298,
+   "ourPrice": 1198
+  },
+  {
+   "product": "101522",
+   "name": "Grisjuklútar 3 stk.",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 579,
+   "ourPrice": 339
+  },
+  {
+   "product": "107319",
+   "name": "Latexhanskar 10 stk. S-XL",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 319,
+   "ourPrice": 298
+  },
+  {
+   "product": "107320",
+   "name": "Latexhanskar 10 stk. S-XL",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 319,
+   "ourPrice": 298
+  },
+  {
+   "product": "128620",
+   "name": "Microfiberklútar 6 stk. Alhliða",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 949,
+   "ourPrice": 798
+  },
+  {
+   "product": "108631",
+   "name": "Mícrofiber klútur 1 stk.",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 479,
+   "ourPrice": 398
+  },
+  {
+   "product": "100028",
+   "name": "Moppa + grind",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 3498,
+   "ourPrice": 3198
+  },
+  {
+   "product": "106293",
+   "name": "Moppa m/frönskum 40 cm",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 1179,
+   "ourPrice": 998
+  },
+  {
+   "product": "130511",
+   "name": "Pottastál",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 279,
+   "ourPrice": 249
+  },
+  {
+   "product": "033275",
+   "name": "Rykklútar 50 stk. 60 cm",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 598,
+   "ourPrice": 519
+  },
+  {
+   "product": "130412",
+   "name": "Töfrasvampur 4 stk.",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 449,
+   "ourPrice": 379
+  },
+  {
+   "product": "033745",
+   "name": "Uppþvottarbursti mjór",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 249,
+   "ourPrice": 259
+  },
+  {
+   "product": "111298",
+   "name": "Viskastykki",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 539,
+   "ourPrice": 439
+  },
+  {
+   "product": "102745",
+   "name": "Fatarúllusett -3017",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 449,
+   "ourPrice": 539
+  },
+  {
+   "product": "108910",
+   "name": "Gluggaþvara 45cm",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 629,
+   "ourPrice": 598
+  },
+  {
+   "product": "033878",
+   "name": "Gólfklútur",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 349,
+   "ourPrice": 359
+  },
+  {
+   "product": "033772",
+   "name": "WC Bursti",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 1279,
+   "ourPrice": 1239
+  },
+  {
+   "product": "120050",
+   "name": "Töfraslípsvampur 2stk",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 698,
+   "ourPrice": 649
+  },
+  {
+   "product": "100216",
+   "name": "Fægiskófla",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 419,
+   "ourPrice": 369
+  },
+  {
+   "product": "131435",
+   "name": "Supermax Hanskar S-XL",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 998,
+   "ourPrice": 1049
+  },
+  {
+   "product": "033163",
+   "name": "Snúra 20 m.",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 719,
+   "ourPrice": 739
+  },
+  {
+   "product": "044058",
+   "name": "Svampar 3 stk.",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 419,
+   "ourPrice": 279
+  },
+  {
+   "product": "109511",
+   "name": "Drullusokkur",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 798,
+   "ourPrice": 698
+  },
+  {
+   "product": "124740",
+   "name": "Naglabursti",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 598,
+   "ourPrice": 539
+  },
+  {
+   "product": "102801",
+   "name": "Pottastálull 3 stk.",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 219,
+   "ourPrice": 198
+  },
+  {
+   "product": "115489",
+   "name": "Uppþvottabursti",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 439,
+   "ourPrice": 498
+  },
+  {
+   "product": "131443",
+   "name": "Laundry Bag",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 379,
+   "ourPrice": 319
+  },
+  {
+   "product": "122710",
+   "name": "Dish chloths 2 stk.",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 498,
+   "ourPrice": 579
+  },
+  {
+   "product": "033219",
+   "name": "Pottasvampar 10 stk.",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 349,
+   "ourPrice": 259
+  },
+  {
+   "product": "116718",
+   "name": "Svamp klútar 5 stk 18*20 cm",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 469,
+   "ourPrice": 529
+  },
+  {
+   "product": "131459",
+   "name": "Tréklemmur",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 519,
+   "ourPrice": 498
+  },
+  {
+   "product": "122709",
+   "name": "Microfiber Cloth",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 1079,
+   "ourPrice": 898
+  },
+  {
+   "product": "114315",
+   "name": "Uppþvottahanskar 1 stk. M-L",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 439,
+   "ourPrice": 449
+  },
+  {
+   "product": "114432",
+   "name": "Uppþvottahanskar 1 stk. M-L",
+   "supplier": "Takk hreinlæti",
+   "fileRetail": 439,
+   "ourPrice": 449
+  },
+  {
+   "product": "045189",
+   "name": "Flatkökur",
+   "supplier": "HP-kökugerð",
+   "fileRetail": 399,
+   "ourPrice": 329
+  },
+  {
+   "product": "045188",
+   "name": "Fjallagrasa",
+   "supplier": "HP-kökugerð",
+   "fileRetail": 509,
+   "ourPrice": 419
+  },
+  {
+   "product": "045187",
+   "name": "Rúgbrauð",
+   "supplier": "HP-kökugerð",
+   "fileRetail": 669,
+   "ourPrice": 569
+  },
+  {
+   "product": "029009",
+   "name": "Þorskalýsi 500ml MSC",
+   "supplier": "Lýsi",
+   "fileRetail": 2359,
+   "ourPrice": 2249
+  },
+  {
+   "product": "110417",
+   "name": "OMEGA-3 Fiskiolía 220g",
+   "supplier": "Lýsi",
+   "fileRetail": 1619,
+   "ourPrice": 1539
+  },
+  {
+   "product": "110416",
+   "name": "OMEGA-3 Tyggiperla 4x3",
+   "supplier": "Lýsi",
+   "fileRetail": 1609,
+   "ourPrice": 1539
+  },
+  {
+   "product": "117529",
+   "name": "Lýsisperlur 8x120stk",
+   "supplier": "Lýsi",
+   "fileRetail": 1889,
+   "ourPrice": 1798
+  },
+  {
+   "product": "117530",
+   "name": "Lýsisperlur 6x250stk",
+   "supplier": "Lýsi",
+   "fileRetail": 3599,
+   "ourPrice": 3429
+  },
+  {
+   "product": "106720",
+   "name": "OMEGA-3 500mg 6x250stk",
+   "supplier": "Lýsi",
+   "fileRetail": 4709,
+   "ourPrice": 4498
+  },
+  {
+   "product": "117166",
+   "name": "Hákarlaperlur 8x120stk",
+   "supplier": "Lýsi",
+   "fileRetail": 2029,
+   "ourPrice": 2179
+  },
+  {
+   "product": "002122",
+   "name": "Salatostur í kryddolíu 15*325 g",
+   "supplier": "MS",
+   "fileRetail": 1009,
+   "ourPrice": 1069
+  },
+  {
+   "product": "105925",
+   "name": "Kókómj.sykurskert 24x 1/4",
+   "supplier": "MS",
+   "fileRetail": 229,
+   "ourPrice": 198
+  },
+  {
+   "product": "001044",
+   "name": "Kókómjólk      24 x 1/4 l",
+   "supplier": "MS",
+   "fileRetail": 229,
+   "ourPrice": 198
+  },
+  {
+   "product": "118662",
+   "name": "Hleðsla kolvetnaskert 250 ml",
+   "supplier": "MS",
+   "fileRetail": 439,
+   "ourPrice": 349
+  },
+  {
+   "product": "114364",
+   "name": "Hleðsla m/súkkulaðibr 250 ml",
+   "supplier": "MS",
+   "fileRetail": 439,
+   "ourPrice": 349
+  },
+  {
+   "product": "130960",
+   "name": "Hleðsla með karamellubragði 250 ml",
+   "supplier": "MS",
+   "fileRetail": 439,
+   "ourPrice": 349
+  },
+  {
+   "product": "134532",
+   "name": "Hleðsla m/jarðarb-van. 250ml",
+   "supplier": "MS",
+   "fileRetail": 439,
+   "ourPrice": 349
+  },
+  {
+   "product": "135673",
+   "name": "Hleðsla próteinkaffi 24x250 ml",
+   "supplier": "MS",
+   "fileRetail": 439,
+   "ourPrice": 349
+  },
+  {
+   "product": "109685",
+   "name": "Næring+ Kaffi & Súkkulaði 250 ml",
+   "supplier": "MS",
+   "fileRetail": 509,
+   "ourPrice": 459
+  },
+  {
+   "product": "124207",
+   "name": "Næring+ Súkkulaði 250 ml",
+   "supplier": "MS",
+   "fileRetail": 509,
+   "ourPrice": 459
+  }
+ ],
+ "templates": 38,
+ "templateLines": 2684,
+ "schedule": 67,
+ "pricingRules": 42,
+ "freight": 0,
+ "freightUnmatchedSuppliers": [
+  "Aðföng v/ferskar kjötvörur",
+  "Core",
+  "Fit Food",
+  "Grímur Kokkur",
+  "Gunnars",
+  "Humarsalan",
+  "Íslensk Dreifing",
+  "Íslenska gámafélagið",
+  "Karton Ís Art ehf.",
+  "Kósk",
+  "Kökugerð H.P.",
+  "Lýsi",
+  "Nesbúegg (Lífland)",
+  "Pottagaldrar",
+  "Reykjabúið",
+  "Samhentir",
+  "Sláturhús KVH ehf",
+  "Vilko"
+ ]
+}

@@ -1,0 +1,9 @@
+supplier,vnr,ean,name,cost,retail,unit,note
+HP-kökugerð,,5690674999981,Flatkökur,280.4,329,stk,blað HP Verð (nóta m/vsk); kostnaður = stk-verð m/flutningi
+HP-kökugerð,,5690674100011,Fjallagrasa,363.8,419,stk,blað HP Verð (nóta m/vsk); kostnaður = stk-verð m/flutningi
+HP-kökugerð,,5690674200001,Kanilsnúðar,872.7,1009,stk,blað HP Verð (nóta m/vsk); kostnaður = stk-verð m/flutningi
+HP-kökugerð,,5690674100028,Rúgbrauð,494.9,569,stk,blað HP Verð (nóta m/vsk); kostnaður = stk-verð m/flutningi
+HP-kökugerð,,5690674333396,Ástarpungar,1086.2,1249,stk,blað HP Verð (nóta m/vsk); kostnaður = stk-verð m/flutningi
+HP-kökugerð,,5690674999981,Flatkökur,326.92,399,stk,blað HP Verð (2) (nóta án vsk); EAN parað af fyrra blaði; nýrri verð
+HP-kökugerð,,5690674100011,Fjallagrasa,424.07,509,stk,blað HP Verð (2) (nóta án vsk); EAN parað af fyrra blaði; nýrri verð
+HP-kökugerð,,5690674100028,Rúgbrauð,555.36,669,stk,blað HP Verð (2) (nóta án vsk); EAN parað af fyrra blaði; nýrri verð

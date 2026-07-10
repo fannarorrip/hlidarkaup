@@ -1,0 +1,81 @@
+supplier,vnr,ean,name,default_qty,unit,note
+FitFood,,,Atkins Coffee Bar Vanilla Latte,,kassi,5 stk í kassa
+FitFood,,,Atkins Coffee Bar Mocha Latte,,kassi,5 stk í kassa
+FitFood,,,Atkins Truffles Milk Chocolate,2,kassi,6 stk í kassa
+FitFood,,,Atkins Truffles Dark Chocolate,2,kassi,6 stk í kassa
+FitFood,,,Atkins Treat Pecan Caramel Cluster,2,kassi,6 stk í kassa
+FitFood,,,Atkins Treat Choc Caramel Squares,,kassi,6 stk í kassa
+FitFood,,,Atkins Treat Caramel Nut Chew,2,kassi,6 stk í kassa
+FitFood,,,Atkins Treat Chocolate Coconut,2,kassi,6 stk í kassa
+FitFood,,,Atkins Treat Peanut Butter Candies,2,kassi,6 stk í kassa
+FitFood,,,Atkins Snack Bar Caramel Nut Roll,2,kassi,6 stk í kassa
+FitFood,,,Atkins Snack Bar Peanutty Overload,,kassi,6 stk í kassa
+FitFood,,,Atkins Strong drykkur 325ml Chocolate,1,kassi,12 stk í kassa; NÝTT
+FitFood,,,Atkins Strong drykkur 325ml Vanilla,1,kassi,12 stk í kassa; NÝTT
+FitFood,,,Atkins Strong drykkur 325ml Chocolate Peanut Butter,,kassi,12 stk í kassa; NÝTT
+FitFood,,,BioTechUSA Creatine Monohydrate 300g Bragðlaust,0.5,kassi,10 stk í kassa
+FitFood,,,BioTechUSA 100% Pure Whey 454g Chocolate,0.5,kassi,10 stk í kassa
+FitFood,,,BioTechUSA 100% Pure Whey 454g Bourbon Vanilla,0.5,kassi,10 stk í kassa
+FitFood,,,BioTechUSA 100% Pure Whey 454g Salty Caramel,0.5,kassi,10 stk í kassa
+FitFood,,,Callowfit Sósa Smoky BBQ,1,kassi,6 stk í kassa
+FitFood,,,Callowfit Sósa Sweet Chili,1,kassi,6 stk í kassa
+FitFood,,,Callowfit Sósa Salty Caramel,1,kassi,6 stk í kassa
+FitFood,,,Callowfit Sósa Fancy Garlic,,kassi,6 stk í kassa
+FitFood,,,Callowfit Sósa Honey Mustard,1,kassi,6 stk í kassa
+FitFood,,,Callowfit Sósa Tomato,,kassi,6 stk í kassa
+FitFood,,,Callowfit Sósa Chocolate,1,kassi,6 stk í kassa
+FitFood,,,Diablo Brjóstsykur Strawberry,1,kassi,16 stk í kassa
+FitFood,,,Diablo Brjóstsykur Cappuccino,,kassi,16 stk í kassa
+FitFood,,,Diablo Brjóstsykur Mint,,kassi,16 stk í kassa
+FitFood,,,Diablo Brjóstsykur Lemon,1,kassi,16 stk í kassa
+FitFood,,,Diablo Brjóstsykur Butter Sweets,,kassi,16 stk í kassa; NÝTT
+FitFood,,,Diablo Brjóstsykur Butter Sweets with Choco,,kassi,16 stk í kassa; NÝTT
+FitFood,,,Diablo Karamellur Ávaxta,1,kassi,16 stk í kassa
+FitFood,,,Go Fitness Protein Pancake 50g Chocolate,2,kassi,12 stk í kassa
+FitFood,,,Go Fitness Protein Pancake 50g Vanilla,1,kassi,12 stk í kassa
+FitFood,,,Go Fitness Protein Pancake 50g Strawberry,,kassi,12 stk í kassa
+FitFood,,,Go Fitness Protein Pancake 50g Caramel,2,kassi,12 stk í kassa
+FitFood,,,Go Fitness Protein Pancake 50g Cookies & Cream,1,kassi,12 stk í kassa
+FitFood,,,Go Fitness Protein Pancake 50g Double Chocolate,2,kassi,12 stk í kassa
+FitFood,,,Go Fitness Protein Pancake 50g Speculoos,,kassi,12 stk í kassa
+FitFood,,,Go Fitness Protein Pancake 55g Red Velvet,,kassi,12 stk í kassa; VÆNTANLEGT
+FitFood,,,Go Fitness Protein Pancake 55g Pistachio,,kassi,12 stk í kassa; VÆNTANLEGT
+FitFood,,,Go Fitness Protein Waffle 50g Cookies & Cream,2,kassi,12 stk í kassa; NÝTT
+FitFood,,,Go Fitness Protein Waffle 50g Lemon,2,kassi,12 stk í kassa; NÝTT
+FitFood,,,Go Fitness Protein Puffs 50g Texas Barbeque,2,kassi,6 stk í kassa
+FitFood,,,Go Fitness Protein Puffs 50g Veggie Mix,,kassi,6 stk í kassa
+FitFood,,,Go Fitness Protein Puffs 50g Chili Lime,,kassi,6 stk í kassa
+FitFood,,,Go Fitness Protein Puffs 50g Sour cream & Onion,2,kassi,6 stk í kassa; NÝTT
+FitFood,,,Go Fitness Protein Puffs 50g Salt & Vinegar,1,kassi,6 stk í kassa; NÝTT
+FitFood,,,Nanosupps Protein Chips BBQ,2,kassi,7 stk í kassa (áður 8)
+FitFood,,,Nanosupps Protein Chips Sour cream & Onion,4,kassi,7 stk í kassa (áður 8)
+FitFood,,,Nanosupps Protein Chips Paprika,3,kassi,7 stk í kassa (áður 8)
+FitFood,,,Nanosupps Protein Chips Cheese,3,kassi,7 stk í kassa (áður 8)
+FitFood,,,Nanosupps Wraps,2,kassi,12 stk í kassa
+FitFood,,,Nanosupps Taco,1,kassi,10 stk í kassa
+FitFood,,,Nanosupps Protein Cups Peanut Butter Chocolate,2,kassi,20 stk í kassa
+FitFood,,,Nanosupps Protein Bar Choco-Caramel,,kassi,15 stk í kassa
+FitFood,,,Nanosupps Protein Bar Cookie Dough,,kassi,15 stk í kassa
+FitFood,,,Nanosupps Protein Wafer Chocolate,2,kassi,12 stk í kassa
+FitFood,,,Nanosupps Protein Wafer Salty Caramel,1,kassi,12 stk í kassa
+FitFood,,,Nanosupps Brownie Chocolate,1,kassi,12 stk í kassa
+FitFood,,,Nanosupps Protein Pops Chocolate,1,kassi,12 stk í kassa
+FitFood,,,Nanosupps Protein Pops White Chocolate,1,kassi,12 stk í kassa
+FitFood,,,Nanosupps Protein Dips Chcolate Hazelnut,1,kassi,12 stk í kassa
+FitFood,,,Nanosupps Collagen SHOT Mango Passion,1,kassi,12 stk í kassa; NÝTT
+FitFood,,,Nanosupps Collagen SHOT Vimberry,1,kassi,12 stk í kassa; NÝTT
+FitFood,,,Nanosupps Collagen Vibe Mojito,,kassi,24 stk í kassa
+FitFood,,,Nanosupps Collagen Vibe Mango-Passion,,kassi,24 stk í kassa
+FitFood,,,Nanosupps Collagen Vibe Pineapple-Coconut,,kassi,24 stk í kassa
+FitFood,,,PrimaLife Protein Pancake Chocolate,,kassi,12 stk í kassa
+FitFood,,,PrimaLife Protein Pancake Caramel,,kassi,12 stk í kassa
+FitFood,,,PrimaLife Protein Pancake Double Chocolate,,kassi,12 stk í kassa
+FitFood,,,PrimaLife Protein Pancake Chocolate Hazelnut,,kassi,12 stk í kassa
+FitFood,,,PrimaLife Protein Pancake Banoffee,,kassi,12 stk í kassa; NÝTT
+FitFood,,,Surreal Morgunkorn Choco,,kassi,6 stk í kassa
+FitFood,,,Surreal Morgunkorn Frosted,,kassi,6 stk í kassa
+FitFood,,,Surreal Morgunkorn Cinnamon,,kassi,6 stk í kassa
+FitFood,,,Surreal Morgunkorn Peanut Butter,,kassi,6 stk í kassa
+FitFood,,,Surreal Morgunkorn Choc Hazelnut,,kassi,6 stk í kassa
+FitFood,,,Surreal Morgunkorn Cookies & Cream,,kassi,6 stk í kassa
+FitFood,,,Surreal Morgunkorn Honey Crunch,,kassi,6 stk í kassa; NÝTT

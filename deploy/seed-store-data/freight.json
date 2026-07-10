@@ -1,0 +1,22 @@
+{
+  "entries": [
+    { "supplier": "Aðföng v/ferskar kjötvörur", "rule": "Búðin borgar flutningskostnað (hlutfall sendingarkostnaðar miðað við nótu)", "source": "81" },
+    { "supplier": "Core", "rule": "Búðin borgar flutningskostnað (hlutfall sendingarkostnaðar miðað við nótu)", "source": "81" },
+    { "supplier": "Fit Food", "rule": "Búðin borgar EKKI flutning — skráningu breytt í Vörumiðlun", "source": "81" },
+    { "supplier": "Grímur Kokkur", "rule": "Búðin borgar flutningskostnað (hlutfall sendingarkostnaðar miðað við nótu)", "source": "81" },
+    { "supplier": "Gunnars", "rule": "Búðin borgar flutningskostnað (hlutfall sendingarkostnaðar miðað við nótu)", "source": "81" },
+    { "supplier": "Humarsalan", "rule": "Búðin borgar flutningskostnað (hlutfall sendingarkostnaðar miðað við nótu)", "source": "81" },
+    { "supplier": "Íslensk Dreifing", "rule": "Búðin borgar flutningskostnað (hlutfall sendingarkostnaðar miðað við nótu)", "source": "81" },
+    { "supplier": "Íslenska gámafélagið", "rule": "Búðin borgar flutningskostnað (hlutfall sendingarkostnaðar miðað við nótu)", "source": "81" },
+    { "supplier": "Karton Ís Art ehf.", "rule": "Búðin borgar flutningskostnað (hlutfall sendingarkostnaðar miðað við nótu)", "source": "81" },
+    { "supplier": "Kósk", "rule": "Búðin borgar flutningskostnað (hlutfall sendingarkostnaðar miðað við nótu)", "source": "81" },
+    { "supplier": "Kökugerð H.P.", "rule": "Búðin borgar flutningskostnað (hlutfall sendingarkostnaðar miðað við nótu)", "source": "81" },
+    { "supplier": "Lýsi", "rule": "Búðin borgar flutningskostnað (hlutfall sendingarkostnaðar miðað við nótu); flutningi dreift á stykkjaverð í verðtékki", "source": "81, 73" },
+    { "supplier": "Nesbúegg (Lífland)", "rule": "Búðin borgar flutningskostnað (hlutfall sendingarkostnaðar miðað við nótu)", "source": "81" },
+    { "supplier": "Pottagaldrar", "rule": "Búðin borgar flutningskostnað (hlutfall sendingarkostnaðar miðað við nótu)", "source": "81" },
+    { "supplier": "Reykjabúið", "rule": "Búðin borgar flutningskostnað (hlutfall sendingarkostnaðar miðað við nótu)", "source": "81" },
+    { "supplier": "Samhentir", "rule": "17% af reikningi (hlutfall sendingarkostnaðar miðað við nótu)", "source": "81" },
+    { "supplier": "Sláturhús KVH ehf", "rule": "Búðin borgar flutningskostnað (hlutfall sendingarkostnaðar miðað við nótu)", "source": "81" },
+    { "supplier": "Vilko", "rule": "Búðin borgar flutningskostnað (hlutfall sendingarkostnaðar miðað við nótu)", "source": "81" }
+  ]
+}

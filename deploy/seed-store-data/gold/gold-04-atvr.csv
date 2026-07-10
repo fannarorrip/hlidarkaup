@@ -1,0 +1,55 @@
+supplier,vnr,ean,name,cost,retail,unit,note
+ÁTVR,1361,,Agio Petitos 5x10's,1987.74,3060,stk,cost per unit ex VAT; 5 per carton; no barcode in source
+ÁTVR,1347,8720400435999,Bagatello 10x10's,940.48,1460,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,10785,5712341047389,Bali Shag Halfzware 5x40g,2045.81,3140,stk,cost per unit ex VAT; 5 per carton
+ÁTVR,11779,,Bali Shag Mellow Taste Virginia 5x40g,2045.81,3140,stk,cost per unit ex VAT; 5 per carton; no barcode in source
+ÁTVR,1053,5710840068065,Bali Shag Nature 5x35g,1791.61,2760,stk,cost per unit ex VAT; 5 per carton
+ÁTVR,11778,,Bali Shag Rounded Virginia 5x40g,2045.81,3140,stk,cost per unit ex VAT; 5 per carton; no barcode in source
+ÁTVR,24059,4779041076263,Camel Activate Double Box,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,3645,1230739,Camel Blue Box,1178.31,1820,stk,cost per unit ex VAT; 10 per carton; barcode 7 digits as in source
+ÁTVR,2015,76149108,Camel KSF Box,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,3642,76128905,Capri 100's,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,3641,5715345033624,Capri Menthol 100's,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,1343,8720400436439,Cigill 10x10's,966.45,1500,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,1339,5712347843015,Fauna 10x10's,1635.00,2520,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,3663,76149818,Gold Coast Blue,1089.11,1690,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,3664,76149344,Gold Coast Menthol KSF,1089.11,1690,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,3662,76149801,Gold Coast Red KSF,1089.11,1690,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,1256,5710840042782,Half and Half 5x50g,2699.84,4140,stk,cost per unit ex VAT; 5 per carton
+ÁTVR,8022,7090018951121,L&M Blue KSF Box,1089.11,1690,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,4135,7090018951114,L&M Red KSF Box,1089.11,1690,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,1364,8720400428113,London Dock's 5x5's,1175.97,1820,stk,cost per unit ex VAT; 5 per carton
+ÁTVR,7595,7622100945154,Marlboro Green Box,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,21532,7622100945000,Marlboro Beyond Blue,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,22304,7622100945192,Marlboro Fine Beyond 20's,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,4130,7622100945093,Marlboro Gold 100's Box,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,7597,7622100945062,Marlboro Gold Box,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,14505,7622100945161,Marlboro Ice Blast 20's Box,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,29508,,Marlboro Micro touch blue super slim 100's,1178.31,1820,stk,cost per unit ex VAT; 10 per carton; no barcode in source
+ÁTVR,4188,7622100945147,Marlboro Red 100's Box,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,7596,7622100945130,Marlboro Red Box,1192.42,1840,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,26112,8606020370769,Nero Red 100's,858.15,1330,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,1373,8720400000210,Signature 10x10's,951.29,1480,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,1375,8720400000425,Signature Blue 10x10's,904.84,1400,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,26619,8720400513925,Signature Filter Green 10x10's,885.24,1370,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,4016,8720400083572,Signature Red 10x10's,895.97,1390,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,9040,8720400100743,Signature Red Filter 10x10's,958.39,1490,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,3697,5712341130173,Skandinavik Regular 5x50g,2577.10,3960,stk,cost per unit ex VAT; 5 per carton
+ÁTVR,1248,5690526300019,Skorið neftóbak ÁTVR 20x50g dós,2814.44,4320,stk,cost per unit ex VAT; 20 per carton
+ÁTVR,3698,5712341937819,Sweet Dublin 5x50g,2577.10,3960,stk,cost per unit ex VAT; 5 per carton
+ÁTVR,1251,5690526300132,Tóbakshorn ÁTVR 20x45g,2608.67,4000,stk,cost per unit ex VAT; 20 per carton
+ÁTVR,3634,76128967,Viceroy Red,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,9741,76149269,Winston Balanced Blue 100's Box,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,3661,1231932,Winston Blue Box,1178.31,1820,stk,cost per unit ex VAT; 10 per carton; barcode 7 digits as in source
+ÁTVR,3656,8035539,Winston Classic Red 100's Box,1178.31,1820,stk,cost per unit ex VAT; 10 per carton; barcode 7 digits as in source
+ÁTVR,3660,1231233,Winston Classic Red Box,1193.63,1850,stk,cost per unit ex VAT; 10 per carton; barcode 7 digits as in source
+ÁTVR,2016,47756960,Winston Menthol Green Box,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,416,47756953,Winston Menthol White Box,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,6680,47756946,Winston Slim's 100's,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,11128,42138105,Winston Super Slims Blue,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,6678,40329581,Winston White,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,20598,4033100034299,Winston Xspression Box,1178.31,1820,stk,cost per unit ex VAT; 10 per carton
+ÁTVR,3637,,Lucky Strike Original Red Box,,,,on order list only; no price data in file
+ÁTVR,21228,,Prince Menthol,,,,on order list only; no price data in file
+ÁTVR,10587,,Prince Red Box,,,,on order list only; no price data in file
+ÁTVR,27162,,Signature Green Boost 10x10's,,,,on order list only; no price data in file
