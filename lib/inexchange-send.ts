@@ -75,8 +75,10 @@ export async function sendInvoice(filename: string, ublXml: string): Promise<Sen
   if (!c.user || !c.pass) return { ok: false, sent: false, error: "inExchange innskráning vantar." };
   try {
     const b64 = Buffer.from(ublXml, "utf8").toString("base64");
+    // Only send <Subaccount> when configured — inExchange rejects an empty value (ReturnCode 120).
+    const subEl = c.subaccount ? `<Subaccount>${esc(c.subaccount)}</Subaccount>` : "";
     const r = await soapCall("InvoiceToInExchange",
-      `${creds()}<Subaccount>${esc(c.subaccount)}</Subaccount><Filename>${esc(filename)}</Filename><Invoice>${b64}</Invoice>`);
+      `${creds()}${subEl}<Filename>${esc(filename)}</Filename><Invoice>${b64}</Invoice>`);
     const reply = (r.InvoiceToInExchangeResult ?? {}) as Record<string, unknown>;
     const code = Number(reply.ReturnCode ?? -1);
     const str = String(reply.ReturnString ?? "");

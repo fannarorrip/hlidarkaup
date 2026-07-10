@@ -2,6 +2,7 @@
 // customer's UNBILLED account sales in the period into ONE invoice (grouped by shopping trip)
 // + ONE krafa, and marks those sales billed. Does NOT post new ledger vouchers (AR already booked).
 import { db, query } from "@/lib/db";
+import { enqueueMonthlyClaim } from "@/lib/claims";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 export function periodRange(period: string): { from: string; to: string } {
@@ -61,6 +62,7 @@ export async function runMonthEnd(period: string, createdBy = "bokhald"): Promis
 
   const client = await db.connect();
   let invoiceCount = 0, total = 0;
+  const createdInvoiceIds: string[] = [];
   try {
     await client.query("begin");
     const run = (await client.query<{ id: string }>(`insert into acc.billing_runs (period, from_date, to_date, created_by) values ($1,$2,$3,$4) returning id`, [period, from, to, createdBy])).rows[0];
@@ -82,11 +84,20 @@ export async function runMonthEnd(period: string, createdBy = "bokhald"): Promis
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10) returning id`,
         [run.id, invNo, customerId, (c.kennitala || "").replace(/\D/g, "") || null, c.customer_name, period, trips.length, custTotal, JSON.stringify(detail), delivery])).rows[0];
       for (const t of trips) await client.query(`insert into acc.billing_invoice_vouchers (billing_invoice_id, voucher_id) values ($1,$2) on conflict do nothing`, [bi.id, t.voucher_id]);
+      createdInvoiceIds.push(bi.id);
       invoiceCount++; total += custTotal;
     }
 
     await client.query(`update acc.billing_runs set invoice_count=$1, total=$2 where id=$3`, [invoiceCount, total, run.id]);
     await client.query("commit");
+
+    // Queue ONE bank claim (krafa) per consolidated invoice — after commit, best-effort
+    // (the invoice exists regardless; enqueue is idempotent and retriable). AR was already
+    // booked per sale, so the claim just collects the month's total.
+    for (const id of createdInvoiceIds) {
+      try { await enqueueMonthlyClaim(id); } catch { /* never fail the run over a claim */ }
+    }
+
     return { runId: run.id, invoiceCount, total };
   } catch (e) {
     await client.query("rollback");

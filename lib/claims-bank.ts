@@ -41,9 +41,14 @@ export async function sendQueuedClaims(auth: Auth = {}): Promise<SendResult> {
     return d.toISOString().slice(0, 10);
   };
 
-  const rows = await query<{ id: string; kennitala: string | null; amount: string; due_date: string | null; series_code: string | null; voucher_number: string | null }>(
-    `select cl.id, cl.kennitala, cl.amount::text as amount, cl.due_date::text as due_date, v.series_code, v.voucher_number::text as voucher_number
-     from acc.claims cl left join acc.vouchers v on v.id = cl.voucher_id
+  const rows = await query<{ id: string; kennitala: string | null; amount: string; due_date: string | null;
+    claim_number: string | null; series_code: string | null; voucher_number: string | null; billing_invoice_number: string | null }>(
+    `select cl.id, cl.kennitala, cl.amount::text as amount, cl.due_date::text as due_date,
+            cl.claim_number::text as claim_number, v.series_code, v.voucher_number::text as voucher_number,
+            bi.invoice_number as billing_invoice_number
+     from acc.claims cl
+     left join acc.vouchers v on v.id = cl.voucher_id
+     left join acc.billing_invoices bi on bi.id = cl.billing_invoice_id
      where cl.status = 'queued' order by cl.created_at asc limit 200`);
 
   let sent = 0, failed = 0, skipped = 0, requeued = 0;
@@ -56,20 +61,21 @@ export async function sendQueuedClaims(auth: Auth = {}): Promise<SendResult> {
       `update acc.claims set status='sending', sent_at=now() where id=$1 and status='queued' returning id`, [c.id]);
     if (!took.length) { skipped++; continue; }
 
-    // Kröfunúmer = the voucher number (6 digits) — the invoice IS the claim, RB-style.
-    const voucherDigits = (c.voucher_number || "").replace(/\D/g, "");
-    if (!voucherDigits || voucherDigits.length > 6) {
+    // Kröfunúmer = the claim's own number for monthly claims, else the voucher number
+    // (per-trip: the invoice IS the claim, RB-style). Both are ≤6 digits.
+    const numberDigits = (c.claim_number || c.voucher_number || "").replace(/\D/g, "");
+    if (!numberDigits || numberDigits.length > 6) {
       await query(`update acc.claims set status='failed', last_error=$2 where id=$1 and status='sending'`,
-        [c.id, voucherDigits ? "Fylgiskjalsnúmer passar ekki sem 6 stafa kröfunúmer." : "Vantar fylgiskjalsnúmer fyrir kröfunúmer."]);
+        [c.id, numberDigits ? "Kröfunúmer passar ekki sem 6 stafa tala." : "Vantar kröfunúmer."]);
       failed++; continue;
     }
-    // tilvísun = the invoice number; omit rather than send a meaningless truncated UUID.
-    const reference = c.series_code && c.voucher_number ? `${c.series_code}-${c.voucher_number}` : undefined;
+    // tilvísun = the invoice number (monthly M-nr or per-trip series-voucher); omit if neither.
+    const reference = c.billing_invoice_number ?? (c.series_code && c.voucher_number ? `${c.series_code}-${c.voucher_number}` : undefined);
     try {
       const res = await createArionClaim({
         claimantKennitala: claimant,
         claimBank: bank,
-        claimNumber: voucherDigits,
+        claimNumber: numberDigits,
         templateCode: profile.code,
         debtorKennitala: kt,
         amount,
@@ -77,7 +83,7 @@ export async function sendQueuedClaims(auth: Auth = {}): Promise<SendResult> {
         finalDueDate: addDays(c.due_date, Math.max(0, settings.final_due_days)),
         expirationDate: addDays(c.due_date, Math.max(1, settings.expires_after_days)),
         reference,
-        billNumber: voucherDigits,
+        billNumber: numberDigits,
         idempotencyKey: c.id, // claim row uuid — a crash-resend is idempotent at the bank
       }, auth);
       if (res.claimRef) {

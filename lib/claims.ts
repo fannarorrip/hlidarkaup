@@ -43,6 +43,39 @@ export async function enqueueClaim(voucherId: string): Promise<EnqueueClaimResul
   }
 }
 
+/** Queue a bank claim for a MONTH-END consolidated invoice (one krafa for the whole month).
+ *  Unlike per-trip claims this has no single voucher — it carries a dedicated kröfunúmer and
+ *  links to the billing invoice. Idempotent (one per billing_invoice). Never throws. */
+export async function enqueueMonthlyClaim(billingInvoiceId: string): Promise<EnqueueResult> {
+  try {
+    const bi = (await query<{ customer_id: string | null; kennitala: string | null; total: string; period: string; terms: number }>(`
+      select b.customer_id, b.kennitala, b.total::text as total, b.period,
+             coalesce(c.payment_terms_days, 0) as terms
+      from acc.billing_invoices b
+      left join shop.customers c on c.id = b.customer_id
+      where b.id = $1`, [billingInvoiceId]))[0];
+    if (!bi || !bi.customer_id) return { queued: false, reason: "no_customer" };
+    const amount = Math.round(Number(bi.total) || 0);
+    if (amount <= 0) return { queued: false, reason: "no_amount" };
+
+    // Due date = end of the billing month + the customer's payment terms.
+    const [y, m] = bi.period.split("-").map(Number);
+    const due = new Date(Date.UTC(y, m, 0)); // day 0 of next month = last day of this month
+    due.setUTCDate(due.getUTCDate() + (Number(bi.terms) || 0));
+    const dueDate = due.toISOString().slice(0, 10);
+
+    const ins = await query<{ id: string }>(
+      `insert into acc.claims (billing_invoice_id, customer_id, kennitala, amount, due_date, status, claim_number)
+       values ($1,$2,$3,$4,$5,'queued', nextval('acc.claim_number_seq'))
+       on conflict (billing_invoice_id) where billing_invoice_id is not null do nothing returning id`,
+      [billingInvoiceId, bi.customer_id, (bi.kennitala || "").replace(/\D/g, "") || null, amount, dueDate]);
+    if (ins.length) await query(`update acc.billing_invoices set claim_status = 'queued' where id = $1`, [billingInvoiceId]);
+    return { queued: ins.length > 0 };
+  } catch (e) {
+    return { queued: false, reason: e instanceof Error ? e.message : "error" };
+  }
+}
+
 export const getClaims = (limit = 200) =>
   query<ClaimRow>(`
     select cl.id, cl.voucher_id, cl.customer_id, c.name as customer_name, cl.kennitala,
