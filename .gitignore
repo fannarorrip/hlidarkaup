@@ -1,5 +1,14 @@
 .env.local
 .env*.local
+
+# Certificates / private keys — NEVER commit (búnaðarskilríki etc.)
+*.pfx
+*.p12
+*.cer
+*.pem
+*.key
+Lestu mig.txt
+
 .next/
 node_modules/
 out/
