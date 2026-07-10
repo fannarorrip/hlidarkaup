@@ -30,7 +30,9 @@ function matchTemplate(scheduleName: string, templates: { id: string; supplier_n
   return best?.id ?? null;
 }
 
-/** Full week's ordering schedule, ordered by weekday + deadline, with matched templates. */
+/** Full week's ordering schedule, ordered by weekday + deadline, with matched templates.
+ *  Matches against ALL templates (Pöntunarlisti preferred on ties — they are sorted first,
+ *  and matchTemplate keeps the first best score). */
 export async function getOrderSchedule(): Promise<ScheduleEntry[]> {
   const [rows, templates] = await Promise.all([
     query<Omit<ScheduleEntry, "template_id">>(
@@ -38,9 +40,78 @@ export async function getOrderSchedule(): Promise<ScheduleEntry[]> {
          from acc.order_schedule where is_active
         order by weekday, deadline nulls last, supplier_name`),
     query<{ id: string; supplier_name: string }>(
-      `select id, supplier_name from acc.order_templates where is_active and name = 'Pöntunarlisti'`),
+      `select id, supplier_name from acc.order_templates where is_active
+        order by (name = 'Pöntunarlisti') desc, supplier_name`),
   ]);
   return rows.map((r) => ({ ...r, template_id: matchTemplate(r.supplier_name, templates) }));
+}
+
+/** Find (fuzzy) or create a template for a supplier — every schedule card must be orderable. */
+export async function ensureTemplate(supplierName: string): Promise<{ id: string; created: boolean }> {
+  const templates = await query<{ id: string; supplier_name: string }>(
+    `select id, supplier_name from acc.order_templates where is_active
+      order by (name = 'Pöntunarlisti') desc, supplier_name`);
+  const matched = matchTemplate(supplierName, templates);
+  if (matched) return { id: matched, created: false };
+  const t = await query<{ id: string }>(
+    `insert into acc.order_templates (supplier_name, name, source)
+       values ($1, 'Pöntunarlisti', 'handvirkt')
+     on conflict (supplier_name, name) do update set is_active = true
+     returning id`, [supplierName]);
+  return { id: t[0].id, created: true };
+}
+
+/** Persist the current editor quantities as the new standing quantities (default_qty). */
+export async function setLineDefaults(templateId: string, defaults: Record<number, number | null>): Promise<number> {
+  let n = 0;
+  for (const [lineNo, qty] of Object.entries(defaults)) {
+    const r = await query<{ id: string }>(
+      `update acc.order_template_lines set default_qty = $1
+        where template_id = $2 and line_no = $3 returning id`,
+      [qty != null && qty > 0 ? qty : null, templateId, Number(lineNo)]);
+    n += r.length;
+  }
+  return n;
+}
+
+/** Add a free-form line to a template (name required; vnr/unit/qty optional). */
+export async function addTemplateLine(templateId: string, line: { name: string; vnr?: string; unit?: string; defaultQty?: number }) {
+  const r = await query<{ line_no: number }>(
+    `insert into acc.order_template_lines (template_id, line_no, vnr, name, default_qty, unit)
+       select $1, coalesce(max(line_no), 0) + 1, $2, $3, $4, $5
+         from acc.order_template_lines where template_id = $1
+     returning line_no`,
+    [templateId, line.vnr || null, line.name, line.defaultQty && line.defaultQty > 0 ? line.defaultQty : null, line.unit || null]);
+  return r[0];
+}
+
+export async function deleteTemplateLine(templateId: string, lineNo: number): Promise<boolean> {
+  const r = await query<{ id: string }>(
+    `delete from acc.order_template_lines where template_id = $1 and line_no = $2 returning id`,
+    [templateId, lineNo]);
+  return r.length > 0;
+}
+
+/** Create/update a schedule entry (the heartbeat itself is editable). */
+export async function upsertScheduleEntry(e: { id?: string; weekday: number; supplier_name: string; deadline?: string | null; note?: string | null }) {
+  if (e.id) {
+    const r = await query<{ id: string }>(
+      `update acc.order_schedule set weekday=$2, supplier_name=$3, deadline=$4::time, note=$5
+        where id=$1 returning id`, [e.id, e.weekday, e.supplier_name, e.deadline || null, e.note || null]);
+    return r[0] ?? null;
+  }
+  const r = await query<{ id: string }>(
+    `insert into acc.order_schedule (weekday, supplier_name, deadline, note, source)
+       values ($1,$2,$3::time,$4,'handvirkt')
+     on conflict (weekday, supplier_name) do update
+       set deadline = excluded.deadline, note = excluded.note, is_active = true
+     returning id`, [e.weekday, e.supplier_name, e.deadline || null, e.note || null]);
+  return r[0] ?? null;
+}
+
+export async function deleteScheduleEntry(id: string): Promise<boolean> {
+  const r = await query<{ id: string }>(`delete from acc.order_schedule where id = $1 returning id`, [id]);
+  return r.length > 0;
 }
 
 export interface TemplateLineRow {
