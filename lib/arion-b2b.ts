@@ -39,7 +39,7 @@ const arr = <T>(v: T | T[] | undefined): T[] => (Array.isArray(v) ? v : v == nul
 export interface BankBill {
   bank: string; ledger: string; number: string; dueDate: string | null; finalDueDate: string | null;
   identifier: string; description: string; amountDue: number; minimumAmount: number; currency: string;
-  claimantId: string; payorId: string; claimType: string; billType: string;
+  claimantId: string; claimantName: string; payorId: string; claimType: string; billType: string;
   isDebited: boolean; isForwardPayment: boolean; isSettlementFee: boolean; isDeposit: boolean;
   isInElectronicDocuments: boolean; isHidden: boolean;
   billKey: string; raw: Record<string, unknown>;
@@ -64,11 +64,14 @@ function toBill(b: Record<string, unknown>): BankBill {
   const bank = String(b.Bank ?? ""), ledger = String(b.Ledger ?? ""), number = String(b.Number ?? "");
   const claimantId = String(b.ClaimantId ?? "").replace(/\D/g, "");
   const payorId = String(b.PayorId ?? "").replace(/\D/g, "");
+  // The bank sends the claimant's registered name in Details (e.g. "Regla ehf.").
+  const details = (b.Details ?? {}) as Record<string, unknown>;
   return {
     bank, ledger, number, dueDate: due, finalDueDate: date(b.FinalDueDate),
     identifier: String(b.Identifier ?? ""), description: String(b.Description ?? ""),
     amountDue: amt.value, minimumAmount: amount(b.MinimumAmount).value, currency: amt.currency,
-    claimantId, payorId, claimType: String(b.ClaimType ?? ""), billType: String(b.BillType ?? ""),
+    claimantId, claimantName: String(details.ClaimantName ?? ""),
+    payorId, claimType: String(b.ClaimType ?? ""), billType: String(b.BillType ?? ""),
     isDebited: bool(b.IsDebited), isForwardPayment: bool(b.IsForwardPayment), isSettlementFee: bool(b.IsSettlementFee),
     isDeposit: bool(b.IsDeposit), isInElectronicDocuments: bool(b.IsInElectronicDocuments), isHidden: bool(b.IsHidden),
     // BillKey identity: Bank|Ledger|Number|DueDate|PayorId|ClaimantId
@@ -83,9 +86,11 @@ export interface GetBillsResult { ok: boolean; bills: BankBill[]; error?: string
 export async function getBills(): Promise<GetBillsResult> {
   const c = cfg();
   if (!c.url || !c.user || !c.pass) return { ok: false, bills: [], error: "B2B Bridge er ekki stillt (ARION_B2B_BRIDGE_URL/USERNAME/PASSWORD)." };
+  // SOAP 1.1 toward the Bridge (its ClearUsernameBinding is messageVersion=Soap11; SOAP 1.2 → HTTP 415).
+  // The Bridge converts to the bank's SOAP 1.2 upstream — verified live 2026-07-10.
   const envelope =
     `<?xml version="1.0" encoding="utf-8"?>` +
-    `<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">` +
+    `<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">` +
     `<s:Header><wsse:Security s:mustUnderstand="1" xmlns:wsse="${WSSE}">` +
     `<wsse:UsernameToken><wsse:Username>${esc(c.user)}</wsse:Username>` +
     `<wsse:Password Type="${PW_TEXT}">${esc(c.pass)}</wsse:Password></wsse:UsernameToken>` +
@@ -94,7 +99,7 @@ export async function getBills(): Promise<GetBillsResult> {
   try {
     const res = await fetch(c.url, {
       method: "POST",
-      headers: { "content-type": `application/soap+xml; charset=utf-8; action="${NS}/IBillService/GetBills"` },
+      headers: { "content-type": "text/xml; charset=utf-8", SOAPAction: `"${NS}/IBillService/GetBills"` },
       body: envelope,
     });
     const text = await res.text();
@@ -127,8 +132,8 @@ export async function upsertBankBills(bills: BankBill[]): Promise<UpsertResult> 
           bill_type, is_debited, is_forward_payment, is_settlement_fee, is_deposit,
           is_in_electronic_documents, is_hidden, raw, supplier_id, last_seen_at)
        values ($1,$2,$3,$4,$5::date,$6::date,$7,$8,$9,$10,$11,$12,
-               (select s.name from acc.suppliers s where regexp_replace(coalesce(s.kennitala,''),'\\D','','g') = $12 limit 1),
-               $13,$14,$15,$16,$17,$18,$19,$20,$21,$22::jsonb,
+               coalesce(nullif($13,''), (select s.name from acc.suppliers s where regexp_replace(coalesce(s.kennitala,''),'\\D','','g') = $12 limit 1)),
+               $14,$15,$16,$17,$18,$19,$20,$21,$22,$23::jsonb,
                (select s.id from acc.suppliers s where regexp_replace(coalesce(s.kennitala,''),'\\D','','g') = $12 limit 1),
                now())
        on conflict (bill_key) do update set
@@ -145,7 +150,7 @@ export async function upsertBankBills(bills: BankBill[]): Promise<UpsertResult> 
          status = case when acc.bank_bills.status in ('paid','ignored') then acc.bank_bills.status
                        when excluded.is_hidden then 'hidden' else 'open' end`,
       [b.billKey, b.bank, b.ledger, b.number, b.dueDate, b.finalDueDate, b.identifier, b.description,
-       b.amountDue, b.minimumAmount, b.currency, b.claimantId, b.payorId, b.claimType, b.billType,
+       b.amountDue, b.minimumAmount, b.currency, b.claimantId, b.claimantName, b.payorId, b.claimType, b.billType,
        b.isDebited, b.isForwardPayment, b.isSettlementFee, b.isDeposit, b.isInElectronicDocuments,
        b.isHidden, JSON.stringify(b.raw)],
     );

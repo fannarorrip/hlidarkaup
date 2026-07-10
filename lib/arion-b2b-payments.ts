@@ -90,9 +90,10 @@ export async function payClaim(input: PayClaimInput): Promise<PayResult> {
   // Element order is schema-enforced: In = choice item FIRST, then Amount, then Description.
   // DateOfForwardPayment omitted = pay now. (If the Bridge faults 1200 on a missing element,
   // the schema vintage requires it — then send today's date explicitly.)
+  // SOAP 1.1 toward the Bridge (ClearUsernameBinding, Soap11) — the Bridge converts upstream.
   const envelope =
     `<?xml version="1.0" encoding="utf-8"?>` +
-    `<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:pt="${PT}">` +
+    `<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" xmlns:pt="${PT}">` +
     `<s:Header><wsse:Security s:mustUnderstand="1" xmlns:wsse="${WSSE}">` +
     `<wsse:UsernameToken><wsse:Username>${esc(cfg().user)}</wsse:Username>` +
     `<wsse:Password Type="${PW_TEXT}">${esc(cfg().pass)}</wsse:Password></wsse:UsernameToken>` +
@@ -111,7 +112,7 @@ export async function payClaim(input: PayClaimInput): Promise<PayResult> {
   try {
     const res = await fetch(c.url, {
       method: "POST",
-      headers: { "content-type": `application/soap+xml; charset=utf-8; action="${ACTION_DO_PAYMENT}"` },
+      headers: { "content-type": "text/xml; charset=utf-8", SOAPAction: `"${ACTION_DO_PAYMENT}"` },
       body: envelope,
     });
     const text = await res.text();

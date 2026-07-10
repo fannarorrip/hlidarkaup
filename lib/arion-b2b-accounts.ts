@@ -78,9 +78,10 @@ export async function getAccountStatement(opts: {
     return { ok: false, error: "Dagsetningar verða að vera YYYY-MM-DD." };
   }
 
+  // SOAP 1.1 toward the Bridge (ClearUsernameBinding, Soap11) — the Bridge converts upstream.
   const envelope =
     `<?xml version="1.0" encoding="utf-8"?>` +
-    `<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:at="${AT}">` +
+    `<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" xmlns:at="${AT}">` +
     `<s:Header><wsse:Security s:mustUnderstand="1" xmlns:wsse="${WSSE}">` +
     `<wsse:UsernameToken><wsse:Username>${esc(c.user)}</wsse:Username>` +
     `<wsse:Password Type="${PW_TEXT}">${esc(c.pass)}</wsse:Password></wsse:UsernameToken>` +
@@ -97,7 +98,7 @@ export async function getAccountStatement(opts: {
   try {
     const res = await fetch(c.url, {
       method: "POST",
-      headers: { "content-type": `application/soap+xml; charset=utf-8; action="${ACTION}"` },
+      headers: { "content-type": "text/xml; charset=utf-8", SOAPAction: `"${ACTION}"` },
       body: envelope,
     });
     const text = await res.text();

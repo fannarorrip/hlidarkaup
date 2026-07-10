@@ -11,20 +11,39 @@ Sýnir kröfur og greiðsluseðla sem **aðrir stofna á Hlíðarkaup í bankanu
 `UsernameToken`, engin dulkóðun) á localhost/LAN og sér sjálft um WCF-dulkóðunina út í bankann.
 Appið → Bridge (Node getur talað við hann) → Arion.
 
-## Hýsing: Windows kassatölvan (Volcora-kassinn)
-Bridge keyrir **ekki á Rocky Linux** (þarf .NET Framework + Windows cert store). Setjið hann upp á
-**alltaf-á Windows-vél** — kassatölvan (Volcora) hentar (sama LAN, 192.168.1.x, alltaf í gangi).
+## ✅ UPPSETT OG VIRKT (2026-07-10, dev-vélin) — flutningur á kassatölvuna eftir
 
-### Uppsetning (á kassatölvunni)
-1. Sækið **B2B Bridge** frá Arion: `https://ws.b2b.is/Services/` (B2BBridge-*.zip).
-2. Setjið upp forsendur: **.NET Framework** + **IIS/WAS** (eða keyrið meðfylgjandi hýsil).
-3. Flytjið **búnaðarskilríkið** (`.pfx`, sama og Arion Claims notar) inn í Windows-skilríkjageymslu
-   (`LocalMachine\My`) og veitið app-pool/þjónustunni aðgang að einkalyklinum.
-4. Stillið Bridge á `BillService` með skilríkinu og opnið **ClearUsernameBinding**-endapunkt
-   staðbundið, t.d. `http://<kassa-ip>:8080/BillService.svc` (verður að vera náanlegt frá Rocky yfir LAN).
-5. **Fyrsta `GetBills`-kall skilar villu 1000** → hringið/​tölvupóstur á fyrirtækjaþjónustu Arion
-   (fyrirtaeki@arionbanki.is) og biðjið um að **virkja skilríkið fyrir `BillService`/B2B** fyrir
-   notanda **HLIDARKAUP** (einskiptis). ⇒ **Bæta við Arion-símtalið mánudag 13. júlí** (sama og inExchange).
+Brúin er uppsett og **sótti 4 alvöru kröfur úr bankanum í fyrstu tilraun** (KS, Regla,
+Ríkissjóðsinnheimtur, Auðkenni). Skilríkið var ÞEGAR virkt hjá Arion (engin villa 1000).
+Uppsetningin sem VIRKAR (endurtaka á kassatölvunni fyrir framleiðslu):
+
+### Skref sem virkuðu (staðfest)
+1. Sótt `B2BBridge-1.0.3.0.zip` frá `https://ws.b2b.is/Services/` → afpakkað í `C:\Arion\B2BBridge\`.
+2. **Ekkert IIS þarf** — notum `bin\B2B-Bridge-WasHost.exe` (sjálfstæður hýsill, console).
+3. **Skilríki inn í CurrentUser\My** (sami notandi keyrir brúna; ekkert admin þarf):
+   - Búnaðarskilríkið (.pfx af `ARION_CERT_PATH` + lykilorð) → `Import-PfxCertificate` í `Cert:\CurrentUser\My`.
+   - **Núverandi public skilríki Arion** — EKKI nota .cer úr zip (útrunnin 2014!) heldur draga það
+     út úr lifandi WSDL (`AccountService.svc?wsdl` → `<X509Certificate>` base64) → `Import-Certificate`.
+4. **Config skrifað beint** í `bin\B2B-Bridge-WasHost.exe.config` (GUI-tólið óþarft):
+   - `clientCertificate` = búnaðarskilríkið **FindByThumbprint** (CurrentUser\My),
+   - `serviceCertificate/defaultCertificate` = Arion-skilríkið FindByThumbprint (CurrentUser\My),
+   - **client-endapunktarnir þrír endurbeindir á 2013-þjónusturnar** með `SecureTransportAndMessage`
+     bindingunni (sem fylgir í pakkanum): StatementService→`/Statements/20131015/AccountService.svc`,
+     PaymentService→`/Payments/20131015/PaymentService.svc`, ClaimService→`/Statements/20130201/BillService.svc`.
+     (Sjálfgefna configið vísar á 2005-þjónusturnar — brúin er samningsóháð beinir og virkar á 2013 líka.)
+5. **Einskiptis admin-skref** (UAC): `netsh http add urlacl url=http://+:8025/B2BBridge/ user=<notandi>`
+   og `netsh http add urlacl url=https://+:8026/B2BBridge/ user=<notandi>` + self-signed cert á 8026:
+   `New-SelfSignedCertificate -DnsName localhost -CertStoreLocation Cert:\LocalMachine\My` →
+   `netsh http add sslcert ipport=0.0.0.0:8026 certhash=<þumalfar> appid={7f31a2c3-9b4d-4e5f-8a61-0d2c3b4a5e6f}`
+   (hýsillinn HEIMTAR https-grunninn þótt hann sé ónotaður).
+6. Ræsa: `C:\Arion\start-bridge.cmd` (eða `bin\B2B-Bridge-WasHost.exe` beint). Hlustar á
+   `http://localhost:8025/B2BBridge/{StatementService|PaymentService|ClaimService}` — **ATH: EKKERT `.svc`!**
+
+### Prótókoll-atriði sem skipta máli
+- Brúin talar **SOAP 1.1** við okkur (`ClearUsernameBinding`, `text/xml` + `SOAPAction`-haus) —
+  SOAP 1.2 fær HTTP 415. Hún breytir sjálf í SOAP 1.2 upp í bankann. (lib-in senda nú 1.1.)
+- Auðkenning = venjulegt `UsernameToken` (netbanka B2B-notandinn) í `wsse:Security` haus.
+- Villa 1000 kom ALDREI — skilríkið var þegar virkjað B2B-megin hjá Arion.
 
 > ⚠️ **AV-varnaður:** ekki „reflecta" yfir DLL-skrár Bridge með PowerShell — það vakti Windows Defender
 > (ML-falskt jákvætt á *skriftuna*, ekki bankaskrárnar). Keyrið Bridge sem venjulega þjónustu; lesið
