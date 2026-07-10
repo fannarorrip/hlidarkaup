@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import BokhaldNav from "./BokhaldNav";
 import LogoutButton from "./LogoutButton";
+import Assistant from "./Assistant";
 import { getStaffSession } from "@/lib/staff-auth-server";
 import { ROLE_LABEL, type Role } from "@/lib/roles";
 import { getPendingEmailCount } from "@/lib/accounting-queries";
@@ -36,6 +37,7 @@ export default async function BokhaldLayout({ children }: { children: ReactNode 
         </div>
       </header>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">{children}</main>
+      <Assistant />
     </div>
   );
 }

@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { getSummary, getRecentVouchers } from "@/lib/accounting-queries";
+import { getReminders } from "@/lib/reminders";
 import { kr, num, vType, dags, STATUS_LABEL, vNr } from "@/lib/format";
 import YfirlitCharts from "./YfirlitCharts";
+import ReminderWidget from "./ReminderWidget";
 
 export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
-  const [s, recent] = await Promise.all([getSummary(), getRecentVouchers(10)]);
+  const [s, recent, reminders] = await Promise.all([getSummary(), getRecentVouchers(10), getReminders(21).catch(() => [])]);
 
   const velta = [
     { label: "Kassi", value: kr(s.till_gross) },
@@ -26,6 +28,9 @@ export default async function Dashboard() {
     <div>
       <h1 className="text-2xl font-bold mb-1">Yfirlit</h1>
       <p className="text-sm text-gray-500 mb-6">Sala, greiðslumátar og nýjustu fylgiskjöl</p>
+
+      {/* Áminningar: „Ekki gleyma" — efst svo ekkert gleymist */}
+      <ReminderWidget initial={reminders} />
 
       {/* Live analytics: KPI + charts (dagar / vikur / mánuðir) */}
       <YfirlitCharts />

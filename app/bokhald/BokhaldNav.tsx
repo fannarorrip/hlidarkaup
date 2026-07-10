@@ -9,6 +9,7 @@ const SECTIONS: { title: string; links: LinkItem[] }[] = [
     title: "Bókhald",
     links: [
       { href: "/bokhald", label: "Yfirlit" },
+      { href: "/bokhald/dagatal", label: "Dagatal" },
       { href: "/bokhald/lyklar", label: "Bókhaldslyklar" },
       { href: "/bokhald/fylgiskjol", label: "Fylgiskjöl" },
       { href: "/bokhald/skraning", label: "Skráning" },
