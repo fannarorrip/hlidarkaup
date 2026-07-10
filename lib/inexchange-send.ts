@@ -82,7 +82,8 @@ export async function sendInvoice(filename: string, ublXml: string): Promise<Sen
     const reply = (r.InvoiceToInExchangeResult ?? {}) as Record<string, unknown>;
     const code = Number(reply.ReturnCode ?? -1);
     const str = String(reply.ReturnString ?? "");
-    // ReturnCode 0 = success (per InExchange Reply convention); anything else is an error message.
-    return { ok: code === 0, sent: code === 0, returnCode: code, returnString: str, error: code === 0 ? undefined : str || `ReturnCode ${code}` };
+    // inExchange success = ReturnCode 100 ("Reception successful"); 0 also accepted for safety.
+    const success = code === 100 || code === 0;
+    return { ok: success, sent: success, returnCode: code, returnString: str, error: success ? undefined : str || `ReturnCode ${code}` };
   } catch (e) { return { ok: false, sent: false, error: e instanceof Error ? e.message : String(e) }; }
 }

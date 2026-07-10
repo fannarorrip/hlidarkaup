@@ -11,6 +11,7 @@ export interface EinvoiceParty {
   address?: string | null;
   postalCode?: string | null;
   city?: string | null;
+  vatId?: string | null;        // BT-31 VAT registration (VSK-nr). Set for the SELLER only; ISO-prefixed on output.
 }
 export interface EinvoiceInput {
   invoiceNumber: string;
@@ -18,6 +19,7 @@ export interface EinvoiceInput {
   dueDate?: string;             // YYYY-MM-DD
   currency?: string;            // default ISK
   note?: string;
+  buyerReference?: string;      // BT-10; PEPPOL-EN16931-R003 requires it. Falls back to invoiceNumber.
   customer: EinvoiceParty;
   lines: SaleLine[];            // gross-based (unit_price_gross / line_total / vat_rate)
 }
@@ -52,6 +54,10 @@ function computeLines(lines: SaleLine[]): Computed[] {
 
 function partyXml(tag: string, p: EinvoiceParty, currency: string): string {
   const id = kt(p.kennitala);
+  // BT-31 seller VAT id: ISO 3166-1 alpha-2 prefixed (BR-CO-09). Distinct from the kennitala; no schemeID.
+  const vat = p.vatId
+    ? (/^IS/i.test(String(p.vatId)) ? String(p.vatId).toUpperCase().replace(/\s+/g, "") : "IS" + String(p.vatId).replace(/\D/g, ""))
+    : "";
   return (
     `<cac:${tag}><cac:Party>` +
     (id ? `<cbc:EndpointID schemeID="0196">${esc(id)}</cbc:EndpointID>` : "") +
@@ -63,6 +69,8 @@ function partyXml(tag: string, p: EinvoiceParty, currency: string): string {
     (p.postalCode ? `<cbc:PostalZone>${esc(p.postalCode)}</cbc:PostalZone>` : "") +
     `<cac:Country><cbc:IdentificationCode>IS</cbc:IdentificationCode></cac:Country>` +
     `</cac:PostalAddress>` +
+    // PartyTaxScheme sits after PostalAddress and before PartyLegalEntity in UBL PartyType order.
+    (vat ? `<cac:PartyTaxScheme><cbc:CompanyID>${esc(vat)}</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme>` : "") +
     (id ? `<cac:PartyLegalEntity><cbc:RegistrationName>${esc(p.name)}</cbc:RegistrationName><cbc:CompanyID schemeID="0196">${esc(id)}</cbc:CompanyID></cac:PartyLegalEntity>` : "") +
     `</cac:Party></cac:${tag}>`
   );
@@ -102,13 +110,17 @@ export function buildInvoiceUbl(inp: EinvoiceInput): BuiltInvoice {
     (l.sellerId ? `<cac:SellersItemIdentification><cbc:ID>${esc(l.sellerId)}</cbc:ID></cac:SellersItemIdentification>` : "") +
     `<cac:ClassifiedTaxCategory><cbc:ID>${l.rate > 0 ? "S" : "Z"}</cbc:ID><cbc:Percent>${l.rate}</cbc:Percent>` +
     `<cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:ClassifiedTaxCategory></cac:Item>` +
-    `<cac:Price><cbc:PriceAmount ${cur(l.unitNet)}>${l.unitNet}</cbc:PriceAmount></cac:Price>` +
+    // Price per BaseQuantity: PriceAmount = whole-ISK line net, BaseQuantity = qty, so
+    // InvoicedQuantity × PriceAmount ÷ BaseQuantity == LineExtensionAmount exactly (PEPPOL-EN16931-R120,
+    // no rounding drift on multi-quantity lines).
+    `<cac:Price><cbc:PriceAmount ${cur(l.net)}>${l.net}</cbc:PriceAmount><cbc:BaseQuantity unitCode="${esc(l.unitCode)}">${l.qty}</cbc:BaseQuantity></cac:Price>` +
     `</cac:InvoiceLine>`
   ).join("");
 
   const supplier: EinvoiceParty = {
     name: STORE.name, kennitala: STORE.kennitala,
     address: STORE.address, postalCode: STORE.postal.split(" ")[0], city: STORE.postal.split(" ").slice(1).join(" "),
+    vatId: STORE.vskNr,   // BT-31 seller VAT id (VSK-nr) — required for standard-rated ('S') lines (BR-S-02)
   };
 
   const xml =
@@ -120,10 +132,14 @@ export function buildInvoiceUbl(inp: EinvoiceInput): BuiltInvoice {
     `<cbc:ProfileID>urn:fdc:peppol.eu:2017:poacc:billing:01:1.0</cbc:ProfileID>` +
     `<cbc:ID>${esc(inp.invoiceNumber)}</cbc:ID>` +
     `<cbc:IssueDate>${esc(inp.issueDate)}</cbc:IssueDate>` +
-    (inp.dueDate ? `<cbc:DueDate>${esc(inp.dueDate)}</cbc:DueDate>` : "") +
+    // DueDate always present (defaults to IssueDate) so a missing due date can never trip BR-CO-25.
+    `<cbc:DueDate>${esc(inp.dueDate || inp.issueDate)}</cbc:DueDate>` +
     `<cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>` +
     (inp.note ? `<cbc:Note>${esc(inp.note)}</cbc:Note>` : "") +
     `<cbc:DocumentCurrencyCode>${currency}</cbc:DocumentCurrencyCode>` +
+    // BuyerReference (BT-10) — mandatory under PEPPOL-EN16931-R003. Slot: after DocumentCurrencyCode,
+    // before AccountingSupplierParty. Non-empty fallback to the invoice number (an empty element still fails R003).
+    `<cbc:BuyerReference>${esc(inp.buyerReference || inp.invoiceNumber)}</cbc:BuyerReference>` +
     partyXml("AccountingSupplierParty", supplier, currency) +
     partyXml("AccountingCustomerParty", inp.customer, currency) +
     `<cac:TaxTotal><cbc:TaxAmount ${cur(totalVat)}>${round(totalVat)}</cbc:TaxAmount>${taxSubtotals}</cac:TaxTotal>` +
