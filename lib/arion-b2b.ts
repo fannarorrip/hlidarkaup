@@ -83,7 +83,7 @@ function toBill(b: Record<string, unknown>): BankBill {
 export interface GetBillsResult { ok: boolean; bills: BankBill[]; error?: string }
 
 /** Fetch all current unpaid bills where we are the payor, via the B2B Bridge (GetBills). */
-export async function getBills(): Promise<GetBillsResult> {
+async function fetchBillList(method: "GetBills" | "GetBillsInDirectDebit"): Promise<GetBillsResult> {
   const c = cfg();
   if (!c.url || !c.user || !c.pass) return { ok: false, bills: [], error: "B2B Bridge er ekki stillt (ARION_B2B_BRIDGE_URL/USERNAME/PASSWORD)." };
   // SOAP 1.1 toward the Bridge (its ClearUsernameBinding is messageVersion=Soap11; SOAP 1.2 → HTTP 415).
@@ -95,11 +95,11 @@ export async function getBills(): Promise<GetBillsResult> {
     `<wsse:UsernameToken><wsse:Username>${esc(c.user)}</wsse:Username>` +
     `<wsse:Password Type="${PW_TEXT}">${esc(c.pass)}</wsse:Password></wsse:UsernameToken>` +
     `</wsse:Security></s:Header>` +
-    `<s:Body><GetBills xmlns="${NS}"/></s:Body></s:Envelope>`;
+    `<s:Body><${method} xmlns="${NS}"/></s:Body></s:Envelope>`;
   try {
     const res = await fetch(c.url, {
       method: "POST",
-      headers: { "content-type": "text/xml; charset=utf-8", SOAPAction: `"${NS}/IBillService/GetBills"` },
+      headers: { "content-type": "text/xml; charset=utf-8", SOAPAction: `"${NS}/IBillService/${method}"` },
       body: envelope,
     });
     const text = await res.text();
@@ -108,8 +108,8 @@ export async function getBills(): Promise<GetBillsResult> {
     const body = ((parsed.Envelope as Record<string, unknown>)?.Body ?? {}) as Record<string, unknown>;
     const fault = body.Fault as Record<string, unknown> | undefined;
     if (fault) return { ok: false, bills: [], error: `B2B villa: ${JSON.stringify(fault).slice(0, 300)}` };
-    const resp = (body.GetBillsResponse ?? {}) as Record<string, unknown>;
-    const result = (resp.GetBillsResult ?? {}) as Record<string, unknown>;
+    const resp = (body[`${method}Response`] ?? {}) as Record<string, unknown>;
+    const result = (resp[`${method}Result`] ?? {}) as Record<string, unknown>;
     const rows = arr(result.BillInfo as Record<string, unknown> | Record<string, unknown>[]);
     return { ok: true, bills: rows.map(toBill) };
   } catch (e) {
@@ -117,11 +117,29 @@ export async function getBills(): Promise<GetBillsResult> {
   }
 }
 
+/** Fetch ALL current bills where we are the payor: the regular unpaid list (GetBills) plus the
+ *  ones in automatic payment (GetBillsInDirectDebit — the bank app's "Greitt sjálfvirkt" section,
+ *  marked isDebited). Deduped by BillKey; the regular list wins on conflict. */
+export async function getBills(): Promise<GetBillsResult> {
+  const regular = await fetchBillList("GetBills");
+  if (!regular.ok) return regular;
+  const debit = await fetchBillList("GetBillsInDirectDebit");
+  if (!debit.ok) return { ok: false, bills: [], error: `Beingreiðslulisti: ${debit.error}` };
+  const seen = new Set(regular.bills.map((b) => b.billKey));
+  const merged = regular.bills.concat(
+    debit.bills.filter((b) => !seen.has(b.billKey)).map((b) => ({ ...b, isDebited: true })),
+  );
+  return { ok: true, bills: merged };
+}
+
 export interface UpsertResult { fetched: number; open: number; gone: number }
 
 /** Upsert fetched bills into acc.bank_bills, match lánadrottinn by claimant kt, and mark any
- *  previously-open bill that is no longer returned as 'gone' (paid/withdrawn at the bank). */
+ *  previously-open bill that is no longer returned as 'gone' (paid/withdrawn at the bank).
+ *  A COMPLETELY EMPTY fetch never marks anything gone — RB's evening processing window returns
+ *  an empty list (seen live 2026-07-10 ~19:30) and must not wipe the local state. */
 export async function upsertBankBills(bills: BankBill[]): Promise<UpsertResult> {
+  if (bills.length === 0) return { fetched: 0, open: 0, gone: 0 };
   const keys: string[] = [];
   for (const b of bills) {
     keys.push(b.billKey);
@@ -156,11 +174,9 @@ export async function upsertBankBills(bills: BankBill[]): Promise<UpsertResult> 
     );
   }
   // Anything still 'open' but not returned this round has left the bank's list → mark 'gone'.
-  const gone = keys.length
-    ? await query<{ id: string }>(
-        `update acc.bank_bills set status='gone', last_seen_at=now()
-           where status='open' and bill_key <> all($1::text[]) returning id`, [keys])
-    : await query<{ id: string }>(`update acc.bank_bills set status='gone' where status='open' returning id`);
+  const gone = await query<{ id: string }>(
+    `update acc.bank_bills set status='gone', last_seen_at=now()
+       where status='open' and bill_key <> all($1::text[]) returning id`, [keys]);
   return { fetched: bills.length, open: keys.length, gone: gone.length };
 }
 
@@ -169,16 +185,19 @@ export interface OpenBankBill {
   description: string | null; identifier: string | null; amount_due: number; currency: string;
   claimant_id: string | null; claimant_name: string | null; claim_type: string | null; bill_type: string | null;
   is_debited: boolean; status: string; supplier_id: string | null; days_until_due: number | null;
+  days_until_final: number | null;   // eindagi drives urgency/vanskil (the bank world runs on eindagi)
 }
 
-/** Open bank bills we owe, earliest due first. */
+/** Open bank bills we owe, earliest eindagi first. */
 export function listOpenBankBills() {
   return query<OpenBankBill>(
     `select id, bill_key, number, due_date::text as due_date, final_due_date::text as final_due_date,
             description, identifier, amount_due::float8 as amount_due, currency, claimant_id, claimant_name,
             claim_type, bill_type, is_debited, status, supplier_id,
-            case when due_date is null then null else (due_date - current_date) end as days_until_due
+            case when due_date is null then null else (due_date - current_date) end as days_until_due,
+            case when coalesce(final_due_date, due_date) is null then null
+                 else (coalesce(final_due_date, due_date) - current_date) end as days_until_final
        from acc.bank_bills
       where status = 'open'
-      order by due_date asc nulls last, amount_due desc`);
+      order by coalesce(final_due_date, due_date) asc nulls last, amount_due desc`);
 }

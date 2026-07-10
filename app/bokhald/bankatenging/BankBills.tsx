@@ -1,18 +1,21 @@
 "use client";
 import { useState } from "react";
 
-// Ógreiddar kröfur Á OKKUR (Hlíðarkaup sem greiðandi) — sóttar úr Arion/RB B2B (GetBills) um Bridge.
-// Aðgreint frá "Payables" (okkar eigin bókuðu reikningar); þetta er það sem bankinn sýnir ógreitt.
-// „Borga" notar B2B DoPayment (Claim) — RAUNVERULEG greiðsla — og bókar Dr lánadrottinn / Kr banki.
+// Ógreiddar kröfur Á OKKUR (Hlíðarkaup sem greiðandi) — sóttar úr Arion/RB B2B um Bridge:
+// GetBills (ógreitt) + GetBillsInDirectDebit (greitt sjálfvirkt), eins og bankaappið sýnir.
+// EINDAGI ræður áríðni og vanskilum — gjalddagi er upplýsandi (krafa milli gjalddaga og eindaga
+// er EKKI í vanskilum). „Borga" notar B2B DoPayment (Claim) — RAUNVERULEG greiðsla.
 interface Bill {
   id: string; number: string | null; due_date: string | null; final_due_date: string | null;
   description: string | null; identifier: string | null; amount_due: number; currency: string;
   claimant_id: string | null; claimant_name: string | null; claim_type: string | null;
   bill_type: string | null; is_debited: boolean; days_until_due: number | null;
+  days_until_final: number | null;
 }
 interface BankAccount { account_number: string; name: string }
 
 const kr = (n: number) => Math.round(n).toLocaleString("is-IS");
+const dags = (d: string | null) => (d ? d.split("-").reverse().join(".") : "—");
 
 export default function BankBills({ bills: initial, configured, payReady, bankAccounts, defaultBank }: {
   bills: Bill[]; configured: boolean; payReady: boolean; bankAccounts: BankAccount[]; defaultBank?: string;
@@ -23,7 +26,10 @@ export default function BankBills({ bills: initial, configured, payReady, bankAc
   const [msg, setMsg] = useState<string | null>(null);
   const [bankAccount, setBankAccount] = useState<string>(defaultBank || bankAccounts[0]?.account_number || "");
 
-  const total = bills.reduce((a, b) => a + (Number(b.amount_due) || 0), 0);
+  const unpaid = bills.filter((b) => !b.is_debited);
+  const autoPay = bills.filter((b) => b.is_debited);
+  const totalUnpaid = unpaid.reduce((a, b) => a + (Number(b.amount_due) || 0), 0);
+  const totalAuto = autoPay.reduce((a, b) => a + (Number(b.amount_due) || 0), 0);
 
   async function fetchFromBank() {
     setBusy(true); setMsg(null);
@@ -67,6 +73,56 @@ export default function BankBills({ bills: initial, configured, payReady, bankAc
     }
   }
 
+  function BillTable({ rows, auto }: { rows: Bill[]; auto: boolean }) {
+    return (
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+            <th className="py-2 font-medium">Kröfuhafi</th>
+            <th className="py-2 font-medium">Skýring</th>
+            <th className="py-2 font-medium">Gjalddagi</th>
+            <th className="py-2 font-medium">{auto ? "Greiðist" : "Eindagi"}</th>
+            <th className="py-2 font-medium text-right">Upphæð</th>
+            <th className="py-2 font-medium"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((b) => {
+            // Vanskil miðast við EINDAGA (final_due_date), ekki gjalddaga — eins og bankinn.
+            const overdue = !auto && b.days_until_final != null && b.days_until_final < 0;
+            const soon = !auto && !overdue && b.days_until_final != null && b.days_until_final <= 3;
+            return (
+              <tr key={b.id} className="border-b border-gray-50">
+                <td className="py-2">{b.claimant_name || b.claimant_id || "—"}</td>
+                <td className="py-2 text-gray-600">{b.description || b.identifier || b.number || "—"}</td>
+                <td className="py-2 tabular-nums text-gray-500">{dags(b.due_date)}</td>
+                <td className={`py-2 tabular-nums ${overdue ? "text-red-700 font-semibold" : soon ? "text-amber-700 font-semibold" : ""}`}>
+                  {dags(b.final_due_date || b.due_date)}
+                  {overdue && <span className="ml-1 text-[10px]">í vanskilum</span>}
+                  {soon && b.days_until_final != null && <span className="ml-1 text-[10px]">eftir {b.days_until_final} {b.days_until_final === 1 ? "dag" : "daga"}</span>}
+                </td>
+                <td className="py-2 text-right tabular-nums font-semibold">{kr(b.amount_due)} kr.</td>
+                <td className="py-2 text-right">
+                  {auto ? (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">sjálfvirkt</span>
+                  ) : payReady ? (
+                    <button
+                      onClick={() => pay(b)}
+                      disabled={payingId !== null || !bankAccount}
+                      className="px-3 py-1 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+                    >
+                      {payingId === b.id ? "Greiði…" : "Borga"}
+                    </button>
+                  ) : null}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    );
+  }
+
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-5">
       <div className="flex items-center justify-between mb-1">
@@ -79,14 +135,20 @@ export default function BankBills({ bills: initial, configured, payReady, bankAc
         Ógreiddar kröfur og greiðsluseðlar sem aðrir hafa stofnað á Hlíðarkaup í bankanum (við sem greiðandi) — sótt beint úr Arion/RB.
       </p>
 
-      <div className="grid grid-cols-2 gap-3 mb-4 max-w-md">
+      <div className="grid grid-cols-3 gap-3 mb-4 max-w-lg">
         <div className="rounded-lg bg-gray-50 p-3">
-          <p className="text-xs text-gray-400">Ógreiddar kröfur</p>
-          <p className="text-lg font-bold tabular-nums">{bills.length}</p>
+          <p className="text-xs text-gray-400">Ógreitt</p>
+          <p className="text-lg font-bold tabular-nums">{kr(totalUnpaid)} kr.</p>
+          <p className="text-[11px] text-gray-400">{unpaid.length} kröfur</p>
         </div>
         <div className="rounded-lg bg-gray-50 p-3">
-          <p className="text-xs text-gray-400">Samtals til greiðslu</p>
-          <p className="text-lg font-bold tabular-nums">{kr(total)} kr.</p>
+          <p className="text-xs text-gray-400">Greitt sjálfvirkt</p>
+          <p className="text-lg font-bold tabular-nums">{kr(totalAuto)} kr.</p>
+          <p className="text-[11px] text-gray-400">{autoPay.length} kröfur</p>
+        </div>
+        <div className="rounded-lg bg-gray-50 p-3">
+          <p className="text-xs text-gray-400">Samtals</p>
+          <p className="text-lg font-bold tabular-nums">{kr(totalUnpaid + totalAuto)} kr.</p>
         </div>
       </div>
 
@@ -98,7 +160,7 @@ export default function BankBills({ bills: initial, configured, payReady, bankAc
         >
           {busy ? "Sæki…" : "Sækja kröfur frá banka"}
         </button>
-        {payReady && bills.length > 0 && (
+        {payReady && unpaid.length > 0 && (
           <label className="text-xs text-gray-500 flex items-center gap-2">
             Bóka greiðslur á:
             <select value={bankAccount} onChange={(e) => setBankAccount(e.target.value)}
@@ -120,53 +182,26 @@ export default function BankBills({ bills: initial, configured, payReady, bankAc
         </div>
       )}
 
-      {bills.length > 0 && (
+      {unpaid.length > 0 && (
         <div className="overflow-x-auto mt-2">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
-                <th className="py-2 font-medium">Kröfuhafi</th>
-                <th className="py-2 font-medium">Skýring</th>
-                <th className="py-2 font-medium">Gjalddagi</th>
-                <th className="py-2 font-medium text-right">Upphæð</th>
-                <th className="py-2 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {bills.map((b) => {
-                const overdue = b.days_until_due != null && b.days_until_due < 0;
-                return (
-                  <tr key={b.id} className="border-b border-gray-50">
-                    <td className="py-2">{b.claimant_name || b.claimant_id || "—"}</td>
-                    <td className="py-2 text-gray-600">{b.description || b.identifier || b.number || "—"}</td>
-                    <td className={`py-2 tabular-nums ${overdue ? "text-red-700 font-semibold" : ""}`}>
-                      {b.due_date || "—"}{overdue && <span className="ml-1 text-[10px]">í vanskilum</span>}
-                    </td>
-                    <td className="py-2 text-right tabular-nums font-semibold">{kr(b.amount_due)} kr.</td>
-                    <td className="py-2 text-right">
-                      <span className="inline-flex items-center gap-2">
-                        {b.is_debited && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">beingreiðsla</span>}
-                        {payReady && !b.is_debited && (
-                          <button
-                            onClick={() => pay(b)}
-                            disabled={payingId !== null || !bankAccount}
-                            className="px-3 py-1 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40"
-                          >
-                            {payingId === b.id ? "Greiði…" : "Borga"}
-                          </button>
-                        )}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <p className="mt-2 text-[11px] text-gray-400">
-            „Borga" greiðir kröfuna að fullu úr útgreiðslureikningnum (kostnaður getur bæst við) og bókar
-            Dr lánadrottinn / Kr banki. Kröfur í beingreiðslu greiðast sjálfkrafa.
-          </p>
+          <p className="text-xs font-semibold text-gray-500 mb-1">Ógreitt</p>
+          <BillTable rows={unpaid} auto={false} />
         </div>
+      )}
+
+      {autoPay.length > 0 && (
+        <div className="overflow-x-auto mt-4">
+          <p className="text-xs font-semibold text-gray-500 mb-1">Greitt sjálfvirkt (beingreiðsla)</p>
+          <BillTable rows={autoPay} auto={true} />
+        </div>
+      )}
+
+      {(unpaid.length > 0 || autoPay.length > 0) && (
+        <p className="mt-3 text-[11px] text-gray-400">
+          Vanskil miðast við <b>eindaga</b> (krafa milli gjalddaga og eindaga er ekki í vanskilum).
+          „Borga" greiðir kröfuna að fullu úr útgreiðslureikningnum (kostnaður getur bæst við) og bókar
+          Dr lánadrottinn / Kr banki. Kröfur í beingreiðslu greiðast sjálfkrafa á eindaga.
+        </p>
       )}
     </div>
   );
