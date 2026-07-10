@@ -17,5 +17,5 @@ export async function POST(req: NextRequest) {
   const messages = Array.isArray(body.messages) ? body.messages : [];
   const res = await chat(messages);
   if (!res.ok) return NextResponse.json({ ok: false, message: res.error }, { status: 400 });
-  return NextResponse.json({ ok: true, reply: res.reply });
+  return NextResponse.json({ ok: true, reply: res.reply, navigate: res.navigate ?? null });
 }

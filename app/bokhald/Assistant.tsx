@@ -1,10 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
-// Fljótandi hjálpari (Claude) neðst í hægra horni — litlar spurningar um reksturinn.
-interface Msg { role: "user" | "assistant"; content: string }
+// Fljótandi hjálpari (Claude) neðst í hægra horni — svarar spurningum, flettir upp gögnum
+// (vörur, sala, fjármál, áminningar) og OPNAR síður ("farðu með mig í dagatalið").
+interface Msg { role: "user" | "assistant"; content: string; nav?: string }
 
 export default function Assistant() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -29,7 +32,8 @@ export default function Assistant() {
     try {
       const r = await fetch("/api/assistant", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: next }) });
       const j = await r.json();
-      setMsgs((p) => [...p, { role: "assistant", content: j.ok ? j.reply : `⚠️ ${j.message || "Villa"}` }]);
+      setMsgs((p) => [...p, { role: "assistant", content: j.ok ? j.reply : `⚠️ ${j.message || "Villa"}`, nav: j.navigate || undefined }]);
+      if (j.ok && j.navigate) router.push(j.navigate);
     } catch {
       setMsgs((p) => [...p, { role: "assistant", content: "⚠️ Villa við tengingu." }]);
     } finally { setBusy(false); }
@@ -61,7 +65,7 @@ export default function Assistant() {
               <div className="text-sm text-gray-500">
                 <p className="mb-2">Spurðu mig um t.d.:</p>
                 <div className="space-y-1.5">
-                  {["Hvað þarf ég að muna í dag?", "Hvenær er næsti VSK-skiladagur?", "Hvernig bóka ég innkaupareikning?"].map((s) => (
+                  {["Hvað þarf ég að muna í dag?", "Hvað kostar MS Ostakaka?", "Hvað seldum við í dag?", "Farðu með mig í kælaaflesturinn"].map((s) => (
                     <button key={s} onClick={() => { setInput(s); inputRef.current?.focus(); }}
                       className="block w-full text-left px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:border-[#2C687B] text-xs">{s}</button>
                   ))}
@@ -69,10 +73,16 @@ export default function Assistant() {
               </div>
             )}
             {msgs.map((m, i) => (
-              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div key={i} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
                 <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap ${m.role === "user" ? "bg-[#2C687B] text-white" : "bg-white border border-gray-200 text-gray-800"}`}>
                   {m.content}
                 </div>
+                {m.nav && (
+                  <button onClick={() => router.push(m.nav!)}
+                    className="mt-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100">
+                    📍 Opnaði {m.nav.split("/").pop()} — smella til að fara aftur
+                  </button>
+                )}
               </div>
             ))}
             {busy && <div className="flex justify-start"><div className="rounded-2xl px-3.5 py-2 bg-white border border-gray-200 text-gray-400 text-sm">…</div></div>}
