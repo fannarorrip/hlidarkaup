@@ -45,6 +45,24 @@ Uppsetningin sem VIRKAR (endurtaka á kassatölvunni fyrir framleiðslu):
 - Auðkenning = venjulegt `UsernameToken` (netbanka B2B-notandinn) í `wsse:Security` haus.
 - Villa 1000 kom ALDREI — skilríkið var þegar virkjað B2B-megin hjá Arion.
 
+### ⚠️ Yfirlit (GetAccountStatement) — strandar á GÖMLU brúnni, ekki bankanum
+Wire-log (2026-07-10) sannaði: fyrirspurnin fer út (undirrituð), **bankinn SVARAR með alvöru
+GetAccountStatementResponse**, en brúin (útgáfa 1.0.3.0 frá 2017) hafnar svarinu
+("Body...was not encrypted") — 20131015-þjónusturnar undirrita svörin en dulkóða þau EKKI, og
+innri pípa brúarinnar krefst dulkóðunar (framhjá öllum config-leiðum: endpoint-behavior,
+contract ProtectionLevel og eigin binding-element voru öll hunsuð — brúin smíðar rásina sjálf).
+**Lausnir í forgangsröð:**
+1. **Biðja Arion um NÝJUSTU B2B-brúna** (handbókin: Fyrirtækjaþjónusta sendir pakkann; opinbera
+   zip-skráin er frá 2017 og nýrri útgáfa styður væntanlega 20131015-svörin). ⇒ mánudagslistinn.
+2. Plan B: eigin lítill .NET-proxy með TÝPUÐUM samningi merktum `ProtectionLevel.Sign`
+   (bankinn samþykkir sign-only fyrirspurnir — sannað á vír) með bindingu Arion úr
+   `SampleClients-3.4.0.0.zip` (`WcfSecurityHelper.GetSchema20131015MutualCertificateBinding`).
+3. Greiðslur (DoPayment, sama 20131015-fjölskylda) stranda á því sama — sama lausn gildir.
+
+Öryggisuppskriftin fyrir 20131015 er annars LEYST: asymmetric + thumbprint-tilvísanir +
+engir derived keys + SignBeforeEncrypt + WSS11/Trust13/SP12. `HK.ProtectionLevel.dll`
+(þýtt úr sample-kóða Arion) situr áfram í bin/ + config — skaðlaust.
+
 > ⚠️ **AV-varnaður:** ekki „reflecta" yfir DLL-skrár Bridge með PowerShell — það vakti Windows Defender
 > (ML-falskt jákvætt á *skriftuna*, ekki bankaskrárnar). Keyrið Bridge sem venjulega þjónustu; lesið
 > WSDL/docs frekar en að skoða DLL-a með reflection.
