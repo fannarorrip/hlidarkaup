@@ -5,6 +5,7 @@ import { getClaims } from "@/lib/claims";
 import { listOpenPayables } from "@/lib/payables";
 import { listOpenBankBills, b2bStatus } from "@/lib/arion-b2b";
 import { paymentsStatus } from "@/lib/arion-b2b-payments";
+import { accountsStatus } from "@/lib/arion-b2b-accounts";
 import { getCollectionProfiles, getCollectionSettings } from "@/lib/collection";
 import { getBankSettings, getPostableAccounts } from "@/lib/bank-settings";
 import { claimsEnabled } from "@/lib/claims";
@@ -14,6 +15,7 @@ import ArionPsd2 from "./ArionPsd2";
 import ArionStatement from "./ArionStatement";
 import Payables from "./Payables";
 import BankBills from "./BankBills";
+import B2bStatement from "./B2bStatement";
 import CollectionProfiles from "./CollectionProfiles";
 import ClaimsActions from "./ClaimsActions";
 import BankSettings from "./BankSettings";
@@ -45,6 +47,8 @@ export default async function BankatengingPage() {
     getPostableAccounts().catch(() => []),
   ]);
   const b2b = b2bStatus();
+  const b2bAccounts = accountsStatus();
+  const b2bDebitAccount = (process.env.ARION_B2B_DEBIT_ACCOUNT || "").replace(/\D/g, "");
 
   const openClaims = claims.filter((c) => c.status !== "paid" && c.status !== "cancelled");
   const queuedClaims = claims.filter((c) => c.status === "queued").length;
@@ -101,6 +105,7 @@ export default async function BankatengingPage() {
   );
 
   // ── Bankareikningar ──────────────────────────────────────────────────────────
+  // Production runs on the B2B channel (PSD2 is sandbox-only — regulated AISP/PISP, never us).
   const bankareikningar = (
     <div className="grid md:grid-cols-2 gap-5 items-start">
       <div className="bg-white border border-gray-200 rounded-xl p-5">
@@ -120,9 +125,28 @@ export default async function BankatengingPage() {
             </tbody>
           </table>
         )}
-        <p className="mt-3 text-[11px] text-gray-400">Til að bæta við reikningi: stofnaðu bókhaldslykil í kaflanum Bókhaldslyklar, eða sæktu IBAN beint úr Arion með PSD2 hér til hliðar.</p>
+        <p className="mt-3 text-[11px] text-gray-400">Til að bæta við reikningi: stofnaðu bókhaldslykil í kaflanum Bókhaldslyklar.</p>
       </div>
-      <ArionPsd2 sandbox={st.sandbox} serverReady={st.readyPsd2} />
+      {st.sandbox ? (
+        <ArionPsd2 sandbox={st.sandbox} serverReady={st.readyPsd2} />
+      ) : (
+        <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-1">
+            <p className="font-semibold text-sm">Banka­tenging reikninga (B2B)</p>
+            <span className={`text-[11px] px-2 py-0.5 rounded-full ${b2bAccounts.configured ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"}`}>
+              {b2bAccounts.configured ? "B2B tengt" : "Bridge óvirk"}
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 leading-relaxed">
+            Hreyfingar bankareikninga eru sóttar um <b>Arion/RB B2B</b> (sama rás og kröfur og greiðslur) —
+            sjá flipann <b>Bankayfirlit</b>. Reikningsnúmerið er slegið inn þar (12 stafir: útibú + höfuðbók + reikningur).
+          </p>
+          <p className="mt-3 text-[11px] text-gray-400">
+            PSD2 er eingöngu fyrir eftirlitsskylda greiðsluþjónustuaðila og fer aldrei í framleiðslu hjá okkur
+            (sjá <code>deploy/ARION_ONBOARDING.md</code>). B2B Bridge uppsetning: <code>deploy/ARION_B2B_BRIDGE.md</code>.
+          </p>
+        </div>
+      )}
     </div>
   );
 
@@ -158,10 +182,17 @@ export default async function BankatengingPage() {
   );
 
   // ── Bankayfirlit ─────────────────────────────────────────────────────────────
+  // Production = B2B GetAccountStatement; the PSD2 component remains for sandbox testing only.
   const bankayfirlit = (
     <div className="max-w-4xl space-y-3">
-      <ArionStatement bankAccounts={bankAccounts} defaultBank={settings.default_bank_ledger ?? undefined} contraIn={settings.statement_contra_in ?? undefined} contraOut={settings.statement_contra_out ?? undefined} sandbox={st.sandbox} serverReady={st.readyPsd2} />
-      <p className="text-xs text-gray-500">Handvirk bankaafstemming (án PSD2) er einnig til: <Link href="/bokhald/afstemming/banki" className="text-red-700 hover:underline">Afstemming → Banki</Link>.</p>
+      {st.sandbox ? (
+        <ArionStatement bankAccounts={bankAccounts} defaultBank={settings.default_bank_ledger ?? undefined} contraIn={settings.statement_contra_in ?? undefined} contraOut={settings.statement_contra_out ?? undefined} sandbox={st.sandbox} serverReady={st.readyPsd2} />
+      ) : (
+        <B2bStatement bankAccounts={bankAccounts} defaultBank={settings.default_bank_ledger ?? undefined}
+          contraIn={settings.statement_contra_in ?? undefined} contraOut={settings.statement_contra_out ?? undefined}
+          configured={b2bAccounts.configured} defaultAccount={b2bDebitAccount || undefined} />
+      )}
+      <p className="text-xs text-gray-500">Handvirk bankaafstemming er einnig til: <Link href="/bokhald/afstemming/banki" className="text-red-700 hover:underline">Afstemming → Banki</Link>.</p>
     </div>
   );
 
