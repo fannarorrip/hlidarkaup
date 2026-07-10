@@ -49,6 +49,8 @@ const SECTIONS: { title: string; links: LinkItem[] }[] = [
       { href: "/bokhald/solukerfi/innkaupapantanir", label: "Innkaupapantanir" },
       { href: "/bokhald/solukerfi/innkaup/mottaka", label: "Móttaka" },
       { href: "/bokhald/solukerfi/skil-til-birgja", label: "Skil til birgja" },
+      { href: "/bokhald/solukerfi/afskriftir", label: "Afskriftir" },
+      { href: "/bokhald/solukerfi/kaelar", label: "Kælaaflestur" },
       { href: "/bokhald/solukerfi/birgdaskyrsla", label: "Birgðaskýrsla" },
     ],
   },
