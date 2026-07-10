@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { listGoodsReceipts, type GoodsReceiptRow } from "@/lib/accounting-queries";
+import { listPendingSuggestions } from "@/lib/price-suggestions";
 import { dags, kr } from "@/lib/format";
 import MottakaUpload from "./MottakaUpload";
+import PriceSuggestions from "./PriceSuggestions";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +12,10 @@ const STATUS_CLASS: Record<string, string> = { draft: "bg-amber-100 text-amber-8
 const SOURCE: Record<string, string> = { peppol: "inExchange (XML)", pdf: "PDF", manual: "Handvirkt" };
 
 export default async function MottakaPage() {
-  const receipts = await listGoodsReceipts();
+  const [receipts, suggestions] = await Promise.all([
+    listGoodsReceipts(),
+    listPendingSuggestions().catch(() => []),
+  ]);
   return (
     <div>
       <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
@@ -20,6 +25,8 @@ export default async function MottakaPage() {
         </div>
         <MottakaUpload />
       </div>
+
+      <PriceSuggestions suggestions={suggestions} />
 
       {receipts.length === 0 ? (
         <p className="text-sm text-gray-400 border border-dashed border-gray-200 rounded-lg px-4 py-10 text-center">Engin móttaka skráð. Hlaðaðu inn reikningi (inExchange XML eða PDF).</p>

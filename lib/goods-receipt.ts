@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { findSupplierByKennitala } from "@/lib/accounting-queries";
 import { findBookedInvoice, recordSupplierInvoice, DuplicateInvoiceError, dedupKey } from "@/lib/invoice-dedup";
 import { recordPayable } from "@/lib/payables";
+import { recordCostChanges } from "@/lib/price-suggestions";
 import type { ParsedInvoice, ParsedLine } from "@/lib/peppol";
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -102,11 +103,18 @@ export async function confirmReceipt(receiptId: string): Promise<{ voucherId: st
          from acc.goods_receipt_lines where receipt_id = $1 order by line_no`, [receiptId])).rows;
     if (!lines.length) throw new ReceiptError("Engar línur í móttöku");
 
-    // 1) Stock movements for matched lines (by RECEIVED qty)
+    // 1) Stock movements for matched lines (by RECEIVED qty) — capturing the previous cost
+    //    so price suggestions can react to cost changes after commit.
+    const costChanges: { product_number: string; old_cost: number | null; new_cost: number }[] = [];
     for (const l of lines) {
       const qty = l.received_qty == null ? 0 : Number(l.received_qty);
       if (!l.matched_product_number || qty === 0) continue;
       const cost = l.unit_price == null ? null : Number(l.unit_price);
+      if (cost != null && cost > 0) {
+        const prev = (await client.query<{ cost_price: string | null }>(
+          `select cost_price::text from shop.products where product_number = $1`, [l.matched_product_number])).rows[0];
+        costChanges.push({ product_number: l.matched_product_number, old_cost: prev?.cost_price != null ? Number(prev.cost_price) : null, new_cost: cost });
+      }
       await client.query(`update shop.products set stock_quantity = stock_quantity + $1, cost_price = coalesce($2, cost_price) where product_number = $3`,
         [qty, cost, l.matched_product_number]);
       await client.query(`insert into shop.stock_movements (product_number, qty_delta, type, cost_basis, ref_type, ref_id, created_by) values ($1,$2,'receipt',$3,'receipt',$4,'bokhald')`,
@@ -156,6 +164,9 @@ export async function confirmReceipt(receiptId: string): Promise<{ voucherId: st
 
     await client.query(`update acc.goods_receipts set status='booked', voucher_id=$1, total_gross=$2 where id=$3`, [v.id, totalGross, receiptId]);
     await client.query("commit");
+    // Verðbreytingatillögur: react to changed costs AFTER the booking is safely committed
+    // (best-effort — a suggestion failure must never affect the receipt).
+    await recordCostChanges(costChanges, { receiptId, supplierName: rec.supplier_name });
     return { voucherId: v.id, voucherNumber: String(v.voucher_number) };
   } catch (e) {
     await client.query("rollback");
