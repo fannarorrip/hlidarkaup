@@ -3,6 +3,8 @@ import { arionStatus } from "@/lib/arion";
 import { getBankAccounts } from "@/lib/accounting-queries";
 import { getClaims } from "@/lib/claims";
 import { listOpenPayables } from "@/lib/payables";
+import { listOpenBankBills, b2bStatus } from "@/lib/arion-b2b";
+import { paymentsStatus } from "@/lib/arion-b2b-payments";
 import { getCollectionProfiles, getCollectionSettings } from "@/lib/collection";
 import { getBankSettings, getPostableAccounts } from "@/lib/bank-settings";
 import { claimsEnabled } from "@/lib/claims";
@@ -11,6 +13,7 @@ import ArionCards from "./ArionCards";
 import ArionPsd2 from "./ArionPsd2";
 import ArionStatement from "./ArionStatement";
 import Payables from "./Payables";
+import BankBills from "./BankBills";
 import CollectionProfiles from "./CollectionProfiles";
 import ClaimsActions from "./ClaimsActions";
 import BankSettings from "./BankSettings";
@@ -31,15 +34,17 @@ function Row({ label, ok, hint }: { label: string; ok: boolean; hint?: string })
 
 export default async function BankatengingPage() {
   const st = arionStatus();
-  const [bankAccounts, claims, payables, collProfiles, collSettings, settings, postableAccounts] = await Promise.all([
+  const [bankAccounts, claims, payables, bankBills, collProfiles, collSettings, settings, postableAccounts] = await Promise.all([
     getBankAccounts().catch(() => []),
     getClaims().catch(() => []),
     listOpenPayables().catch(() => []),
+    listOpenBankBills().catch(() => []),
     getCollectionProfiles().catch(() => []),
     getCollectionSettings().catch(() => ({ kennitala_krofuhafa: null, agreement_signed: false, agreement_note: null })),
     getBankSettings().catch(() => ({ card_liability_account: "9310", card_expense_account: null, default_bank_ledger: null, statement_contra_in: null, statement_contra_out: null, auto_sync: false })),
     getPostableAccounts().catch(() => []),
   ]);
+  const b2b = b2bStatus();
 
   const openClaims = claims.filter((c) => c.status !== "paid" && c.status !== "cancelled");
   const queuedClaims = claims.filter((c) => c.status === "queued").length;
@@ -162,7 +167,9 @@ export default async function BankatengingPage() {
 
   // ── Ógreiddir reikningar ─────────────────────────────────────────────────────
   const ogreiddir = (
-    <div className="max-w-4xl space-y-3">
+    <div className="max-w-4xl space-y-4">
+      <BankBills bills={bankBills} configured={b2b.configured} payReady={paymentsStatus().configured}
+        bankAccounts={bankAccounts} defaultBank={settings.default_bank_ledger ?? undefined} />
       <Payables payables={payables} bankAccounts={bankAccounts} defaultBank={settings.default_bank_ledger ?? undefined} sandbox={st.sandbox} psd2Ready={st.readyPsd2} />
       <p className="text-xs text-gray-500">Heildarstaða lánardrottna per birgja: <Link href="/bokhald/afstemming/lanadrottnar" className="text-red-700 hover:underline">Afstemming → Lánardrottnar</Link>.</p>
     </div>
@@ -187,7 +194,7 @@ export default async function BankatengingPage() {
     { key: "innheimtukrofur", label: "Innheimtukröfur", icon: "📨", node: innheimtukrofur, badge: openClaims.length },
     { key: "bankayfirlit", label: "Bankayfirlit", icon: "📑", node: bankayfirlit },
     { key: "kreditkort", label: "Kreditkort", icon: "💳", node: kreditkort },
-    { key: "ogreiddir", label: "Ógreiddir reikningar", icon: "💸", node: ogreiddir, badge: payables.length },
+    { key: "ogreiddir", label: "Ógreiddir reikningar", icon: "💸", node: ogreiddir, badge: payables.length + bankBills.length },
     { key: "samstillingar", label: "Samstillingar", icon: "⚙️", node: samstillingar },
   ];
 

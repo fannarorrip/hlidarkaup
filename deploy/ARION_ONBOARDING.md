@@ -74,6 +74,17 @@ Sandkassi: `ARION_SANDBOX=true` + „Generate Token“ úr gáttinni (`ARION_ACC
   Business API (staðfest í authentication/production-skjöluninni) og B2B-rásin (SOAP ws.b2b.is,
   „þarf engan sérstakan aðgang") fyrir hreyfingayfirlit + millifærslur — B2B er á leið inn í
   Business API fjölskylduna skv. skjöluninni.
-- TODO: svar frá Arion um hvort yfirlit/millifærslur eigi að fara um B2B SOAP eða væntanlegt
-  Accounts Business API → þá er PSD2-yfirlitstengingin (ArionPsd2/consents) endursmíðuð á þá rás.
+- ~~TODO: svar frá Arion um hvort yfirlit/millifærslur eigi að fara um B2B SOAP eða væntanlegt
+  Accounts Business API~~ → **SVARAÐ (Arion, 2026-07-10): B2B SOAP er leiðin.**
   PSD2-kóðinn er áfram nothæfur í sandkassa til prófana en fer aldrei í framleiðslu.
+
+## Svar frá Arion (2026-07-10) — yfirlit + greiðslur = B2B SOAP
+
+„Annars væru þetta þjónusturnar sem ykkur vantar:"
+- **Hreyfingaryfirlit** (SOAP): https://ws.b2b.is/Services/Docs/UserManual-Accounts-Schema-2013.pdf
+- **Útgreiðslur/millifærslur** (SOAP): https://arionbanki.gitbook.io/arion-banki/b2b-2013-schema/b2b-services/b2b-payment-service
+
+Báðar fara um **sömu B2B-rás og BillService** (ws.b2b.is, WCF SymmetricBinding) → sama **B2B Bridge**
+á Windows-vélinni (kassatölvunni) þjónar öllum þremur. Sjá `deploy/ARION_B2B_BRIDGE.md`.
+Fullur hringur þegar Bridge er komin: **sjá kröfur á okkur (BillService) → borga (PaymentService) →
+sjá á yfirliti og bóka (Accounts)** — allt án PSD2.
