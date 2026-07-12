@@ -116,7 +116,7 @@ async function main() {
   for (const r of tplRows) noteAssign(r.product_number, r.sup, r.supplier_id, r.vnr);
 
   // ── apply ──
-  let written = 0, brandTied = 0;
+  let written = 0, brandTied = 0, researchTied = 0;
   // Source 3: BRAND-IN-NAME. Many products lead with the birgi's brand — a reliable local signal.
   // (GS1 barcode-prefix inference is NOT used: the Icelandic 569 country prefix collapses distinct
   // local producers into one bucket, mis-assigning e.g. flour/nuts to a dairy.)
@@ -154,6 +154,16 @@ async function main() {
       const s = await resolveSupplier(sup);
       if (s && s.id) brandTied += (await q(`update shop.products set preferred_supplier_id=$1, updated_at=now() where product_number=$2 and preferred_supplier_id is null returning product_number`, [s.id, p.product_number])).length;
     }
+    // Source 4: high-confidence AI-researched product→birgi mappings (deploy/seed-store-data/
+    // product-supplier-research.json — from the 198-agent, web-verified research run). Names → lánadrottnar.
+    const rf = path.join(SEED, "product-supplier-research.json");
+    if (fs.existsSync(rf)) {
+      for (const r of JSON.parse(fs.readFileSync(rf, "utf8"))) {
+        if (!r || !r.pn || !r.birgi) continue;
+        const s = await resolveSupplier(r.birgi);
+        if (s && s.id) researchTied += (await q(`update shop.products set preferred_supplier_id=$1, updated_at=now() where product_number=$2 and preferred_supplier_id is null returning product_number`, [s.id, r.pn])).length;
+      }
+    }
   }
 
   // ── report ──
@@ -167,6 +177,7 @@ async function main() {
   if (conflicts.length) { console.log(`\n⚠ ${conflicts.length} products appear under 2 birgjar (first one wins):`); conflicts.slice(0, 10).forEach((c) => console.log(`  ${c.pn}: ${c.a} vs ${c.b}`)); }
   if (APPLY) {
     console.log(`\nAlso tied by brand-in-name: ${brandTied} more products.`);
+    console.log(`Also tied by AI research (product-supplier-research.json): ${researchTied} more products.`);
     console.log(`Total products now with a birgi: ${(await q(`select count(*) n from shop.products where preferred_supplier_id is not null`))[0].n}`);
   } else {
     const est = (await q(`select name from shop.products where is_active and preferred_supplier_id is null`)).filter((p) => brandSupplierOf(p.name)).length;
