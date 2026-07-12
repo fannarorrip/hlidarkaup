@@ -116,11 +116,43 @@ async function main() {
   for (const r of tplRows) noteAssign(r.product_number, r.sup, r.supplier_id, r.vnr);
 
   // ── apply ──
-  let written = 0;
+  let written = 0, brandTied = 0;
+  // Source 3: BRAND-IN-NAME. Many products lead with the birgi's brand — a reliable local signal.
+  // (GS1 barcode-prefix inference is NOT used: the Icelandic 569 country prefix collapses distinct
+  // local producers into one bucket, mis-assigning e.g. flour/nuts to a dairy.)
+  const BRAND = [
+    ["MS", "Mjólkursamsalan"], ["ARNA", "Arna ehf."], ["EMMESSÍS", "Emmessís"], ["EMMESS", "Emmessís"],
+    ["KJÖRÍS", "Kjörís"], ["TAKK", "Takk hreinlæti"], ["H-BERG", "H-Berg"], ["HBERG", "H-Berg"],
+    ["STJÖRNUGRÍS", "Stjörnugrís"], ["NÓA", "Nói Síríus"], ["NÓI", "Nói Síríus"], ["SÍRÍUS", "Nói Síríus"],
+    ["GÆÐABAKSTUR", "Gæðabakstur"], ["MYLLAN", "Myllan"], ["MYLLU", "Myllan"], ["GUNNARS", "Gunnars ehf."],
+    ["LÝSI", "Lysi"], ["EGILS", "Ölgerðin"], ["EGILL", "Ölgerðin"], ["ÞYKKVABÆJAR", "Þykkvabæjar"],
+    ["MATFUGL", "Matfugl"], ["ÍSFUGL", "Ísfugl"], ["REYKJAGARÐUR", "Reykjagarður"], ["KJARNAFÆÐI", "Kjarnafæði"],
+    ["NORÐLENSKA", "Norðlenska"], ["SÓMI", "Sómi"], ["GRÍMUR", "Grímur kokkur"], ["VOGABÆR", "Vogabær"],
+    ["GARRI", "Garri ehf."], ["SAUÐÁRKRÓKSBAKARÍ", "Sauðárkróksbakarí"], ["MONSTER", "Coca Cola"],
+    ["MÓNSTER", "Coca Cola"], ["SCHWEPPES", "Coca Cola"], ["SPRITE", "Coca Cola"], ["FANTA", "Coca Cola"],
+    ["RED BULL", "Red Bull"], ["REDBULL", "Red Bull"], ["PEPSI", "Ölgerðin"], ["OPAL", "Nói Síríus"],
+    ["TÓPAS", "Nói Síríus"], ["PRINS PÓLÓ", "Nói Síríus"], ["GÖTEBORGS", "Nói Síríus"], ["FLÓRÍDANA", "Ölgerðin"],
+    ["HÁAGEN", "Emmessís"], ["COCACOLA", "Coca Cola"], ["COKE", "Coca Cola"], ["POWERADE", "Coca Cola"],
+  ];
+  const brandSupplierOf = (name) => {
+    const up = (name || "").toUpperCase();
+    for (const [tok, sup] of BRAND)
+      if (up === tok || up.startsWith(tok + " ") || up.startsWith(tok + ".") || up.startsWith(tok + "-")
+          || up.includes(" " + tok + " ") || up.includes(" " + tok + ".") || up.endsWith(" " + tok))
+        return sup;
+    return null;
+  };
+
   if (APPLY) {
     for (const [pn, a] of assign) {
       if (!a.supId) continue;
       written += (await q(`update shop.products set preferred_supplier_id=$1, supplier_item_no=coalesce($3, supplier_item_no), updated_at=now() where product_number=$2 and preferred_supplier_id is null returning product_number`, [a.supId, pn, a.vnr])).length;
+    }
+    // Source 3: brand-in-name — tie untied products whose name leads with a known birgi's brand.
+    for (const p of await q(`select product_number, name from shop.products where is_active and preferred_supplier_id is null`)) {
+      const sup = brandSupplierOf(p.name); if (!sup) continue;
+      const s = await resolveSupplier(sup);
+      if (s && s.id) brandTied += (await q(`update shop.products set preferred_supplier_id=$1, updated_at=now() where product_number=$2 and preferred_supplier_id is null returning product_number`, [s.id, p.product_number])).length;
     }
   }
 
@@ -133,7 +165,14 @@ async function main() {
   console.log(`\nPer birgi:`);
   for (const [sup, n] of [...perSupplier.entries()].sort((a, b) => b[1] - a[1])) console.log(`  ${String(n).padStart(4)}  ${sup}`);
   if (conflicts.length) { console.log(`\n⚠ ${conflicts.length} products appear under 2 birgjar (first one wins):`); conflicts.slice(0, 10).forEach((c) => console.log(`  ${c.pn}: ${c.a} vs ${c.b}`)); }
-  console.log(APPLY ? `\nWrote preferred_supplier_id on ${written} products.` : `\nRun with --apply to write.`);
+  if (APPLY) {
+    console.log(`\nAlso tied by brand-in-name: ${brandTied} more products.`);
+    console.log(`Total products now with a birgi: ${(await q(`select count(*) n from shop.products where preferred_supplier_id is not null`))[0].n}`);
+  } else {
+    const est = (await q(`select name from shop.products where is_active and preferred_supplier_id is null`)).filter((p) => brandSupplierOf(p.name)).length;
+    console.log(`\nBrand-in-name would tie ~${est} more products (runs on --apply).`);
+  }
+  console.log(APPLY ? `\nWrote gold/template birgi on ${written} products.` : `\nRun with --apply to write.`);
   await pool.end();
 }
 main().catch((e) => { console.error("ERR", e.message); process.exit(1); });
