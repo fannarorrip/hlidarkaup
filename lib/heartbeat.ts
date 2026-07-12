@@ -161,8 +161,8 @@ export async function createPoFromTemplate(
   templateId: string,
   quantities?: Record<number, number>,
 ): Promise<{ id: string; po_number: string } | { error: string }> {
-  const t = (await query<{ supplier_name: string; name: string }>(
-    `select supplier_name, name from acc.order_templates where id = $1 and is_active`, [templateId]))[0];
+  const t = (await query<{ supplier_name: string; name: string; supplier_id: string | null }>(
+    `select supplier_name, name, supplier_id from acc.order_templates where id = $1 and is_active`, [templateId]))[0];
   if (!t) return { error: "Sniðmát fannst ekki." };
   const lines = await query<{
     line_no: number; product_number: string | null; name: string; default_qty: string | null;
@@ -188,6 +188,7 @@ export async function createPoFromTemplate(
   if (!poLines.length) return { error: "Ekkert magn slegið inn — pöntunin væri tóm." };
 
   const po = await createPurchaseOrder({
+    supplierId: t.supplier_id,
     supplierName: t.supplier_name,
     note: `Úr sniðmáti: ${t.name} (${t.supplier_name})`,
     lines: poLines,
