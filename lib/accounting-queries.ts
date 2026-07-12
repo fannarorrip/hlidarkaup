@@ -465,20 +465,32 @@ export const getBalanceSheet = () =>
 export interface ProductRow {
   product_number: string; name: string; price_gross: number; vat_rate: string;
   stock_quantity: string; is_stock_controlled: boolean; product_group: string | null; barcodes: number;
+  preferred_supplier_id: string | null; supplier_name: string | null; supplier_item_no: string | null;
 }
+const PRODUCT_ROW_COLS = `
+    p.product_number, p.name, p.price_gross, p.vat_rate, p.stock_quantity, p.is_stock_controlled, p.product_group,
+    p.preferred_supplier_id, p.supplier_item_no, sup.name as supplier_name,
+    (select count(*)::int from shop.product_barcodes b where b.product_number=p.product_number) as barcodes`;
 export const getProducts = (limit = 300) =>
   query<ProductRow>(`
-    select p.product_number, p.name, p.price_gross, p.vat_rate, p.stock_quantity, p.is_stock_controlled, p.product_group,
-           (select count(*)::int from shop.product_barcodes b where b.product_number=p.product_number) as barcodes
-    from shop.products p order by p.name limit $1`, [limit]);
+    select ${PRODUCT_ROW_COLS}
+    from shop.products p left join acc.suppliers sup on sup.id = p.preferred_supplier_id
+    order by p.name limit $1`, [limit]);
+
+// Products with no birgi yet — for the "Án birgja" filter + bulk-assign on the Vörur list.
+export const getProductsWithoutSupplier = (limit = 500) =>
+  query<ProductRow>(`
+    select ${PRODUCT_ROW_COLS}
+    from shop.products p left join acc.suppliers sup on sup.id = p.preferred_supplier_id
+    where p.is_active and p.preferred_supplier_id is null
+    order by p.name limit $1`, [limit]);
 
 // Server-side, ACCENT-INSENSITIVE product search over ALL products (name / number / barcode),
 // so "rjomi" finds "RJÓMI". Replaces the old client-side filter over a 2000-row subset.
 export const searchProducts = (q: string, limit = 500) =>
   query<ProductRow>(`
-    select p.product_number, p.name, p.price_gross, p.vat_rate, p.stock_quantity, p.is_stock_controlled, p.product_group,
-           (select count(*)::int from shop.product_barcodes b where b.product_number=p.product_number) as barcodes
-    from shop.products p
+    select ${PRODUCT_ROW_COLS}
+    from shop.products p left join acc.suppliers sup on sup.id = p.preferred_supplier_id
     where unaccent(p.name) ilike unaccent('%'||$1||'%')
        or p.product_number ilike $1||'%'
        or exists (select 1 from shop.product_barcodes b where b.product_number=p.product_number and b.barcode like $1||'%')
@@ -506,6 +518,7 @@ export interface ProductDetail {
   naeringargildi: Record<string, number | null> | null;
   netto_magn: string | null; uppruni: string | null;
   info_source: string | null; info_updated_at: string | null;
+  preferred_supplier_id: string | null; supplier_name: string | null; supplier_item_no: string | null;
 }
 export interface SaleLine {
   line_no: number; product_number: string | null; name: string;
@@ -551,11 +564,13 @@ export const getCustomer = async (id: string) =>
 
 export async function getProductDetail(productNumber: string) {
   const p = (await query<ProductDetail>(`
-    select product_number, name, description, unit_price_net, vat_key, vat_rate, price_gross,
-           stock_quantity, is_stock_controlled, product_group, unit_code, use_scale, allow_discount, is_active,
-           regla_id, synced_at::text, reorder_point, reorder_qty, image_url,
-           innihald, ofnaemisvaldar, naeringargildi, netto_magn, uppruni, info_source, info_updated_at::text
-    from shop.products where product_number = $1`, [productNumber]))[0];
+    select p.product_number, p.name, p.description, p.unit_price_net, p.vat_key, p.vat_rate, p.price_gross,
+           p.stock_quantity, p.is_stock_controlled, p.product_group, p.unit_code, p.use_scale, p.allow_discount, p.is_active,
+           p.regla_id, p.synced_at::text, p.reorder_point, p.reorder_qty, p.image_url,
+           p.innihald, p.ofnaemisvaldar, p.naeringargildi, p.netto_magn, p.uppruni, p.info_source, p.info_updated_at::text,
+           p.preferred_supplier_id, p.supplier_item_no, sup.name as supplier_name
+    from shop.products p left join acc.suppliers sup on sup.id = p.preferred_supplier_id
+    where p.product_number = $1`, [productNumber]))[0];
   if (!p) return null;
   const bc = await query<{ barcode: string }>(
     `select barcode from shop.product_barcodes where product_number = $1 order by barcode`, [productNumber]);

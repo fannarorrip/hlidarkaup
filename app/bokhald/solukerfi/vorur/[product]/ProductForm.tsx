@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import type { ProductDetail } from "@/lib/accounting-queries";
 import { kr } from "@/lib/format";
 import { kbHealth, kbScanEvents } from "@/lib/kassabru";
+import SupplierPicker from "@/app/bokhald/SupplierPicker";
 
 const inp = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-red-400";
 
@@ -57,6 +58,8 @@ export default function ProductForm({ product, barcodes: initialBarcodes, salesH
   const [stock, setStock] = useState(String(Math.floor(Number(product.stock_quantity))));
   const [reorderPoint, setReorderPoint] = useState(product.reorder_point != null ? String(Math.round(Number(product.reorder_point))) : "");
   const [reorderQty, setReorderQty] = useState(product.reorder_qty != null ? String(Math.round(Number(product.reorder_qty))) : "");
+  const [supplierId, setSupplierId] = useState<string | null>(product.preferred_supplier_id ?? null);
+  const [supplierItemNo, setSupplierItemNo] = useState(product.supplier_item_no ?? "");
   const [useScale, setUseScale] = useState(product.use_scale);
   const [allowDiscount, setAllowDiscount] = useState(product.allow_discount);
   const [isActive, setIsActive] = useState(product.is_active);
@@ -101,6 +104,7 @@ export default function ProductForm({ product, barcodes: initialBarcodes, salesH
           is_stock_controlled: stockControlled, stock_quantity: Number(stock),
           use_scale: useScale, allow_discount: allowDiscount, is_active: isActive,
           reorder_point: reorderPoint, reorder_qty: reorderQty,
+          preferred_supplier_id: supplierId, supplier_item_no: supplierItemNo,
           innihald, ofnaemisvaldar: allergens, naeringargildi: buildNutrition(),
           netto_magn: nettoMagn, uppruni, info_source: infoSource || "manual",
         }),
@@ -246,6 +250,18 @@ export default function ProductForm({ product, barcodes: initialBarcodes, salesH
             <button type="button" onClick={() => setReorderQty(String(salesHint.suggested))} className="ml-2 text-red-600 hover:underline">Nota</button>
           </p>
         )}
+        <div className="mt-4 grid md:grid-cols-2 gap-4 items-start">
+          <Field label="Birgi (lánadrottinn)">
+            <SupplierPicker
+              initialId={product.preferred_supplier_id}
+              initialName={product.supplier_name}
+              onChange={(id) => setSupplierId(id)}
+            />
+          </Field>
+          <Field label="Vörunúmer birgja">
+            <input value={supplierItemNo} onChange={(e) => setSupplierItemNo(e.target.value)} placeholder="—" className={inp} />
+          </Field>
+        </div>
         <div className="mt-3"><Check checked={stockControlled} onChange={setStockControlled} label="Birgðastýring virk (fylgjast með lager)" /></div>
       </Section>
 

@@ -31,7 +31,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ pr
        netto_magn          = $18,
        uppruni             = $19,
        info_source         = case when coalesce($15,'') <> '' or $17 is not null then coalesce($20, info_source, 'manual') else info_source end,
-       info_updated_at     = case when coalesce($15,'') <> '' or $17 is not null then now() else info_updated_at end
+       info_updated_at     = case when coalesce($15,'') <> '' or $17 is not null then now() else info_updated_at end,
+       preferred_supplier_id = case when $21 then $22::uuid else preferred_supplier_id end,
+       supplier_item_no      = case when $23 then $24 else supplier_item_no end
      where product_number = $1
      returning product_number, price_gross`,
     [
@@ -55,6 +57,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ pr
       b.netto_magn !== undefined ? String(b.netto_magn).trim() || null : null,
       b.uppruni !== undefined ? String(b.uppruni).trim() || null : null,
       b.info_source ? String(b.info_source) : null,
+      "preferred_supplier_id" in b,                                                       // $21 set birgi?
+      "preferred_supplier_id" in b ? (b.preferred_supplier_id || null) : null,            // $22 birgi id
+      "supplier_item_no" in b,                                                            // $23 set vnr?
+      "supplier_item_no" in b ? (String(b.supplier_item_no ?? "").trim() || null) : null, // $24 vörunúmer birgja
     ],
   );
   if (!rows.length) return NextResponse.json({ error: "Vara fannst ekki" }, { status: 404 });

@@ -7,16 +7,20 @@ import { useEffect, useRef, useState } from "react";
 interface Match { id: string; name: string; kennitala: string | null; supplier_number: string | null; is_generic: boolean }
 
 export default function SupplierPicker({
-  onChange, suggestName, suggestKennitala,
+  onChange, suggestName, suggestKennitala, initialId, initialName,
 }: {
   onChange: (id: string | null, name: string | null) => void;
   suggestName?: string;
   suggestKennitala?: string;
+  initialId?: string | null;    // pre-select an already-chosen supplier (edit forms)
+  initialName?: string | null;
 }) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Match[]>([]);
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState<Match | null>(null);
+  const [selected, setSelected] = useState<Match | null>(
+    initialId && initialName ? { id: initialId, name: initialName, kennitala: null, supplier_number: null, is_generic: false } : null,
+  );
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const boxRef = useRef<HTMLDivElement>(null);
@@ -29,6 +33,7 @@ export default function SupplierPicker({
 
   // Auto-match on mount from the extracted invoice (kennitala first, then exact name).
   useEffect(() => {
+    if (initialId) return; // already have a selection
     (async () => {
       const kt = (suggestKennitala || "").replace(/\D/g, "");
       const probe = kt || (suggestName || "").trim();

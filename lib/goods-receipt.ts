@@ -121,6 +121,14 @@ export async function confirmReceipt(receiptId: string): Promise<{ voucherId: st
         [l.matched_product_number, qty, cost, receiptId]);
     }
 
+    // 1b) Tie received products to this birgi when they have none yet — so pantanir group by
+    //     supplier and the reorder list can order from the right birgi automatically.
+    if (rec.supplier_id) {
+      const receivedPns = lines.filter((l: RecLine) => l.matched_product_number && Number(l.received_qty) > 0).map((l: RecLine) => l.matched_product_number);
+      if (receivedPns.length)
+        await client.query(`update shop.products set preferred_supplier_id = $1 where product_number = any($2::text[]) and preferred_supplier_id is null`, [rec.supplier_id, receivedPns]);
+    }
+
     // 2) Build the accounting voucher from INVOICED amounts, grouped by VAT rate
     const netByRate = new Map<number, number>();
     for (const l of lines) netByRate.set(Number(l.vat_rate) || 0, r2((netByRate.get(Number(l.vat_rate) || 0) ?? 0) + (Number(l.line_net) || 0)));
