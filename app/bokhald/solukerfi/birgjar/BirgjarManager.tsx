@@ -58,8 +58,8 @@ export default function BirgjarManager({ suppliers }: { suppliers: SupplierRow[]
         <div className="text-sm text-gray-600">Ógreitt samtals: <b>{kr(totalOwed)}</b></div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+        <table className="w-full text-sm min-w-[720px]">
           <thead className="bg-gray-50 text-gray-500 text-left">
             <tr><th className="px-4 py-2 font-semibold">Birgir</th><th className="px-4 py-2 font-semibold">Kennitala</th><th className="px-4 py-2 font-semibold text-center">Greiðslufrestur</th><th className="px-4 py-2 font-semibold text-right">Staða (ógreitt)</th><th className="px-4 py-2 font-semibold">Staða</th><th></th></tr>
           </thead>
@@ -83,7 +83,7 @@ export default function BirgjarManager({ suppliers }: { suppliers: SupplierRow[]
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !busy && setEditing(null)}>
           <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-4">{editing.id ? "Breyta birgi" : "Nýr birgir"}</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {field("name", "Nafn")}
               {field("kennitala", "Kennitala")}
               {field("supplier_number", "Birgisnúmer")}

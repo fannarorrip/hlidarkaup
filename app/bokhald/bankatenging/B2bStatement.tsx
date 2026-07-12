@@ -174,7 +174,8 @@ export default function B2bStatement({ bankAccounts, defaultBank, contraIn, cont
         <p className="text-sm text-gray-400">Engar hreyfingar á tímabilinu.</p>
       ) : (
         <>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
           <thead className="text-gray-400 text-left text-xs">
             <tr>
               <th className="py-1 w-8">
@@ -229,6 +230,7 @@ export default function B2bStatement({ bankAccounts, defaultBank, contraIn, cont
             })}
           </tbody>
         </table>
+        </div>
         {rows.some((r) => sel[r.id] && r.status !== "booked") && (
           <button onClick={bookSelected} disabled={bulkBooking || bookingId !== null}
             className="mt-3 px-4 py-1.5 rounded-lg bg-gray-800 text-white text-sm font-semibold hover:bg-gray-900 disabled:opacity-40">

@@ -13,8 +13,8 @@ export default async function StadaVidskiptamannaPage() {
       <h1 className="text-2xl font-bold mb-1">Staða viðskiptamanna</h1>
       <p className="text-sm text-gray-500 mb-6">Útistandandi staða (viðskiptakröfur)</p>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden max-w-3xl">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto max-w-3xl">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-gray-50 text-gray-500 text-left">
             <tr>
               <th className="px-4 py-2 font-medium">Nafn</th>

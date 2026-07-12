@@ -40,7 +40,7 @@ export default async function VoucherDetail({ params }: { params: Promise<{ id: 
         )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6 text-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 mb-6 text-sm">
         <Field label="Lýsing" value={v.description ?? "—"} />
         <Field label="Kassi" value={registerName(v.register_id) ?? "—"} />
         <Field label="Lánadrottinn" value={v.supplier_name ?? "—"} />
@@ -49,8 +49,8 @@ export default async function VoucherDetail({ params }: { params: Promise<{ id: 
         <Field label="Bókað" value={v.posted_at ? `${dags(v.posted_at)} ${v.posted_at.slice(11, 16)}` : "—"} />
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+        <table className="w-full text-sm min-w-[820px]">
           <thead className="bg-gray-50 text-gray-500 text-left">
             <tr>
               <th className="px-4 py-2 font-medium w-12">#</th>

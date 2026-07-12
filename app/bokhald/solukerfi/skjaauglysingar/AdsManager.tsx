@@ -69,7 +69,7 @@ export default function AdsManager() {
           Engar myndir enn — verðskanninn sýnir vörumerkið á meðan.
         </p>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {[...ads].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id).map((ad, i, arr) => (
             <div key={ad.id} className={`bg-white border rounded-xl overflow-hidden ${ad.is_active ? "border-gray-200" : "border-gray-200 opacity-50"}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}

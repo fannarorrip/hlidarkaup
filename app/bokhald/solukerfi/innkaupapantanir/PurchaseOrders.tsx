@@ -88,7 +88,8 @@ export default function PurchaseOrders({ orders, lowStock, suppliers }: { orders
                   <span className="font-medium text-sm">{g.name ?? "Án valins birgja"}</span>
                   <button onClick={() => openFromSupplier(g.sid, g.name)} className="text-sm px-3 py-1.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700">Búa til pöntun ({g.items.length})</button>
                 </div>
-                <table className="w-full text-xs">
+                <div className="overflow-x-auto">
+                <table className="w-full text-xs min-w-[480px]">
                   <thead className="text-gray-400 text-left">
                     <tr><th className="font-medium pb-1">Vara</th><th className="font-medium pb-1 text-right">Staða / öryggi</th><th className="font-medium pb-1 text-right">Selt ~/mán</th><th className="font-medium pb-1 text-right">Tillaga</th></tr>
                   </thead>
@@ -103,14 +104,15 @@ export default function PurchaseOrders({ orders, lowStock, suppliers }: { orders
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+        <table className="w-full text-sm min-w-[720px]">
           <thead className="bg-gray-50 text-gray-500 text-left">
             <tr><th className="px-4 py-2 font-medium">Nr.</th><th className="px-4 py-2 font-medium">Birgir</th><th className="px-4 py-2 font-medium text-center">Línur</th><th className="px-4 py-2 font-medium text-right">Áætlað</th><th className="px-4 py-2 font-medium">Staða</th><th className="px-4 py-2 font-medium text-right">Aðgerðir</th></tr>
           </thead>
@@ -160,8 +162,8 @@ export default function PurchaseOrders({ orders, lowStock, suppliers }: { orders
               )}
             </div>
 
-            <div className="border border-gray-200 rounded-lg overflow-hidden mb-3">
-              <table className="w-full text-sm">
+            <div className="border border-gray-200 rounded-lg overflow-x-auto mb-3">
+              <table className="w-full text-sm min-w-[440px]">
                 <thead className="bg-gray-50 text-gray-500 text-left"><tr><th className="px-3 py-1.5 font-medium">Vara</th><th className="px-3 py-1.5 font-medium w-20">Magn</th><th className="px-3 py-1.5 font-medium w-28">Áætl. verð</th><th></th></tr></thead>
                 <tbody>
                   {lines.length === 0 ? <tr><td colSpan={4} className="px-3 py-4 text-center text-gray-400">Engar línur — leitaðu að vöru að ofan</td></tr> : lines.map((l, i) => (

@@ -26,7 +26,7 @@ export default function EfnahagurView({ bs, asOf }: { bs: BalanceSheet; asOf: st
           <h1 className="text-2xl font-bold">Efnahagsreikningur</h1>
           <p className="text-sm text-gray-500">Eignir = Skuldir + Eigið fé · staða þann {fmtD(asOf)}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white">
             <span className="text-gray-400">Staða þann</span>
             <input type="date" value={asOf} onChange={(e) => router.push(`${pathname}?asOf=${e.target.value}`)} className="outline-none bg-transparent" />

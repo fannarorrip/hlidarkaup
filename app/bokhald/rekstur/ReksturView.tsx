@@ -41,7 +41,7 @@ export default function ReksturView({ is, from, to }: { is: IncomeStatement; fro
           <h1 className="text-2xl font-bold">Rekstrarreikningur</h1>
           <p className="text-sm text-gray-500">Tekjur og gjöld tímabilsins · {fmtD(from)} – {fmtD(to)}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white">
             <input type="date" value={from} onChange={(e) => setRange(e.target.value, to)} className="outline-none bg-transparent" />
             <span className="text-gray-400">→</span>

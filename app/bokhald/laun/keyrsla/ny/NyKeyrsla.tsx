@@ -55,8 +55,8 @@ export default function NyKeyrsla({ employees }: { employees: Emp[] }) {
         <div><label className="block text-xs font-medium text-gray-500 mb-1">Útborgunardagur</label><input type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} className={inp} /></div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+        <table className="w-full text-sm min-w-[820px]">
           <thead className="bg-gray-50 text-gray-500 text-left">
             <tr><th className="px-4 py-2 w-8"></th><th className="px-4 py-2 font-semibold">Launþegi</th><th className="px-4 py-2 font-semibold">Tegund</th><th className="px-4 py-2 font-semibold text-right">Laun/taxti</th><th className="px-3 py-2 font-semibold w-24">Tímar</th><th className="px-3 py-2 font-semibold w-28">Yfirvinna kr</th><th className="px-3 py-2 font-semibold w-24">Bónus kr</th><th className="px-3 py-2 font-semibold w-28">Frádr. kr</th></tr>
           </thead>

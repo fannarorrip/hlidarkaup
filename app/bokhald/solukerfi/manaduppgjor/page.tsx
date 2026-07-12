@@ -26,8 +26,8 @@ export default async function ManadUppgjorPage() {
       <MonthEndRunner defaultPeriod={defaultPeriod} />
 
       <h2 className="mt-8 mb-2 text-sm font-semibold text-gray-700">Gerðir mánaðarreikningar</h2>
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+        <table className="w-full text-sm min-w-[820px]">
           <thead className="bg-gray-50 text-gray-500 text-left">
             <tr>
               <th className="px-4 py-2 font-medium">Nr.</th>

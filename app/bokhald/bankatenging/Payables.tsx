@@ -125,7 +125,7 @@ export default function Payables({ payables, bankAccounts, defaultBank, sandbox 
       </div>
       <p className="text-xs text-gray-500 mb-3">Ógreiddir reikningar á reikning (9300). Merktu greitt (bókar Debet 9300 / Kredit banki) eða greiddu beint um PSD2.</p>
 
-      <div className="grid grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-400">Ógreiddir</p><p className="text-lg font-bold tabular-nums">{payables.length}</p></div>
         <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-400">Í vanskilum</p><p className="text-lg font-bold tabular-nums text-red-700">{overdue.length}</p></div>
         <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-400">Samtals</p><p className="text-lg font-bold tabular-nums">{kr(total)} kr.</p></div>
@@ -147,7 +147,8 @@ export default function Payables({ payables, bankAccounts, defaultBank, sandbox 
       {payables.length === 0 ? (
         <p className="text-sm text-gray-400">Engir ógreiddir reikningar skráðir. Nýir innkaupareikningar á reikning birtast hér — eða smelltu „Flytja inn eldri“.</p>
       ) : (
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[560px]">
           <thead className="text-gray-400 text-left text-xs">
             <tr>
               <th className="py-1 font-medium">Birgir</th>
@@ -204,6 +205,7 @@ export default function Payables({ payables, bankAccounts, defaultBank, sandbox 
             ))}
           </tbody>
         </table>
+        </div>
       )}
       <p className="mt-3 text-[11px] text-gray-400">PSD2-greiðsla notar aðgangslykil/áskriftarlykil úr Bankareikningar-flipanum. „Merkja greitt“ hentar ef þú greiðir í netbanka og vilt bara bóka færsluna.</p>
     </div>

@@ -43,7 +43,7 @@ export default function BankSettings({ settings, accounts, envStatus }: {
       <div className="bg-white border border-gray-200 rounded-xl p-5">
         <p className="font-semibold text-sm mb-1">Sjálfgefnir lyklar</p>
         <p className="text-xs text-gray-500 mb-4">Notaðir sem sjálfgefin gildi við bókun korta- og bankafærslna og greiðslu reikninga.</p>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div><label className="block text-[11px] text-gray-500 mb-0.5">Skuldalykill korta (kredit)</label>{opts(s.card_liability_account, (v) => setS({ ...s, card_liability_account: v }), false)}</div>
           <div><label className="block text-[11px] text-gray-500 mb-0.5">Sjálfgefinn gjaldalykill korta</label>{opts(s.card_expense_account, (v) => setS({ ...s, card_expense_account: v }))}</div>
           <div><label className="block text-[11px] text-gray-500 mb-0.5">Aðal bankalykill</label>{opts(s.default_bank_ledger, (v) => setS({ ...s, default_bank_ledger: v }))}</div>

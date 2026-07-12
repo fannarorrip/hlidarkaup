@@ -53,7 +53,7 @@ export default function InventoryCount({ products }: { products: Prod[] }) {
       <h1 className="text-2xl font-bold mb-1 mt-1 flex items-center gap-2">📦 Birgðaafstemming</h1>
       <p className="text-sm text-gray-500 mb-5">Sláðu inn talningu og berðu saman við skráðan lager. Vistun uppfærir lagerstöðuna.</p>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         <div className="bg-white border border-gray-200 rounded-xl p-4"><p className="text-xs text-gray-500">Vörur með lager</p><p className="text-2xl font-bold mt-1">{products.length}</p></div>
         <div className="bg-white border border-gray-200 rounded-xl p-4"><p className="text-xs text-gray-500">Talið</p><p className="text-2xl font-bold mt-1">{counted.length}</p></div>
         <div className="bg-white border border-gray-200 rounded-xl p-4"><p className="text-xs text-gray-500">Mismunur (vörur)</p><p className={`text-2xl font-bold mt-1 ${withDiff.length ? "text-amber-600" : ""}`}>{withDiff.length}</p></div>
@@ -68,7 +68,7 @@ export default function InventoryCount({ products }: { products: Prod[] }) {
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-gray-50 text-gray-500 text-left">
             <tr>
               <th className="px-4 py-2 font-medium">Vara</th>

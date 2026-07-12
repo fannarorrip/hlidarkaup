@@ -156,7 +156,8 @@ function OrderEditor({ templateId, supplierLabel, onClose, onCreated }: {
             <p className="py-6 text-center text-sm text-gray-400">Tómur listi — bættu við fyrstu vörunni að neðan. 👇</p>
           )}
           {lines && lines.length > 0 && (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[520px]">
               <thead className="text-xs text-gray-400 text-left sticky top-0 bg-white">
                 <tr>
                   <th className="py-2 font-medium">Vara</th>
@@ -198,6 +199,7 @@ function OrderEditor({ templateId, supplierLabel, onClose, onCreated }: {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 

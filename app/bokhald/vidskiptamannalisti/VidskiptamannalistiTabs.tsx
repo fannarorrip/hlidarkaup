@@ -42,8 +42,8 @@ export default function VidskiptamannalistiTabs({ customers, suppliers }: { cust
       ) : (
         <>
           <p className="text-xs text-gray-400 mb-2">Lánadrottnar — birgjar sem við skuldum ({fs.length}{q ? ` af ${suppliers.length}` : ""})</p>
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-gray-50 text-gray-500 text-left">
                 <tr>
                   <th className="px-4 py-2 font-medium">Nafn</th>

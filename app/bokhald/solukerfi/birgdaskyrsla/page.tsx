@@ -23,7 +23,7 @@ export default async function BirgdaskyrslaPage() {
         <a href="/api/birgdaskyrsla/xlsx" className="px-4 py-2 rounded-lg bg-green-700 text-white text-sm font-semibold hover:bg-green-800">📊 Sækja Excel</a>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Metric label="Birgðavirði (kostnaður)" value={kr(n(s.stock_value))} />
         <Metric label="Birgðastýrðar vörur" value={String(s.controlled_count)} />
         <Metric label="Undir öryggisbirgðum" value={String(s.low_count)} accent={s.low_count > 0 ? "text-amber-700" : ""} />
@@ -32,8 +32,8 @@ export default async function BirgdaskyrslaPage() {
 
       <div>
         <h2 className="text-sm font-semibold text-gray-700 mb-2">Vörur sem þarfnast athygli ({attention.length})</h2>
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+          <table className="w-full text-sm min-w-[720px]">
             <thead className="bg-gray-50 text-gray-500 text-left">
               <tr><th className="px-4 py-2 font-medium">Vara</th><th className="px-4 py-2 font-medium">Flokkur</th><th className="px-4 py-2 font-medium text-right">Birgðir</th><th className="px-4 py-2 font-medium text-right">Öryggisb.</th><th className="px-4 py-2 font-medium text-right">Birgðavirði</th><th className="px-4 py-2 font-medium">Staða</th></tr>
             </thead>
@@ -59,8 +59,8 @@ export default async function BirgdaskyrslaPage() {
 
       <div>
         <h2 className="text-sm font-semibold text-gray-700 mb-2">Nýlegar birgðahreyfingar</h2>
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+          <table className="w-full text-sm min-w-[560px]">
             <thead className="bg-gray-50 text-gray-500 text-left">
               <tr><th className="px-4 py-2 font-medium">Dags.</th><th className="px-4 py-2 font-medium">Vara</th><th className="px-4 py-2 font-medium">Tegund</th><th className="px-4 py-2 font-medium text-right">Magn</th></tr>
             </thead>

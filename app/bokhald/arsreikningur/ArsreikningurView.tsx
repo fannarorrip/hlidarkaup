@@ -61,8 +61,8 @@ export default function ArsreikningurView({ report }: { report: AnnualReport }) 
         {/* Rekstrarreikningur */}
         <div>
           <h2 className="text-lg font-bold mb-2">Rekstrarreikningur</h2>
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+            <table className="w-full text-sm min-w-[480px]">
               <Head />
               <tbody>
                 <SectionHead title="Rekstrartekjur" />
@@ -99,8 +99,8 @@ export default function ArsreikningurView({ report }: { report: AnnualReport }) 
         {/* Efnahagsreikningur */}
         <div>
           <h2 className="text-lg font-bold mb-2">Efnahagsreikningur <span className="text-sm font-normal text-gray-400">31.12.{year}</span></h2>
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+            <table className="w-full text-sm min-w-[480px]">
               <Head />
               <tbody>
                 <SectionHead title="Eignir" />

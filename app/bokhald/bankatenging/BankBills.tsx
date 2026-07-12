@@ -75,7 +75,7 @@ export default function BankBills({ bills: initial, configured, payReady, bankAc
 
   function BillTable({ rows, auto }: { rows: Bill[]; auto: boolean }) {
     return (
-      <table className="w-full text-sm">
+      <table className="w-full text-sm min-w-[640px]">
         <thead>
           <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
             <th className="py-2 font-medium">Kröfuhafi</th>
@@ -135,7 +135,7 @@ export default function BankBills({ bills: initial, configured, payReady, bankAc
         Ógreiddar kröfur og greiðsluseðlar sem aðrir hafa stofnað á Hlíðarkaup í bankanum (við sem greiðandi) — sótt beint úr Arion/RB.
       </p>
 
-      <div className="grid grid-cols-3 gap-3 mb-4 max-w-lg">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 max-w-lg">
         <div className="rounded-lg bg-gray-50 p-3">
           <p className="text-xs text-gray-400">Ógreitt</p>
           <p className="text-lg font-bold tabular-nums">{kr(totalUnpaid)} kr.</p>

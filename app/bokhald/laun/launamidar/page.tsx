@@ -23,8 +23,8 @@ export default async function LaunamidarPage({ searchParams }: { searchParams: P
       {rows.length === 0 ? (
         <p className="text-sm text-gray-400 border border-dashed border-gray-200 rounded-lg px-4 py-10 text-center">Engar bókaðar launakeyrslur fyrir {year}.</p>
       ) : (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-gray-50 text-gray-500 text-left">
               <tr>
                 <th className="px-4 py-2 font-semibold">Launþegi</th>

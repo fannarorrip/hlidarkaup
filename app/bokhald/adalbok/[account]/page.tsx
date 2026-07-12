@@ -25,8 +25,8 @@ export default async function AccountLedger({ params }: { params: Promise<{ acco
       </h1>
       <p className="text-sm text-gray-500 mb-6">{ACCOUNT_TYPE_LABEL[acct.account_type]} · {rows.length} hreyfingar</p>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
           <thead className="bg-gray-50 text-gray-500 text-left">
             <tr>
               <th className="px-4 py-2 font-medium">Dags.</th>

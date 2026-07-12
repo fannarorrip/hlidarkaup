@@ -60,7 +60,7 @@ export default function HreyfingarView({ accounts, from, to }: { accounts: Ledge
 
               {isOpen && (
                 <div className="overflow-x-auto border-t border-gray-100">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm min-w-[640px]">
                     <thead className="text-gray-500 text-left">
                       <tr className="border-b border-gray-100">
                         <th className="px-5 py-2 font-medium">Dags.</th>

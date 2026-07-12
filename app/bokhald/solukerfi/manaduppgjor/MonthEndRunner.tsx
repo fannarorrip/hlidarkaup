@@ -59,7 +59,8 @@ export default function MonthEndRunner({ defaultPeriod }: { defaultPeriod: strin
           {preview.customers.length === 0 ? (
             <p className="px-5 py-6 text-center text-gray-400 text-sm">Engin óreikningsfærð reikningssala á tímabilinu.</p>
           ) : (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[640px]">
               <thead className="bg-gray-50 text-gray-500 text-left">
                 <tr><th className="px-4 py-2 font-medium">Viðskiptamaður</th><th className="px-4 py-2 font-medium">Kennitala</th><th className="px-4 py-2 font-medium text-center">Úttektir</th><th className="px-4 py-2 font-medium">Afhending</th><th className="px-4 py-2 font-medium text-right">Upphæð</th></tr>
               </thead>
@@ -75,6 +76,7 @@ export default function MonthEndRunner({ defaultPeriod }: { defaultPeriod: strin
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       )}

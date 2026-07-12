@@ -39,7 +39,7 @@ export default function ProductPicker({ value, valueName, onChange }: {
           <input value={q} onChange={(e) => search(e.target.value)} onFocus={() => search(q)} placeholder="Velja vöru…"
             className="w-full border border-amber-300 bg-amber-50/50 rounded px-2 py-1 text-xs outline-none focus:border-amber-500" />
           {open && (
-            <div className="absolute z-30 mt-1 w-72 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto text-xs">
+            <div className="absolute z-30 mt-1 w-[min(18rem,calc(100vw-2rem))] bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto text-xs">
               {res.map((p) => (
                 <button key={p.product_number} onClick={() => pick(p)} className="block w-full text-left px-2 py-1.5 hover:bg-red-50">
                   {p.name} <span className="text-gray-400">{p.product_number}</span>

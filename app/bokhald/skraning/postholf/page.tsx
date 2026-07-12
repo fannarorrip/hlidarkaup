@@ -65,8 +65,8 @@ export default async function PostholfPage() {
       {pending.length === 0 ? (
         <p className="text-sm text-gray-400 border border-dashed border-gray-200 rounded-lg px-4 py-8 text-center">Engin drög bíða.</p>
       ) : (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+          <table className="w-full text-sm min-w-[720px]">
             <thead className="bg-gray-50 text-gray-500 text-left">
               <tr>
                 <th className="px-4 py-2 font-semibold">Móttekið</th>
@@ -105,8 +105,8 @@ export default async function PostholfPage() {
       {recent.length > 0 && (
         <>
           <h2 className="mt-8 mb-2 text-sm font-semibold text-gray-700">Nýlega afgreitt</h2>
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+            <table className="w-full text-sm min-w-[560px]">
               <tbody>
                 {recent.map((r: EmailInvoiceRow) => (
                   <tr key={r.id} className="border-t border-gray-100 first:border-t-0">

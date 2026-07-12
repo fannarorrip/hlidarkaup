@@ -10,8 +10,8 @@ export default async function AdalbokPage() {
     <div>
       <h1 className="text-2xl font-bold mb-1">Aðalbók</h1>
       <p className="text-sm text-gray-500 mb-6">Hreyfðir lyklar — smelltu til að sjá færslur</p>
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden max-w-3xl">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto max-w-3xl">
+        <table className="w-full text-sm min-w-[560px]">
           <thead className="bg-gray-50 text-gray-500 text-left">
             <tr>
               <th className="px-4 py-2 font-medium">Lykill</th>

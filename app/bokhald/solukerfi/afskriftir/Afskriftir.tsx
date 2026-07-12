@@ -150,7 +150,8 @@ export default function Afskriftir({ initialRows, initialSummary }: { initialRow
         <div className="bg-white border border-amber-200 rounded-xl p-5 max-w-3xl">
           <p className="font-semibold text-sm mb-1">🤝 Kreditlisti birgja (ókrediterað)</p>
           <p className="text-xs text-gray-500 mb-3">Margir birgjar (Mata, Myllan, Ísfugl, Gæðabakstur…) kreditera afskriftir — sýndu þeim listann og merktu kreditað þegar kreditreikningurinn berst.</p>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[520px]">
             <thead className="text-xs text-gray-400 text-left">
               <tr><th className="py-1.5 font-medium">Birgir</th><th className="py-1.5 font-medium text-center">Færslur</th><th className="py-1.5 font-medium text-right">Magn</th><th className="py-1.5 font-medium text-right">Kostnaður</th><th></th></tr>
             </thead>
@@ -168,6 +169,7 @@ export default function Afskriftir({ initialRows, initialSummary }: { initialRow
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -199,7 +201,7 @@ export default function Afskriftir({ initialRows, initialSummary }: { initialRow
                     <td className="py-1.5 text-right">
                       {r.status === "recorded" && (
                         <button onClick={() => undo(r)} title="Eyða (birgðir hækka aftur)"
-                          className="text-gray-300 hover:text-red-600 text-sm">×</button>
+                          className="inline-flex items-center justify-center w-8 h-8 text-gray-300 hover:text-red-600 text-sm">×</button>
                       )}
                     </td>
                   </tr>

@@ -57,7 +57,7 @@ export default function KassaSettlement({ date, s, z }: { date: string; s: Daily
           className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-red-400" />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Metric label="Heildarvelta (án VSK)" value={kr(veltaNet)} />
         <Metric label="Útskattur" value={kr(n(s.output_vat))} />
         <Metric label="Innborgað alls" value={kr(totalMoney)} />

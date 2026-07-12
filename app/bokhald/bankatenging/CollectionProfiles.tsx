@@ -103,7 +103,8 @@ export default function CollectionProfiles({ profiles, settings, bankAccounts }:
         {profiles.length === 0 && !edit && <p className="text-sm text-gray-400">Ekkert kröfusnið skráð enn. Bættu við því sem Arion úthlutar þér.</p>}
 
         {profiles.length > 0 && (
-          <table className="w-full text-sm mb-3">
+          <div className="overflow-x-auto mb-3">
+          <table className="w-full text-sm min-w-[560px]">
             <thead className="text-gray-400 text-left text-xs"><tr><th className="py-1 font-medium">Kóði</th><th className="py-1 font-medium">Heiti</th><th className="py-1 font-medium">Ráðstöfun</th><th className="py-1 font-medium"></th></tr></thead>
             <tbody>
               {profiles.map((p) => (
@@ -119,11 +120,12 @@ export default function CollectionProfiles({ profiles, settings, bankAccounts }:
               ))}
             </tbody>
           </table>
+          </div>
         )}
 
         {edit && (
           <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 mt-2 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><label className="block text-[11px] text-gray-500 mb-0.5">Kröfusnið (kóði)</label><input value={edit.code || ""} onChange={(e) => setEdit({ ...edit, code: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm font-mono" placeholder="t.d. 001" /></div>
               <div><label className="block text-[11px] text-gray-500 mb-0.5">Heiti</label><input value={edit.name || ""} onChange={(e) => setEdit({ ...edit, name: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm" placeholder="Almenn innheimta" /></div>
               <div><label className="block text-[11px] text-gray-500 mb-0.5">Ráðstöfunarreikningur (IBAN)</label><input value={edit.settlement_iban || ""} onChange={(e) => setEdit({ ...edit, settlement_iban: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm font-mono" placeholder="ISxx…" /></div>

@@ -161,7 +161,7 @@ export default async function BankatengingPage() {
         <span className="text-[11px] px-2 py-0.5 rounded-full bg-green-50 text-green-700">Til í kerfinu</span>
       </div>
       <p className="text-xs text-gray-500 mb-3">Kröfur sem við gefum út á viðskiptavini (reikningar á reikning + mánaðaruppgjör). Kröfulistinn er þegar til undir Sölukerfi.</p>
-      <div className="grid grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         <div className="rounded-lg bg-gray-50 p-3">
           <p className="text-xs text-gray-400">Opnar kröfur</p>
           <p className="text-lg font-bold tabular-nums">{openClaims.length}</p>

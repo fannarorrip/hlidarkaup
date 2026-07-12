@@ -100,7 +100,7 @@ export default function YfirlitCharts() {
   return (
     <div className="space-y-6">
       {/* KPI row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Kpi title="Sala í dag" value={krFull(kpi.today)}>
           <Delta now={kpi.today} prev={kpi.yesterday} />
         </Kpi>

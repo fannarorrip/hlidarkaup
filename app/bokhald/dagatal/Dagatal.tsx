@@ -56,8 +56,8 @@ function Manager({ defs, onChange }: { defs: Def[]; onChange: () => void }) {
               </span>
             </div>
             <div className="flex gap-1.5">
-              <button onClick={() => edit(d)} className="text-xs text-gray-500 hover:text-red-700">✎</button>
-              <button onClick={() => remove(d.id)} className="text-xs text-gray-300 hover:text-red-600">×</button>
+              <button onClick={() => edit(d)} className="inline-flex items-center justify-center w-8 h-8 text-xs text-gray-500 hover:text-red-700">✎</button>
+              <button onClick={() => remove(d.id)} className="inline-flex items-center justify-center w-8 h-8 text-xs text-gray-300 hover:text-red-600">×</button>
             </div>
           </div>
         ))}

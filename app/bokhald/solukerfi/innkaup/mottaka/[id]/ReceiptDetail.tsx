@@ -59,7 +59,7 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
       )}
 
       <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm min-w-[640px]">
           <thead className="bg-gray-50 text-gray-500 text-left">
             <tr>
               <th className="px-3 py-2 font-semibold">Vörulýsing (reikningur)</th>

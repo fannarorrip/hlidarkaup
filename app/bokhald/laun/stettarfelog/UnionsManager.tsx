@@ -62,7 +62,7 @@ export default function UnionsManager({ unions, funds }: { unions: UnionRow[]; f
         <>
           {sel.orlof_period_start && <p className="text-xs text-gray-500">Orlofstímabil: {sel.orlof_period_start} – {sel.orlof_period_end}</p>}
           <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
+            <table className="w-full text-sm border-collapse min-w-[720px]">
               <thead className="bg-gray-50 text-gray-500 text-left">
                 <tr>
                   <th className="px-2 py-2 font-semibold w-16">Nr</th>

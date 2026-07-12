@@ -138,7 +138,8 @@ export default function ArionPsd2({ sandbox = false, serverReady = false }: { sa
         accounts.length === 0 ? (
           <p className="mt-2 text-sm text-gray-400">Engir reikningar.</p>
         ) : (
-          <table className="w-full text-sm mt-3">
+          <div className="overflow-x-auto mt-3">
+          <table className="w-full text-sm min-w-[480px]">
             <thead className="text-gray-400 text-left text-xs">
               <tr><th className="py-1 font-medium">Reikningur</th><th className="py-1 font-medium">IBAN</th><th className="py-1 font-medium text-right">Staða</th></tr>
             </thead>
@@ -152,6 +153,7 @@ export default function ArionPsd2({ sandbox = false, serverReady = false }: { sa
               ))}
             </tbody>
           </table>
+          </div>
         )
       )}
     </div>

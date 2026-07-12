@@ -39,7 +39,7 @@ export default async function Dashboard() {
       <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mt-8 mb-2">
         Velta eftir sölurás (frá upphafi)
       </h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {velta.map((c) => (
           <div key={c.label} className="bg-white border border-gray-200 rounded-xl p-4">
             <p className="text-xs text-gray-500">{c.label}</p>
@@ -47,7 +47,7 @@ export default async function Dashboard() {
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {stats.map((c) => (
           <div key={c.label} className="bg-white border border-gray-200 rounded-xl p-4">
             <p className="text-xs text-gray-500">{c.label}</p>
@@ -60,8 +60,8 @@ export default async function Dashboard() {
         <h2 className="text-lg font-semibold">Nýjustu fylgiskjöl</h2>
         <Link href="/bokhald/fylgiskjol" className="text-sm text-red-700 hover:underline">Sjá öll →</Link>
       </div>
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
           <thead className="bg-gray-50 text-gray-500 text-left">
             <tr>
               <th className="px-4 py-2 font-medium">Nr.</th>

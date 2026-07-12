@@ -76,7 +76,7 @@ export default function BankRecon({ banks, account, acctName, date, entries, led
           {open && <p className="text-xs text-amber-600 mb-3">Opin afstemming í vinnslu — hlaðin inn (vistuð {dags(open.as_of_date)}).</p>}
 
           {/* Summary */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 mb-5">
             <div className={card}><p className="text-xs text-gray-500">Bókhaldsstaða</p><p className="text-lg font-bold mt-1">{kr(ledgerBalance)}</p></div>
             <div className={card}><p className="text-xs text-gray-500">Staða skv. banka</p><p className="text-lg font-bold mt-1">{kr(stmt)}</p></div>
             <div className={card}><p className="text-xs text-gray-500">Mismunur</p><p className={`text-lg font-bold mt-1 ${Math.round(mismunur) ? "text-red-600" : ""}`}>{kr(mismunur)}</p></div>
@@ -102,7 +102,7 @@ export default function BankRecon({ banks, account, acctName, date, entries, led
 
           {/* Entries */}
           <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-gray-50 text-gray-500 text-left">
                 <tr>
                   <th className="px-3 py-2 font-medium w-16 text-center">Stemmt</th>

@@ -91,7 +91,7 @@ export default function RunView({ run, lines }: { run: PayrollRunRow; lines: Pay
         {posted && run.voucher_id && <> · <Link href={`/bokhald/fylgiskjol/${run.voucher_id}`} className="text-red-600 hover:underline">Skoða fylgiskjal</Link></>}
       </p>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 mb-6">
         <Card label="Brúttólaun" value={gross} />
         <Card label="Staðgreiðsla" value={tax} />
         <Card label="Lífeyrir (alls)" value={pension} />
@@ -107,7 +107,7 @@ export default function RunView({ run, lines }: { run: PayrollRunRow; lines: Pay
             <p className="text-xs text-gray-400 pb-1">Breyttu tímum/liðum og reiknaðu drögin upp á nýtt.</p>
           </div>
           <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[560px]">
               <thead className="bg-gray-50 text-gray-500 text-left">
                 <tr><th className="px-3 py-2 font-semibold">Launþegi</th><th className="px-3 py-2 font-semibold w-24">Tímar</th><th className="px-3 py-2 font-semibold w-28">Yfirvinna kr</th><th className="px-3 py-2 font-semibold w-24">Bónus kr</th><th className="px-3 py-2 font-semibold w-28">Frádr. kr</th></tr>
               </thead>
@@ -137,7 +137,7 @@ export default function RunView({ run, lines }: { run: PayrollRunRow; lines: Pay
       ) : (
         <>
           <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[760px]">
               <thead className="bg-gray-50 text-gray-500 text-left">
                 <tr>
                   <th className="px-3 py-2 font-semibold">Launþegi</th>

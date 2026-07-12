@@ -110,7 +110,8 @@ export default function ArionCards({ defaultLiability = "9310", defaultExpense, 
 
       {txErr && <p className="mt-2 text-xs text-amber-600">Kortafærslur: {txErr}</p>}
       {txs && txs.length > 0 && (
-        <table className="w-full text-sm mt-3">
+        <div className="overflow-x-auto mt-3">
+        <table className="w-full text-sm min-w-[560px]">
           <thead className="text-gray-400 text-left text-xs">
             <tr>
               <th className="py-1 w-8">
@@ -143,6 +144,7 @@ export default function ArionCards({ defaultLiability = "9310", defaultExpense, 
             ))}
           </tbody>
         </table>
+        </div>
       )}
 
       {txs && txs.length > 0 && (

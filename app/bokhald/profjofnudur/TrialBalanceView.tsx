@@ -23,7 +23,7 @@ export default function TrialBalanceView({ tb, from, to }: { tb: TrialBalance; f
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2"><span>🧮</span> Prófjöfnuður</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white">
             <input type="date" value={from} onChange={(e) => setRange(e.target.value, to)} className="outline-none bg-transparent" />
             <span className="text-gray-400">→</span>
@@ -66,7 +66,7 @@ export default function TrialBalanceView({ tb, from, to }: { tb: TrialBalance; f
 
               {open && (
                 <div className="overflow-x-auto border-t border-gray-100">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm min-w-[820px]">
                     <thead className="text-gray-500 text-left">
                       <tr className="border-b border-gray-100">
                         <th className="px-5 py-2 font-medium">Lykill</th>

@@ -297,7 +297,7 @@ export default function ProductForm({ product, barcodes: initialBarcodes, salesH
 
           <div>
             <p className="text-sm text-gray-500 mb-2">Næringargildi í 100 g / 100 ml</p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {NUTRITION_FIELDS.map(([key, label]) => (
                 <Field key={key} label={label}>
                   <input
@@ -348,7 +348,7 @@ export default function ProductForm({ product, barcodes: initialBarcodes, salesH
           ) : barcodes.map((bc) => (
             <div key={bc} className="flex items-center justify-between border border-gray-200 rounded-lg px-3 py-2">
               <span className="font-mono text-sm">{bc}</span>
-              <button onClick={() => removeBarcode(bc)} className="text-gray-300 hover:text-red-600 text-lg leading-none" aria-label="Fjarlægja">×</button>
+              <button onClick={() => removeBarcode(bc)} className="inline-flex items-center justify-center w-8 h-8 text-gray-300 hover:text-red-600 text-lg leading-none" aria-label="Fjarlægja">×</button>
             </div>
           ))}
         </div>

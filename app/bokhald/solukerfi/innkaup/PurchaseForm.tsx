@@ -66,7 +66,7 @@ export default function PurchaseForm({ accounts, banks }: { accounts: Acct[]; ba
 
       <div className="space-y-2 mb-3">
         {lines.map((l, i) => (
-          <div key={i} className="grid grid-cols-[1fr_8rem_6rem_2rem] gap-2 items-center">
+          <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_8rem_6rem_2rem] gap-2 items-center">
             <select value={l.account} onChange={(e) => setLine(i, "account", e.target.value)} className={`${inp} bg-white`}>
               {accounts.map((a) => <option key={a.account_number} value={a.account_number}>{a.account_number} — {a.name}</option>)}
             </select>

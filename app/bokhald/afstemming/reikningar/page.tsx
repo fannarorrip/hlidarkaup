@@ -14,15 +14,15 @@ export default async function ReikningsafstemmingPage() {
       <h1 className="text-2xl font-bold mb-1 mt-1 flex items-center gap-2">📋 Reikningsafstemming</h1>
       <p className="text-sm text-gray-500 mb-5">Útgefnir reikningar á móti greiðslum — ógreitt og mögulegar tvískráningar.</p>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-6">
         <div className="bg-white border border-gray-200 rounded-xl p-4"><p className="text-xs text-gray-500">Ógreitt samtals</p><p className="text-2xl font-bold mt-1">{kr(totalOpen)}</p></div>
         <div className="bg-white border border-gray-200 rounded-xl p-4"><p className="text-xs text-gray-500">Viðskiptamenn með stöðu</p><p className="text-2xl font-bold mt-1">{open.length}</p></div>
         <div className="bg-white border border-gray-200 rounded-xl p-4"><p className="text-xs text-gray-500">Mögulegar tvískráningar</p><p className={`text-2xl font-bold mt-1 ${dups.length ? "text-amber-600" : ""}`}>{dups.length}</p></div>
       </div>
 
       <h2 className="text-lg font-semibold mb-2">Ógreitt eftir viðskiptamanni</h2>
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-8">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto mb-8">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-gray-50 text-gray-500 text-left">
             <tr>
               <th className="px-4 py-2 font-medium">Viðskiptamaður</th>
@@ -48,8 +48,8 @@ export default async function ReikningsafstemmingPage() {
 
       <h2 className="text-lg font-semibold mb-2">Mögulegar tvískráningar</h2>
       <p className="text-xs text-gray-400 mb-2">Sölur með sama viðskiptamann, dagsetningu og fjárhæð — yfirfarðu hvort um tvískráningu sé að ræða.</p>
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-gray-50 text-gray-500 text-left">
             <tr>
               <th className="px-4 py-2 font-medium">Viðskiptamaður</th>

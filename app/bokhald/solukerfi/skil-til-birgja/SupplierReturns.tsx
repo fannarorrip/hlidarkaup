@@ -53,8 +53,8 @@ export default function SupplierReturns({ returns, suppliers }: { returns: Suppl
     <div className="space-y-6">
       <button onClick={() => { setSupplierId(""); setNote(""); setLines([]); setErr(""); setCreating(true); }} className="px-5 py-2.5 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700">+ Ný skil</button>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
           <thead className="bg-gray-50 text-gray-500 text-left">
             <tr><th className="px-4 py-2 font-medium">Nr.</th><th className="px-4 py-2 font-medium">Birgir</th><th className="px-4 py-2 font-medium text-center">Línur</th><th className="px-4 py-2 font-medium text-right">Inneign</th><th className="px-4 py-2 font-medium">Dags.</th><th className="px-4 py-2 font-medium text-right">Aðgerðir</th></tr>
           </thead>
@@ -104,8 +104,8 @@ export default function SupplierReturns({ returns, suppliers }: { returns: Suppl
               )}
             </div>
 
-            <div className="border border-gray-200 rounded-lg overflow-hidden mb-3">
-              <table className="w-full text-sm">
+            <div className="border border-gray-200 rounded-lg overflow-x-auto mb-3">
+              <table className="w-full text-sm min-w-[480px]">
                 <thead className="bg-gray-50 text-gray-500 text-left"><tr><th className="px-3 py-1.5 font-medium">Vara</th><th className="px-3 py-1.5 font-medium w-16">Magn</th><th className="px-3 py-1.5 font-medium w-28">Ein.verð (án VSK)</th><th className="px-3 py-1.5 font-medium w-16">VSK</th><th></th></tr></thead>
                 <tbody>
                   {lines.length === 0 ? <tr><td colSpan={5} className="px-3 py-4 text-center text-gray-400">Leitaðu að vöru að ofan</td></tr> : lines.map((l, i) => (

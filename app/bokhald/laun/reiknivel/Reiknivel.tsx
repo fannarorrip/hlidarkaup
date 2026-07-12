@@ -280,7 +280,7 @@ function Card({ n, title, empFooter, erFooter, children }: { n: number; title: s
         <span className="text-white font-semibold text-sm">{title}</span>
       </div>
       <div className="p-5 flex-1">{children}</div>
-      <div className="grid grid-cols-2 border-t border-gray-100">
+      <div className="grid grid-cols-1 sm:grid-cols-2 border-t border-gray-100">
         <div className="px-4 py-3 text-center" style={{ background: PALE }}>
           <p className="text-[11px] text-gray-500">Starfsmaður</p>
           <p className="font-bold tabular-nums" style={{ color: DARK }}>{empFooter ? `−${g(-empFooter)} kr.` : "—"}</p>

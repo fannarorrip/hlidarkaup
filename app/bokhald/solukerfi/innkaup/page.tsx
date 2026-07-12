@@ -20,8 +20,8 @@ export default async function InnkaupPage() {
       <PurchaseForm accounts={accounts} banks={banks} />
 
       <h2 className="text-lg font-semibold mb-3">Skráð innkaup</h2>
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+        <table className="w-full text-sm min-w-[480px]">
           <thead className="bg-gray-50 text-gray-500 text-left">
             <tr>
               <th className="px-4 py-2 font-medium">Nr.</th>
