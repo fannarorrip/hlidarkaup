@@ -178,7 +178,7 @@ export default function YfirlitCharts() {
   const meðalkarfa = today.fjoldi > 0 ? today.sala / today.fjoldi : 0;
   const meðalkarfaPrev = today.sameWeekdayN > 0 ? today.sameWeekday / today.sameWeekdayN : 0;
   const vörurKarfa = today.fjoldi > 0 ? today.lines / today.fjoldi : 0;
-  const basisWd = `vs sami vikudagur í síðustu viku`;
+  const basisWd = `vs sami vikudagur í síð. viku · á sama tíma dags`;
 
   return (
     <div className={`space-y-6 ${loading ? "opacity-60 transition-opacity" : "transition-opacity"}`}>

@@ -39,10 +39,17 @@ export async function GET(req: NextRequest) {
     try { return await p; } catch (e) { console.warn("[yfirlit] query failed:", (e as Error).message); return fb; }
   };
 
+  // "Through this hour" cap: a prior period is compared only up to the SAME wall-clock hour as now,
+  // so today's partial day isn't measured against a prior FULL day (which reads as a false morning
+  // drop). HCAP uses the `hr` column of the kpi CTE; HCAP_V uses v.posted_at directly.
+  const HCAP = "(hr is null or hr <= extract(hour from now() at time zone 'Atlantic/Reykjavik'))";
+  const HCAP_V = "(v.posted_at is null or extract(hour from v.posted_at at time zone 'Atlantic/Reykjavik') <= extract(hour from now() at time zone 'Atlantic/Reykjavik'))";
+
   // ── KPI / today / week-to-date / month-to-date, all vs same-weekday or day-aligned prior ──
   const kpiP = safe<KpiRow>(query(`
     with sala as (
-      select v.voucher_date d, sl.line_total s, sl.quantity q, sl.voucher_id vid, v.source src
+      select v.voucher_date d, sl.line_total s, sl.quantity q, sl.voucher_id vid, v.source src,
+             extract(hour from v.posted_at at time zone 'Atlantic/Reykjavik') hr
       ${SALES}
     )
     select
@@ -52,16 +59,16 @@ export async function GET(req: NextRequest) {
       coalesce(sum(s) filter (where d = current_date),0)::int                       as today,
       coalesce(count(distinct vid) filter (where d = current_date),0)::int          as today_n,
       coalesce(sum(q) filter (where d = current_date),0)::float8                    as today_lines,
-      coalesce(sum(s) filter (where d = current_date - 7),0)::int                   as same_weekday,
-      coalesce(count(distinct vid) filter (where d = current_date - 7),0)::int      as same_weekday_n,
-      coalesce(sum(q) filter (where d = current_date - 7),0)::float8               as same_weekday_lines,
-      coalesce(sum(s) filter (where d = current_date - 1),0)::int                  as yesterday,
+      coalesce(sum(s) filter (where d = current_date - 7 and ${HCAP}),0)::int       as same_weekday,
+      coalesce(count(distinct vid) filter (where d = current_date - 7 and ${HCAP}),0)::int as same_weekday_n,
+      coalesce(sum(q) filter (where d = current_date - 7 and ${HCAP}),0)::float8    as same_weekday_lines,
+      coalesce(sum(s) filter (where d = current_date - 1 and ${HCAP}),0)::int       as yesterday,
       coalesce(sum(s) filter (where d >= date_trunc('week',current_date)::date),0)::int as wtd,
-      coalesce(sum(s) filter (where d >= date_trunc('week',current_date)::date - 7
-                                and d <= current_date - 7),0)::int                  as wtd_prev,
+      coalesce(sum(s) filter (where (d >= date_trunc('week',current_date)::date - 7 and d < current_date - 7)
+                                 or (d = current_date - 7 and ${HCAP})),0)::int      as wtd_prev,
       coalesce(sum(s) filter (where d >= date_trunc('month',current_date)::date),0)::int as mtd,
-      coalesce(sum(s) filter (where d >= (date_trunc('month',current_date) - interval '1 month')::date
-                                and d <= (current_date - interval '1 month')::date),0)::int as mtd_prev
+      coalesce(sum(s) filter (where (d >= (date_trunc('month',current_date) - interval '1 month')::date and d < (current_date - interval '1 month')::date)
+                                 or (d = (current_date - interval '1 month')::date and ${HCAP})),0)::int as mtd_prev
     from sala`));
 
   // Today's basket count split by channel (footfall by source).
@@ -104,11 +111,16 @@ export async function GET(req: NextRequest) {
 
   // Weekday × hour average matrix over the trailing 8 weeks (heatmap).
   const heatmapP = safe<{ dow: number; hr: number; avg_s: number }>(query(`
-    select extract(isodow from v.voucher_date)::int dow,
-           extract(hour from v.posted_at at time zone 'Atlantic/Reykjavik')::int hr,
-           (sum(sl.line_total)::numeric / nullif(count(distinct v.voucher_date),0))::int avg_s
-    ${SALES} and v.posted_at is not null and v.voucher_date >= current_date - 55
-    group by 1,2`));
+    with base as (
+      select extract(isodow from v.voucher_date)::int dow,
+             extract(hour from v.posted_at at time zone 'Atlantic/Reykjavik')::int hr,
+             v.voucher_date vd, sl.line_total lt
+      ${SALES} and v.posted_at is not null and v.voucher_date >= current_date - 55
+    ),
+    dcount as (select dow, count(distinct vd)::numeric nd from base group by dow)
+    select b.dow, b.hr, (sum(b.lt)::numeric / nullif(d.nd,0))::int avg_s
+      from base b join dcount d on d.dow = b.dow
+     group by b.dow, b.hr, d.nd`));
 
   // Today's gross margin (framlegð) + same weekday — only over lines with a known cost_price.
   const marginP = safe<MarginRow>(query(`
@@ -127,8 +139,8 @@ export async function GET(req: NextRequest) {
     select
       coalesce(-sum(sl.line_total) filter (where sl.line_total < 0 and v.voucher_date = current_date),0)::int neg_today,
       coalesce( sum(sl.line_total) filter (where sl.line_total > 0 and v.voucher_date = current_date),0)::int pos_today,
-      coalesce(-sum(sl.line_total) filter (where sl.line_total < 0 and v.voucher_date = current_date - 7),0)::int neg_prev,
-      coalesce( sum(sl.line_total) filter (where sl.line_total > 0 and v.voucher_date = current_date - 7),0)::int pos_prev
+      coalesce(-sum(sl.line_total) filter (where sl.line_total < 0 and v.voucher_date = current_date - 7 and ${HCAP_V}),0)::int neg_prev,
+      coalesce( sum(sl.line_total) filter (where sl.line_total > 0 and v.voucher_date = current_date - 7 and ${HCAP_V}),0)::int pos_prev
     from shop.sale_lines sl join acc.vouchers v on v.id = sl.voucher_id where v.status <> 'reversed'`));
   const reversedP = safe<{ n: number }>(query(
     `select count(*)::int n from acc.vouchers where status = 'reversed' and voucher_date = current_date`));
@@ -242,14 +254,17 @@ export async function GET(req: NextRequest) {
       future: dow > curDow,
     };
   });
-  // vikuspá: VTD ÷ expected cumulative share of the week completed through today.
-  const expTotal = weekDays.reduce((s, d) => s + d.expected, 0);
-  const expThrough = weekDays.filter((d) => d.dow <= curDow).reduce((s, d) => s + d.expected, 0);
-  const weekShare = expTotal > 0 ? expThrough / expTotal : 0;
-  const vikuspa = weekShare > 0 && curDow >= 2 ? Math.round(kpi.wtd / weekShare) : null;
-
   // Intraday pace: cumulative today vs typical same-weekday curve (+ min/max band).
-  const pace = buildPace(intraday, hourNow);
+  const pace = buildPace(intraday, hourNow, kpi.cur_date);
+
+  // vikuspá: this week's completed days (actual) + today's pace-projected full day + the remaining
+  // days' typical (8-wk weekday average). Consistent partial/full handling — no partial-WTD-over-
+  // full-day-share bias. Needs weekday-profile data (expTotal>0), else null.
+  const expTotal = weekDays.reduce((s, d) => s + d.expected, 0);
+  const wtdBeforeToday = kpi.wtd - kpi.today;
+  const todayProjected = pace.hasHistory && pace.projected != null ? pace.projected : (expByDow.get(curDow) ?? kpi.today);
+  const futureExpected = weekDays.filter((d) => d.dow > curDow).reduce((s, d) => s + d.expected, 0);
+  const vikuspa = expTotal > 0 ? Math.round(wtdBeforeToday + todayProjected + futureExpected) : null;
 
   // Margin today.
   const m = marginRows[0] ?? { fram_today: 0, cov_today: 0, fram_prev: 0, cov_prev: 0 };
@@ -394,10 +409,10 @@ function seriesSql(bil: Bil): string {
 }
 
 // ── Intraday pace / nowcast from per-hour sums (today + last 4 same weekdays) ──────────────────
-function buildPace(rows: { hr: number; d: string; s: number }[], hourNow: number) {
+function buildPace(rows: { hr: number; d: string; s: number }[], hourNow: number, curDate: string) {
   const dates = [...new Set(rows.map((r) => r.d))].sort();          // ascending
-  const today = dates[dates.length - 1];                            // most recent = today (current_date)
-  const priorDates = dates.filter((d) => d !== today);
+  const today = curDate;                                            // explicit — today may have no rows yet
+  const priorDates = dates.filter((d) => d !== today);              // the 4 prior same-weekdays
   const byDate = new Map<string, Map<number, number>>();
   for (const r of rows) {
     const m = byDate.get(r.d) ?? new Map<number, number>();
