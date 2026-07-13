@@ -11,7 +11,7 @@ export default async function BankReconPage({ searchParams }: { searchParams: Pr
 
   let entries: ReconEntry[] = [];
   let ledgerBalance = 0;
-  let open: Awaited<ReturnType<typeof getOpenReconciliation>> = null;
+  let open: Awaited<ReturnType<typeof getOpenReconciliation>> | null = null;
   if (account) {
     entries = await getAccountEntriesAsOf(account, date);
     ledgerBalance = entries.reduce((s, e) => s + Number(e.debit) - Number(e.credit), 0);

@@ -87,7 +87,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       await client.query("begin");
       const acct = await client.query<{ account_number: string }>(
         "select account_number from acc.accounts where account_number = any($1) and is_postable", [[apAccount, bankAccount]]);
-      const found = new Set(acct.rows.map((r) => r.account_number));
+      const found = new Set(acct.rows.map((r: { account_number: string }) => r.account_number));
       if (!found.has(apAccount) || !found.has(bankAccount)) {
         await client.query("rollback");
         // Money HAS moved — do not lose that fact even though booking failed.

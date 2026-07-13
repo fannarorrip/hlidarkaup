@@ -46,7 +46,7 @@ export async function enqueueClaim(voucherId: string): Promise<EnqueueClaimResul
 /** Queue a bank claim for a MONTH-END consolidated invoice (one krafa for the whole month).
  *  Unlike per-trip claims this has no single voucher — it carries a dedicated kröfunúmer and
  *  links to the billing invoice. Idempotent (one per billing_invoice). Never throws. */
-export async function enqueueMonthlyClaim(billingInvoiceId: string): Promise<EnqueueResult> {
+export async function enqueueMonthlyClaim(billingInvoiceId: string): Promise<EnqueueClaimResult> {
   try {
     const bi = (await query<{ customer_id: string | null; kennitala: string | null; total: string; period: string; terms: number }>(`
       select b.customer_id, b.kennitala, b.total::text as total, b.period,

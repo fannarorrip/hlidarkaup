@@ -15,7 +15,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const v = data.voucher;
   const number = `${v.series_code}-${String(v.voucher_number).padStart(6, "0")}`;
   const pdf = await renderVoucherPdf({ voucher: v, lines: data.lines });
-  return new NextResponse(pdf, {
+  return new NextResponse(Buffer.from(pdf), {
     headers: {
       "content-type": "application/pdf",
       "content-disposition": `inline; filename="fylgiskjal-${number}.pdf"`,

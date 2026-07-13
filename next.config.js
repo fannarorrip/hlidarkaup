@@ -5,10 +5,8 @@ const nextConfig = {
       { protocol: "https", hostname: "**" },
     ],
   },
-  // Long-standing library-typing noise (untyped `pg`, Uint8Array PDF bodies, etc.) is not a
-  // runtime problem; don't let it block production builds. (Revisit + type properly later.)
-  typescript: { ignoreBuildErrors: true },
-  eslint: { ignoreDuringBuilds: true },
+  // TS type-debt cleared (2026-07-13): @types/pg installed + all query/PDF/settings typings fixed,
+  // so `next build` now type-checks for real. (Next 16 dropped `next lint`, so no eslint key here.)
 };
 
 module.exports = nextConfig;

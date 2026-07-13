@@ -114,11 +114,12 @@ export default function StaffTill() {
     // Weight-embedded label (magnmerki, prefix 23): grams came out of the barcode —
     // charged as kg × catalog price-per-kg, own line per pack like the price labels.
     if (d.embeddedWeightKg) {
+      const kg = d.embeddedWeightKg;
       setError("");
       setCart((p) => [...p, {
         uid: `${d.id}~${++uidSeq.current}`, id: d.id,
-        name: `${d.name} (${d.embeddedWeightKg.toFixed(3).replace(".", ",")} kg)`,
-        price: d.price, vatPct: d.vatPct, quantity: d.embeddedWeightKg,
+        name: `${d.name} (${kg.toFixed(3).replace(".", ",")} kg)`,
+        price: d.price, vatPct: d.vatPct, quantity: kg,
       }]);
       return;
     }

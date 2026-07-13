@@ -14,7 +14,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const number = `${data.voucher.series_code}-${String(data.voucher.voucher_number).padStart(6, "0")}`;
   try {
     const pdf = await renderInvoicePdf(data);
-    return new NextResponse(pdf, {
+    return new NextResponse(Buffer.from(pdf), {
       headers: {
         "content-type": "application/pdf",
         "content-disposition": `inline; filename="reikningur-${number}.pdf"`,

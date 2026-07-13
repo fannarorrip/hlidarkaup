@@ -26,7 +26,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ run
       vacation_accrual: ytd.vacation_accrual, net_pay: ytd.net_pay,
     } : null,
   });
-  return new NextResponse(pdf, {
+  return new NextResponse(Buffer.from(pdf), {
     headers: {
       "content-type": "application/pdf",
       "content-disposition": `inline; filename="launasedill-${line.kennitala || employeeId}-${run.year}${String(run.month).padStart(2, "0")}.pdf"`,

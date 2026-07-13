@@ -42,7 +42,7 @@ export default async function BankatengingPage() {
     listOpenPayables().catch(() => []),
     listOpenBankBills().catch(() => []),
     getCollectionProfiles().catch(() => []),
-    getCollectionSettings().catch(() => ({ kennitala_krofuhafa: null, agreement_signed: false, agreement_note: null })),
+    getCollectionSettings().catch(() => ({ kennitala_krofuhafa: null, agreement_signed: false, agreement_note: null, claim_bank: null, final_due_days: 0, expires_after_days: 90 })),
     getBankSettings().catch(() => ({ card_liability_account: "9310", card_expense_account: null, default_bank_ledger: null, statement_contra_in: null, statement_contra_out: null, auto_sync: false })),
     getPostableAccounts().catch(() => []),
   ]);

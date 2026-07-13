@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   const tb = buildTrialBalance(rows);
   const pdf = await renderTrialBalancePdf(tb, from, to);
 
-  return new NextResponse(pdf, {
+  return new NextResponse(Buffer.from(pdf), {
     headers: {
       "content-type": "application/pdf",
       "content-disposition": `inline; filename="profjofnudur-${from}_${to}.pdf"`,

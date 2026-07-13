@@ -35,7 +35,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ vou
   if ((doc.mime || "").includes("pdf") && label) {
     try { out = await stampPdf(doc.bytes, label); } catch (e) { console.warn("[document stamp] failed, serving original:", e); }
   }
-  return new NextResponse(out, {
+  return new NextResponse(Buffer.from(out), {
     headers: {
       "content-type": doc.mime || "application/pdf",
       "content-disposition": `inline; filename="${label ? `skjal-${label}` : doc.filename || "skjal"}.pdf"`,

@@ -76,10 +76,10 @@ export async function postSale(items: SaleItem[], opts: PostSaleOpts): Promise<{
     }
 
     const ids = [...new Set(items.map((i) => i.id))];
-    const prods = (await client.query<ProductRow>(
+    const prods = (await client.query(
       `select product_number, name, price_gross, vat_rate, stock_quantity, is_stock_controlled
-         from shop.products where product_number = any($1::text[]) for update`, [ids])).rows;
-    const byId = new Map(prods.map((p) => [p.product_number, p]));
+         from shop.products where product_number = any($1::text[]) for update`, [ids])).rows as ProductRow[];
+    const byId = new Map(prods.map((p): [string, ProductRow] => [p.product_number, p]));
     for (const it of items) if (!byId.has(it.id)) throw new SaleError(`Vara ${it.id} fannst ekki`, 404);
 
     if (!ignoreStock && !isReturn) {
