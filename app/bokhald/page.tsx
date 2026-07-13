@@ -10,18 +10,11 @@ export const dynamic = "force-dynamic";
 export default async function Dashboard() {
   const [s, recent, reminders] = await Promise.all([getSummary(), getRecentVouchers(10), getReminders(21).catch(() => [])]);
 
-  const velta = [
-    { label: "Kassi", value: kr(s.till_gross) },
-    { label: "Sjálfsafgreiðsla", value: kr(s.kiosk_gross) },
-    { label: "Vefverslun", value: kr(s.web_gross) },
-    { label: "Eldhús", value: kr(s.eldhus_gross) },
-  ];
-
   const stats = [
+    { label: "Velta frá upphafi", value: kr(Number(s.till_gross) + Number(s.kiosk_gross) + Number(s.web_gross) + Number(s.eldhus_gross)) },
     { label: "Útskattur (VSK)", value: kr(s.output_vat) },
     { label: "Bókhaldslyklar", value: num(s.accounts) },
     { label: "Vörur", value: num(s.products) },
-    { label: "Strikamerki", value: num(s.barcodes) },
   ];
 
   return (
@@ -35,18 +28,10 @@ export default async function Dashboard() {
       {/* Live analytics: KPI + charts (dagar / vikur / mánuðir) */}
       <YfirlitCharts />
 
-      {/* All-time channel + bookkeeping stats */}
+      {/* All-time bookkeeping stats (channel velta is now the live "Rásir & kassar" panel above) */}
       <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mt-8 mb-2">
-        Velta eftir sölurás (frá upphafi)
+        Bókhald frá upphafi
       </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {velta.map((c) => (
-          <div key={c.label} className="bg-white border border-gray-200 rounded-xl p-4">
-            <p className="text-xs text-gray-500">{c.label}</p>
-            <p className="text-xl font-bold mt-1 tabular-nums">{c.value}</p>
-          </div>
-        ))}
-      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {stats.map((c) => (
           <div key={c.label} className="bg-white border border-gray-200 rounded-xl p-4">

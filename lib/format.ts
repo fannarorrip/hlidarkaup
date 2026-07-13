@@ -24,6 +24,13 @@ export const dags = (d: string | Date | null | undefined) => {
 /** Icelandic month names (nominative, lower-case) for chart axes and pickers. */
 export const MANUDIR = ["janúar", "febrúar", "mars", "apríl", "maí", "júní", "júlí", "ágúst", "september", "október", "nóvember", "desember"];
 
+// Weekday names indexed by ISO weekday-1 (Mon=0 .. Sun=6), matching Postgres extract(isodow)-1.
+export const VIKUDAGAR = ["mánudagur", "þriðjudagur", "miðvikudagur", "fimmtudagur", "föstudagur", "laugardagur", "sunnudagur"];
+export const VIKUDAGAR_STUTT = ["mán", "þri", "mið", "fim", "fös", "lau", "sun"];
+/** Icelandic weekday for an ISO weekday number (1=Mán .. 7=Sun). */
+export const vikudagur = (isodow: number, stutt = false) =>
+  (stutt ? VIKUDAGAR_STUTT : VIKUDAGAR)[(((isodow - 1) % 7) + 7) % 7] ?? "";
+
 // VSK-flokkur letters shown on invoices/receipts: A = 24%, B = 11%, C = 0%.
 export const vatLetter = (rate: number | string) => {
   const r = Number(rate);
