@@ -198,7 +198,10 @@ Also add the app crons (same crontab):
 ```
 0 2 * * *    /opt/hlidarkaup/deploy/backup.sh
 */15 * * * * curl -s -H "x-cron-secret: $EMAIL_POLL_SECRET" http://127.0.0.1:3000/api/cron/email-poll
+*/15 * * * * curl -s -H "x-cron-secret: $EMAIL_POLL_SECRET" http://127.0.0.1:3000/api/cron/inexchange-poll
 ```
+(The inExchange line pulls received e-invoices into the Pósthólf automatically — no manual "Sæki".
+Guarded by `INEXCHANGE_POLL_SECRET`, falling back to `EMAIL_POLL_SECRET` so the same secret works.)
 
 ## 7. Go-live checklist
 - [ ] **Auth on** — staff login required for `/bokhald` and `/kassi/starf` (see §10).
