@@ -199,9 +199,12 @@ Also add the app crons (same crontab):
 0 2 * * *    /opt/hlidarkaup/deploy/backup.sh
 */15 * * * * curl -s -H "x-cron-secret: $EMAIL_POLL_SECRET" http://127.0.0.1:3000/api/cron/email-poll
 */15 * * * * curl -s -H "x-cron-secret: $EMAIL_POLL_SECRET" http://127.0.0.1:3000/api/cron/inexchange-poll
+0 */3 * * *  curl -s -H "x-cron-secret: $CLAIMS_CRON_SECRET" http://127.0.0.1:3000/api/cron/bank-bills
 ```
 (The inExchange line pulls received e-invoices into the Pósthólf automatically — no manual "Sæki".
-Guarded by `INEXCHANGE_POLL_SECRET`, falling back to `EMAIL_POLL_SECRET` so the same secret works.)
+Guarded by `INEXCHANGE_POLL_SECRET`, falling back to `EMAIL_POLL_SECRET` so the same secret works.
+The bank-bills line refreshes "ógreiddar kröfur á okkur" from Arion B2B every 3 h — guarded by
+`BANK_BILLS_CRON_SECRET`, falling back to `CLAIMS_CRON_SECRET`. It needs the B2B Bridge reachable.)
 
 ## 7. Go-live checklist
 - [ ] **Auth on** — staff login required for `/bokhald` and `/kassi/starf` (see §10).

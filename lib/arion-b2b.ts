@@ -113,7 +113,16 @@ async function fetchBillList(method: "GetBills" | "GetBillsInDirectDebit"): Prom
     const rows = arr(result.BillInfo as Record<string, unknown> | Record<string, unknown>[]);
     return { ok: true, bills: rows.map(toBill) };
   } catch (e) {
-    return { ok: false, bills: [], error: e instanceof Error ? e.message : String(e) };
+    // A bare "fetch failed" / connection error means we couldn't reach the Bridge at all — almost
+    // always the Windows machine hosting it is off or unreachable. Say so plainly.
+    const msg = e instanceof Error ? e.message : String(e);
+    const unreachable = /fetch failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|EAI_AGAIN|ECONNRESET|network|socket|dns/i.test(msg);
+    return {
+      ok: false, bills: [],
+      error: unreachable
+        ? `Næ ekki sambandi við B2B Bridge á ${c.url} — er Windows-vélin og Bridge-þjónustan í gangi og í sama neti og þjónninn? (${msg})`
+        : msg,
+    };
   }
 }
 
