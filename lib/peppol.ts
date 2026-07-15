@@ -16,6 +16,7 @@ export interface ParsedLine {
 }
 export interface ParsedInvoice {
   format: "peppol" | "pdf";
+  isCredit: boolean;        // true for a kreditreikningur (UBL CreditNote / type 381) — amounts are NEGATED
   invoiceNumber: string;
   issueDate: string;        // YYYY-MM-DD
   dueDate: string;
@@ -46,6 +47,11 @@ export function parsePeppolInvoice(xml: string): ParsedInvoice {
   const inv = (root.Invoice ?? root.CreditNote) as Record<string, unknown> | undefined;
   if (!inv) throw new Error("Ekki gildur PEPPOL/UBL reikningur (vantar <Invoice>).");
 
+  // Credit note (kreditreikningur): UBL <CreditNote> root, or an Invoice with type code 381.
+  // A credit REDUCES what is owed, so every amount is negated — booking then reverses correctly.
+  const isCredit = !!root.CreditNote || txt(inv.InvoiceTypeCode) === "381";
+  const sign = isCredit ? -1 : 1;
+
   const supplierParty = ((inv.AccountingSupplierParty as Record<string, unknown>)?.Party ?? {}) as Record<string, unknown>;
   const supplierName =
     txt((supplierParty.PartyName as Record<string, unknown>)?.Name) ||
@@ -71,7 +77,7 @@ export function parsePeppolInvoice(xml: string): ParsedInvoice {
       qty: num(qtyNode),
       unitCode: attr(qtyNode, "unitCode") || "",
       unitPrice: num((l.Price as Record<string, unknown>)?.PriceAmount),
-      lineNet: num(l.LineExtensionAmount),
+      lineNet: num(l.LineExtensionAmount) * sign,
       vatRate: num(taxCat?.Percent),
     };
   });
@@ -80,6 +86,7 @@ export function parsePeppolInvoice(xml: string): ParsedInvoice {
   const totals = (inv.LegalMonetaryTotal ?? {}) as Record<string, unknown>;
   return {
     format: "peppol",
+    isCredit,
     invoiceNumber: txt(inv.ID),
     issueDate: txt(inv.IssueDate),
     dueDate: txt(inv.DueDate),
@@ -87,8 +94,8 @@ export function parsePeppolInvoice(xml: string): ParsedInvoice {
     supplierName,
     supplierKennitala,
     lines,
-    totalNet: num(totals.TaxExclusiveAmount) || num(totals.LineExtensionAmount),
-    totalVat: num(tax?.TaxAmount),
-    totalGross: num(totals.TaxInclusiveAmount) || num(totals.PayableAmount),
+    totalNet: (num(totals.TaxExclusiveAmount) || num(totals.LineExtensionAmount)) * sign,
+    totalVat: num(tax?.TaxAmount) * sign,
+    totalGross: (num(totals.TaxInclusiveAmount) || num(totals.PayableAmount)) * sign,
   };
 }

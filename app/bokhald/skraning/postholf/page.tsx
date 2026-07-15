@@ -17,8 +17,9 @@ function fmtDate(v: string | null) {
   if (!v) return "—";
   const d = new Date(v);
   if (isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("is-IS", { day: "2-digit", month: "2-digit", year: "numeric" }) + " " +
-         d.toLocaleTimeString("is-IS", { hour: "2-digit", minute: "2-digit" });
+  const tz = "Atlantic/Reykjavik"; // Iceland time regardless of server TZ
+  return d.toLocaleDateString("is-IS", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: tz }) + " " +
+         d.toLocaleTimeString("is-IS", { hour: "2-digit", minute: "2-digit", timeZone: tz });
 }
 
 export default async function PostholfPage() {
@@ -90,7 +91,10 @@ export default async function PostholfPage() {
                     {r.invoice_number && <div className="text-xs text-gray-400">nr. {r.invoice_number}</div>}
                   </td>
                   <td className="px-4 py-2 text-center text-gray-600">{r.line_count}</td>
-                  <td className="px-4 py-2 text-right font-medium">{kr(r.total)}</td>
+                  <td className="px-4 py-2 text-right font-medium whitespace-nowrap">
+                    {r.is_credit && <span className="mr-2 align-middle text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">KREDIT</span>}
+                    <span className={r.is_credit ? "text-purple-700" : ""}>{kr(r.total)}</span>
+                  </td>
                   <td className="px-4 py-2 text-right">
                     <Link href={`/bokhald/skraning/postholf/${r.id}`} className="text-red-600 hover:text-red-700 font-medium">Skoða →</Link>
                   </td>

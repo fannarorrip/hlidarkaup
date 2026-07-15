@@ -198,7 +198,7 @@ export interface EmailInvoiceRow {
   id: string; received_at: string | null; from_address: string | null; from_name: string | null;
   subject: string | null; status: string; error: string | null;
   supplier: string | null; invoice_number: string | null; line_count: number; total: number;
-  has_attachment: boolean; voucher_id: string | null;
+  is_credit: boolean; has_attachment: boolean; voucher_id: string | null;
 }
 
 export const getEmailInvoices = (statuses: string[], limit = 100) =>
@@ -207,8 +207,10 @@ export const getEmailInvoices = (statuses: string[], limit = 100) =>
             extracted->>'supplier'      as supplier,
             extracted->>'invoiceNumber' as invoice_number,
             coalesce(jsonb_array_length(extracted->'lines'), 0) as line_count,
-            coalesce((select sum(greatest((l->>'amount')::numeric, 0))
+            coalesce((extracted->>'total')::float8,
+                     (select sum(greatest((l->>'amount')::numeric, 0))
                         from jsonb_array_elements(extracted->'lines') l), 0)::float8 as total,
+            coalesce((extracted->>'isCredit')::boolean, false) as is_credit,
             (attachment_bytes is not null) as has_attachment,
             voucher_id
        from acc.email_invoices

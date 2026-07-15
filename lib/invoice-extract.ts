@@ -145,6 +145,7 @@ export async function extractReceiptLines(opts: { files: ExtractFile[] }): Promi
   const d = JSON.parse((block?.text || "").replace(/```json|```/g, "").trim());
   return {
     format: "pdf",
+    isCredit: false,
     invoiceNumber: String(d.invoiceNumber ?? ""), issueDate: String(d.date ?? ""), dueDate: "",
     currency: String(d.currency ?? "ISK"),
     supplierName: String(d.supplier ?? ""), supplierKennitala: String(d.supplierKennitala ?? "").replace(/\D/g, ""),

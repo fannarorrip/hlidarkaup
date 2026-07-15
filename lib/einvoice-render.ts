@@ -37,6 +37,7 @@ function extras(xml: string): { buyerName: string; iban: string; paymentId: stri
 export function renderInboundInvoiceHtml(xml: string): string {
   const inv = parsePeppolInvoice(xml);
   const x = extras(xml);
+  const credit = inv.isCredit;   // kreditreikningur → amounts are negative, labelled distinctly
 
   const byRate = new Map<number, { net: number; vat: number }>();
   for (const l of inv.lines) {
@@ -70,6 +71,7 @@ export function renderInboundInvoiceHtml(xml: string): string {
 .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim)}
 h1{font-size:20px;margin:2px 0 0}.big{font-size:26px;font-weight:800}
 .tag{display:inline-block;margin-top:6px;font-size:11px;padding:2px 8px;border-radius:99px;background:#e7f1f2;color:var(--teal)}
+.tag.credit{background:#f3e8ff;color:#7e22ce}
 .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;font-size:13px;margin-bottom:22px}
 .meta .dim{font-size:11px}.meta .v{font-weight:600;margin-top:2px}
 table{width:100%;border-collapse:collapse;font-size:13px}
@@ -86,8 +88,8 @@ th.r{text-align:right}td{padding:9px 4px;border-bottom:1px solid #f1f3f4}
 <div class="bar"><a class="btn" href="javascript:history.back()">← Til baka</a><button class="btn p" onclick="window.print()">Prenta</button></div>
 <div class="card">
   <div class="head">
-    <div><div class="eyebrow">Reikningur frá</div><h1>${esc(inv.supplierName || "Óþekktur birgir")}</h1>${inv.supplierKennitala ? `<div class="dim" style="font-size:13px">kt. ${esc(inv.supplierKennitala)}</div>` : ""}</div>
-    <div style="text-align:right"><div class="big">${esc(kr(inv.totalGross))}</div><span class="tag">rafrænn reikningur</span></div>
+    <div><div class="eyebrow">${credit ? "Kreditreikningur frá" : "Reikningur frá"}</div><h1>${esc(inv.supplierName || "Óþekktur birgir")}</h1>${inv.supplierKennitala ? `<div class="dim" style="font-size:13px">kt. ${esc(inv.supplierKennitala)}</div>` : ""}</div>
+    <div style="text-align:right"><div class="big">${esc(kr(inv.totalGross))}</div><span class="tag${credit ? " credit" : ""}">${credit ? "kreditreikningur" : "rafrænn reikningur"}</span></div>
   </div>
   <div class="meta">
     <div><div class="dim">Reikningsnr.</div><div class="v">${esc(inv.invoiceNumber || "—")}</div></div>

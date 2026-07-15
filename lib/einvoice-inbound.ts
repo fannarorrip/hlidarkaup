@@ -27,10 +27,11 @@ export function bookingLinesFromParsed(parsed: ParsedInvoice): DraftLine[] {
   }
   for (const [rate, net] of vatByRate) {
     const vat = Math.round((net * rate) / 100);
-    if (vat > 0) lines.push({ account: INNSKATTUR[rate], description: `Innskattur ${rate}%`, vatRate: rate, amount: vat });
+    // !== 0 (not > 0): a credit note has negative net → negative innskattur, which must still post.
+    if (vat !== 0) lines.push({ account: INNSKATTUR[rate], description: `Innskattur ${rate}%`, vatRate: rate, amount: vat });
   }
   const totalDebet = lines.reduce((s, l) => s + l.amount, 0);
-  if (totalDebet > 0) {
+  if (totalDebet !== 0) {
     lines.push({
       account: CREDIT_ACCOUNT, vatRate: 0, amount: -totalDebet,
       description: `${parsed.supplierName || "Birgir"}${parsed.invoiceNumber ? " reikn. " + parsed.invoiceNumber : ""}`,
@@ -55,20 +56,23 @@ export async function createSkraningDraftFromParsed(parsed: ParsedInvoice, ublXm
     supplierKennitala: parsed.supplierKennitala,
     invoiceNumber: parsed.invoiceNumber,
     date: parsed.issueDate,
+    isCredit: parsed.isCredit,
+    total: parsed.totalGross,   // signed — negative for a credit note (drives the list "Upphæð")
     lines,
     source: "inexchange",
   };
   const bytes = Buffer.from(ublXml, "utf8");
+  // received_at = actual receipt time (now), not the invoice's issue date — the issue date lives in
+  // extracted.date. (Storing a date string here rendered a spurious 23:00 time in the Pósthólf list.)
   const row = (await db.query<{ id: string }>(
     `insert into acc.email_invoices
        (message_id, received_at, from_address, from_name, subject, status, extracted,
         attachment_name, attachment_mime, attachment_size, attachment_bytes, processed_at)
-     values ($1, $2, null, $3, $4, 'pending', $5::jsonb, $6, 'application/xml', $7, $8, now())
+     values ($1, now(), null, $2, $3, 'pending', $4::jsonb, $5, 'application/xml', $6, $7, now())
      on conflict (message_id) do nothing
      returning id`,
     [
       `inexchange:${uuid}`,
-      parsed.issueDate || null,
       parsed.supplierName || "inExchange",
       parsed.invoiceNumber || `inExchange ${uuid.slice(0, 8)}`,
       JSON.stringify(extracted),
