@@ -9,6 +9,9 @@ APP_DIR="${APP_DIR:-/opt/hlidarkaup}"
 cd "$APP_DIR"
 
 echo "== pulling latest code"
+# `next build` regenerates next-env.d.ts (tracked historically); discard any such local
+# change so `git pull --ff-only` can't be blocked by a build artifact. Safe: it's generated.
+sudo -u hlidarkaup git checkout -- next-env.d.ts 2>/dev/null || true
 sudo -u hlidarkaup git pull --ff-only
 
 echo "== installing dependencies"
