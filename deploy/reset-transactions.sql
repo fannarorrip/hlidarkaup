@@ -7,7 +7,8 @@
 --
 -- Eyðir: fylgiskjölum + færslum, sölulínum, kröfum, reikningagerð, Z-skýrslum,
 -- korta-/bankafærslum, afstemmingum, VSK-uppgjörum, innkaupum/móttökum,
--- launakeyrslum, skjölum. Númeraraðir byrja aftur á 1.
+-- launakeyrslum, skjölum, ógreiddum reikningum (bank_bills), verðtillögum,
+-- kælaaflestrum, afskriftum. Númeraraðir byrja aftur á 1.
 --
 -- ATH: birgðastaða (stock_quantity) er EKKI endurstillt — hún verður talin við
 -- opnun hvort eð er.
@@ -43,6 +44,10 @@ truncate
   acc.supplier_returns,
   acc.payroll_lines,
   acc.payroll_runs,
+  acc.bank_bills,
+  acc.price_suggestions,
+  acc.temp_readings,
+  acc.write_offs,
   acc.audit_log,
   shop.sale_lines,
   shop.stock_movements,

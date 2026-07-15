@@ -29,14 +29,26 @@ export default async function PostholfDetailPage({ params }: { params: Promise<{
   }
 
   const initialData = (draft.extracted ?? {}) as ExtractData;
-  const ex = (draft.extracted ?? {}) as { supplier?: string; supplierKennitala?: string };
+  const ex = (draft.extracted ?? {}) as { supplier?: string; supplierKennitala?: string; source?: string };
+  const isEinvoice = ex.source === "inexchange" || (draft.attachment_name?.toLowerCase().endsWith(".xml") ?? false);
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-1">Reikningur úr tölvupósti</h1>
-      <p className="text-sm text-gray-500 mb-2">
+      <h1 className="text-2xl font-bold mb-1">{isEinvoice ? "Rafrænn reikningur" : "Reikningur úr tölvupósti"}</h1>
+      <p className="text-sm text-gray-500 mb-3">
         Frá {draft.from_name || draft.from_address || "óþekkt"}{draft.subject ? ` · „${draft.subject}"` : ""}. Yfirfarðu færsluna og samþykktu til að bóka.
       </p>
+      {isEinvoice && (
+        <a
+          href={`/api/skraning/email/${draft.id}/document`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90"
+          style={{ background: "#2C687B" }}
+        >
+          Skoða reikning
+        </a>
+      )}
       <SkraningForm
         accounts={accounts}
         nextSkjalanumer={nextNo}
