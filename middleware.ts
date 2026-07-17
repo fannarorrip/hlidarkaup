@@ -56,6 +56,9 @@ function rolesFor(pathname: string): string[] | null {
 const PUBLIC_STAFF = ["/starf/login", "/api/auth/staff/login", "/api/auth/staff/logout"];
 // In-store kiosk surfaces (self-checkout, price checker) — private to the shop, like the back office.
 const KIOSK = ["/kassi", "/api/kassi", "/verdskanni"];
+// Price checker + the two endpoints it needs (barcode lookup + ad slideshow). VERDSKANNI_PUBLIC=true
+// opens ONLY these to the internet for a while; off by default → stays LAN-only like the rest.
+const VERDSKANNI = ["/verdskanni", "/api/kassi/scan", "/api/kassi/ads"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -99,7 +102,10 @@ export async function middleware(req: NextRequest) {
       (p) => pathname === p || pathname.startsWith(p + "/"),
     );
     const remoteTillOk = tillSurface && clientIp !== "" && allowIps.includes(clientIp);
-    if (!remoteTillOk) {
+    // VERDSKANNI_PUBLIC=true temporarily opens the price checker (and only it) to the internet.
+    const verdskanniPublic = process.env.VERDSKANNI_PUBLIC === "true" &&
+      VERDSKANNI.some((p) => pathname === p || pathname.startsWith(p + "/"));
+    if (!remoteTillOk && !verdskanniPublic) {
       return isApi
         ? NextResponse.json({ error: "Not found" }, { status: 404 })
         : new NextResponse("Not found", { status: 404 });
