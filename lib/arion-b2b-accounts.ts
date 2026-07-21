@@ -102,6 +102,15 @@ export async function getAccountStatement(opts: {
       body: envelope,
     });
     const text = await res.text();
+    // A SOAP 1.2 reply (2003/05 namespace) or HTTP 415 means the endpoint is NOT the bridge's
+    // StatementService speaking SOAP 1.1 — almost always the old 2017 Bridge (no StatementService;
+    // WCF answers unmatched endpoints with a SOAP 1.2 fault) or a wrong ARION_B2B_ACCOUNTS_URL.
+    if (res.status === 415 || text.includes("http://www.w3.org/2003/05/soap-envelope")) {
+      return {
+        ok: false,
+        error: "Bridge-inn á þessari slóð er ekki með yfirlitsþjónustuna (StatementService) — líklega eldri Bridge-útgáfa eða röng ARION_B2B_ACCOUNTS_URL. Slóðin á að enda á /B2BBridge/StatementService á nýju Bridge-vélinni.",
+      };
+    }
     const parsed = parser.parse(text) as Record<string, unknown>;
     const body = ((parsed.Envelope as Record<string, unknown>)?.Body ?? {}) as Record<string, unknown>;
     const fault = body.Fault as Record<string, unknown> | undefined;
