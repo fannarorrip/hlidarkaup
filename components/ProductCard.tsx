@@ -59,11 +59,11 @@ export default function ProductCard({ product }: { product: Product }) {
       {/* Image / emoji area — opens the product page (innihald + næringargildi) */}
       <Link
         href={`/vefverslun/vara/${encodeURIComponent(product.id)}`}
-        className="relative bg-gradient-to-br from-red-50 to-white h-32 rounded-t-2xl flex items-center justify-center text-5xl select-none"
+        className="relative bg-gradient-to-br from-red-50 to-white h-48 rounded-t-2xl flex items-center justify-center text-6xl select-none"
       >
         {product.image ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={product.image} alt={product.name} className="h-24 w-full object-contain p-2" />
+          <img src={product.image} alt={product.name} className="h-44 w-full object-contain p-2" />
         ) : (
           emoji
         )}
