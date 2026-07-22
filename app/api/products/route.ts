@@ -20,6 +20,10 @@ export async function GET(req: NextRequest) {
            count(*) over() as total
     from shop.products p
     where p.is_active and p.price_gross > 0
+      -- Vefverslun sýnir aðeins FULLGERÐAR vörur: mynd + innihaldslýsing. Matvæli í
+      -- fjarsölu VERÐA að sýna skylduupplýsingar fyrir kaup (ESB 1169/2011 gr. 14) —
+      -- og hálftómt vöruspjald selur ekki. Kassinn/verðskanninn sjá áfram allt.
+      and p.image_url is not null and p.innihald is not null
       and ($1 = '' or unaccent(p.name) ilike unaccent('%'||$1||'%') or p.product_number ilike $1||'%'
            or exists (select 1 from shop.product_barcodes b where b.product_number = p.product_number and b.barcode like $1||'%'))
     order by p.name limit $2 offset $3`, [search, limit, offset]);

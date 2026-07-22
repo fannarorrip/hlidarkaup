@@ -32,7 +32,9 @@ async function getProduct(nr: string): Promise<Row | null> {
     select product_number, name, description, price_gross, product_group, stock_quantity,
            is_stock_controlled, image_url, innihald, ofnaemisvaldar, naeringargildi, netto_magn, uppruni
     from shop.products
-    where product_number = $1 and is_active and price_gross > 0`, [nr]);
+    where product_number = $1 and is_active and price_gross > 0
+      -- sama fullgerðar-sía og í /api/products: mynd + innihald skilyrði fyrir birtingu
+      and image_url is not null and innihald is not null`, [nr]);
   return rows[0] ?? null;
 }
 
