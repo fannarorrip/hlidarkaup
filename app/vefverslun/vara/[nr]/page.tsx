@@ -68,7 +68,7 @@ export default async function VaraPage({ params }: { params: Promise<{ nr: strin
 
       <div className="mt-4 grid md:grid-cols-2 gap-8">
         {/* Image */}
-        <div className="bg-gradient-to-br from-red-50 to-white rounded-2xl border border-gray-100 flex items-center justify-center min-h-64 p-6">
+        <div className="bg-white rounded-2xl border border-gray-100 flex items-center justify-center min-h-64 p-6">
           {product.image ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={product.image} alt={product.name} className="max-h-72 w-full object-contain" />
