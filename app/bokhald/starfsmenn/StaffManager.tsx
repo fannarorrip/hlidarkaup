@@ -28,6 +28,13 @@ export default function StaffManager({ staff }: { staff: StaffRow[] }) {
     await fetch("/api/staff", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: targetEmail, ...patch }) });
     router.refresh();
   }
+  async function resetPassword(targetEmail: string) {
+    const pw = prompt(`Nýtt lykilorð fyrir ${targetEmail} (a.m.k. 8 stafir):`);
+    if (!pw) return;
+    const r = await fetch("/api/staff", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: targetEmail, password: pw }) });
+    const d = await r.json();
+    alert(r.ok ? `Lykilorð uppfært fyrir ${targetEmail}. Láttu starfsmanninn vita.` : (d.error ?? "Mistókst"));
+  }
 
   return (
     <div>
@@ -58,6 +65,7 @@ export default function StaffManager({ staff }: { staff: StaffRow[] }) {
               <th className="px-4 py-2 font-medium">Nafn</th>
               <th className="px-4 py-2 font-medium">Hlutverk</th>
               <th className="px-4 py-2 font-medium">Virkur</th>
+              <th className="px-4 py-2 font-medium">Lykilorð</th>
             </tr>
           </thead>
           <tbody>
@@ -72,6 +80,9 @@ export default function StaffManager({ staff }: { staff: StaffRow[] }) {
                 </td>
                 <td className="px-4 py-2">
                   <input type="checkbox" checked={m.is_active} onChange={(e) => update(m.email, { is_active: e.target.checked })} className="w-4 h-4 accent-red-600" />
+                </td>
+                <td className="px-4 py-2">
+                  <button onClick={() => resetPassword(m.email)} className="text-xs text-red-600 hover:text-red-800 hover:underline">Endurstilla</button>
                 </td>
               </tr>
             ))}
