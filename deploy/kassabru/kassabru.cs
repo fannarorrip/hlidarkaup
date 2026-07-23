@@ -6,6 +6,12 @@
 //   COM3  NCR 7197 receipt printer (9600 8N1) + cash drawer (kick via printer)
 //   COM4  NCR RealScan 7874 scanner/scale (9600 7O1, NCR framed protocol:
 //         [addr][cmd][data][ETX][BCC], BCC = XOR of all bytes incl. ETX)
+//   The scanner port ALSO understands raw ASCII labels (Datalogic Magellan in
+//   USB-COM mode, e.g. COM7): a label ended by CR/LF — or by ≥250 ms silence
+//   when no suffix is configured — is treated as a scan. NCR frames still end
+//   at ETX+BCC, so both protocols coexist on the same port. /weigh speaks BOTH
+//   scale protocols too — NCR framed AND Datalogic single-cable ("S14"+CR →
+//   "S14"+status+grams) — picked automatically, silence falls back to the other.
 //
 // HTTP API on http://127.0.0.1:8974 (localhost only — never exposed to LAN):
 //   GET  /health   -> {"ok":true,"printer":true,"scanner":true}
@@ -82,6 +88,10 @@ namespace Kassabru
         static volatile ScaleWait scaleWait;
         static readonly object scaleLock = new object();
 
+        // True once ANY raw (non-NCR) traffic arrived on the scanner port — i.e. the attached
+        // device is a Datalogic in USB-COM mode, so /weigh should speak S-protocol first.
+        static volatile bool rawMode;
+
         class ScaleWait
         {
             public readonly ManualResetEvent Done = new ManualResetEvent(false);
@@ -108,7 +118,14 @@ namespace Kassabru
 
             var listener = new HttpListener();
             listener.Prefixes.Add(string.Format("http://127.0.0.1:{0}/", HttpPort));
-            listener.Start();
+            try { listener.Start(); }
+            catch (HttpListenerException)
+            {
+                // Another instance already serves this port (double start via task + hand start).
+                // The running one also holds the COM ports — this copy has nothing to offer.
+                Log("Kassabrú er þegar í gangi á porti {0} — þetta eintak hættir.", HttpPort);
+                return;
+            }
             Log("Hlusta á http://127.0.0.1:{0}/", HttpPort);
 
             while (true)
@@ -405,7 +422,17 @@ namespace Kassabru
                 }
                 int b;
                 try { b = scanner.ReadByte(); }
-                catch (TimeoutException) { continue; }  // inter-byte gap mid-frame is fine — keep buffer
+                catch (TimeoutException)
+                {
+                    // Datalogic/USB-COM with no suffix: ≥250 ms of silence after a plausible
+                    // raw ASCII label means the label is complete — dispatch it. Anything else
+                    // still buffered after 250 ms of silence is stale garbage (both NCR frames
+                    // and raw labels finish in a few ms) — e.g. a NAK/status byte the Datalogic
+                    // sent for an NCR-protocol command — and would poison the NEXT scan if kept.
+                    if (LooksLikeRawLabel(frame)) DispatchRaw(frame);
+                    else if (frame.Count > 0) frame.Clear();
+                    continue;
+                }
                 catch (Exception ex)
                 {
                     Log("skanni lestur: {0}", ex.Message);
@@ -415,6 +442,13 @@ namespace Kassabru
                 }
                 if (b < 0) continue;
                 if (b == 0x02 && frame.Count == 0) continue;   // stray STX (prefix enabled) — ignore
+                if (b == 0x0D || b == 0x0A)
+                {
+                    // CR/LF never occurs inside an NCR frame — it is the Datalogic/USB-COM
+                    // suffix marking the end of a raw ASCII label.
+                    if (frame.Count > 0) DispatchRaw(frame);
+                    continue;
+                }
                 if (b == 0x03)
                 {
                     // terminator: next byte is the BCC = XOR of all bytes after STX incl. ETX — verify it
@@ -465,6 +499,73 @@ namespace Kassabru
             // "00" = scanner command ack — nothing to do
         }
 
+        // -- raw ASCII mode (Datalogic Magellan on USB-COM: label text, no NCR framing) --
+
+        /// True when the buffer could be a complete raw label: ≥6 printable ASCII
+        /// bytes containing a run of ≥6 digits (EAN-8 is the shortest we sell).
+        static bool LooksLikeRawLabel(List<byte> frame)
+        {
+            if (frame.Count < 6) return false;
+            int run = 0, best = 0;
+            for (int i = 0; i < frame.Count; i++)
+            {
+                byte b = frame[i];
+                if (b < 0x20 || b > 0x7E) return false;        // control bytes ⇒ NCR partial, keep waiting
+                if (b >= (byte)'0' && b <= (byte)'9') { run++; if (run > best) best = run; }
+                else run = 0;
+            }
+            return best >= 6;
+        }
+
+        /// Dispatch a raw ASCII line from a Datalogic in USB-COM/single-cable mode.
+        /// Routing by prefix: "S14"/"S11" = scale reply (hand to the waiting /weigh call),
+        /// "S08" = label with single-cable identifier (strip it), anything else = bare label.
+        /// For labels: longest digit run = the barcode (EAN/UPC are all digits; label-id
+        /// prefixes like "F" or "]E0" are letters and fall away). Consumes the buffer.
+        static void DispatchRaw(List<byte> frame)
+        {
+            string s = Encoding.ASCII.GetString(frame.ToArray()).Trim();
+            frame.Clear();
+            if (s.Length == 0) return;
+            rawMode = true;
+            Log("hrátt <- {0}", s);
+            if (s.StartsWith("S14") || s.StartsWith("S11") || s.StartsWith("S10") || s.StartsWith("S33"))
+            {
+                // Datalogic single-cable SCALE/command frame — only the reply kind the pending
+                // /weigh call asked for satisfies it; stale/unsolicited frames are dropped.
+                var w = scaleWait;
+                if (w != null && s.StartsWith(w.Expect)) { w.Frame = s; w.Done.Set(); }
+                return;
+            }
+            string body = s.StartsWith("S08") ? s.Substring(3) : s;   // single-cable label identifier
+            string code = LongestDigitRun(body);
+            if (code.Length >= 6) { Log("SKANN: {0}", code); PushScan(code); }
+            else Log("hrár rammi án strikamerkis hunsaður: {0}", s);
+        }
+
+        static string LongestDigitRun(string s)
+        {
+            string best = "";
+            var run = new StringBuilder();
+            foreach (char c in s)
+            {
+                if (c >= '0' && c <= '9') run.Append(c);
+                else { if (run.Length > best.Length) best = run.ToString(); run.Length = 0; }
+            }
+            return run.Length > best.Length ? run.ToString() : best;
+        }
+
+        /// Write an ASCII line + CR to the scanner port (Datalogic single-cable commands).
+        static void SendRawLine(string s)
+        {
+            byte[] b = Encoding.ASCII.GetBytes(s + "\r");
+            lock (scannerWriteLock)
+            {
+                if (scanner == null || !scanner.IsOpen) throw new IOException("scanner port closed");
+                scanner.Write(b, 0, b.Length);
+            }
+        }
+
         static void HandleWeigh(HttpListenerResponse resp)
         {
             if (!TryOpenScanner()) { WriteJson(resp, 503, "{\"ok\":false,\"reason\":\"offline\",\"message\":\"Vigt ekki tengd\"}"); return; }
@@ -475,64 +576,121 @@ namespace Kassabru
                 WriteJson(resp, 429, "{\"ok\":false,\"reason\":\"busy\",\"message\":\"Vigtun þegar í gangi\"}");
                 return;
             }
-            Thread.Sleep(150);   // let stray frames from a previous transaction land while scaleWait
-                                 // is null (they get dropped) instead of poisoning this one
-            var w = new ScaleWait();     // Expect = "11" (weight)
-            scaleWait = w;
             try
             {
-                SendScannerFrame(new byte[] { 0x31, 0x31 });           // Weigh (item already on platter)
-                if (w.Done.WaitOne(2500) && w.Frame != null && w.Frame.StartsWith("11"))
-                {
-                    string d = w.Frame.Substring(2);
-                    int raw;
-                    if (int.TryParse(d, NumberStyles.None, CultureInfo.InvariantCulture, out raw))
-                    {
-                        double kg = raw / 1000.0;                       // 4-5 digits, thousandths of kg
-                        WriteJson(resp, 200, string.Format(CultureInfo.InvariantCulture, "{{\"ok\":true,\"kg\":{0:0.###}}}", kg));
-                        return;
-                    }
-                }
-                // No stable non-zero weight: cancel the pending weigh, then ask why.
-                var w2 = new ScaleWait();
-                w2.Expect = "13";                                      // only a STATUS frame satisfies this waiter
-                scaleWait = w2;
-                SendScannerFrame(new byte[] { 0x31, 0x32 });           // Cancel weigh
-                Thread.Sleep(150);
-                SendScannerFrame(new byte[] { 0x31, 0x33 });           // Scale status
-                string reason = "unknown", message = "Vigtun mistókst";
-                if (w2.Done.WaitOne(1200) && w2.Frame != null && w2.Frame.Length >= 7)
-                {
-                    char z = w2.Frame[6];   // 13 3V 3W 3X 3Y 3Z — z = ready-state digit
-                    if (z == '4')
-                    {
-                        // a stable weight is sitting there ready — just weigh again, it answers instantly
-                        var w3 = new ScaleWait();                      // Expect = "11"
-                        scaleWait = w3;
-                        SendScannerFrame(new byte[] { 0x31, 0x31 });
-                        int raw3;
-                        if (w3.Done.WaitOne(1500) && w3.Frame != null &&
-                            int.TryParse(w3.Frame.Substring(2), NumberStyles.None, CultureInfo.InvariantCulture, out raw3))
-                        {
-                            WriteJson(resp, 200, string.Format(CultureInfo.InvariantCulture, "{{\"ok\":true,\"kg\":{0:0.###}}}", raw3 / 1000.0));
-                            return;
-                        }
-                        reason = "ready"; message = "Þyngd tilbúin — reyndu aftur";
-                    }
-                    else if (z == '0') { reason = "notready"; message = "Vigt ekki tilbúin — núllstilla þarf vigtina"; }
-                    else if (z == '1') { reason = "motion"; message = "Vigtin er á hreyfingu — bíddu augnablik"; }
-                    else if (z == '2') { reason = "over"; message = "Of þungt á vigtinni"; }
-                    else if (z == '3') { reason = "zero"; message = "Ekkert á vigtinni"; }
-                    else if (z == '5') { reason = "sent"; message = "Lyftu vörunni af og settu aftur á vigtina"; }
-                }
-                WriteJson(resp, 200, string.Format("{{\"ok\":false,\"reason\":\"{0}\",\"message\":\"{1}\"}}", reason, message));
+                Thread.Sleep(150);   // let stray frames from a previous transaction land while scaleWait
+                                     // is null (they get dropped) instead of poisoning this one
+                // Two scale protocols exist in the fleet: NCR RealScan (STX-framed) and Datalogic
+                // Magellan single-cable ("S14" ASCII lines). rawMode picks the likely one (it is
+                // set as soon as any raw label arrives); total silence tries the other protocol.
+                string json = rawMode ? WeighDatalogic() : WeighNcr();
+                if (json == null) json = rawMode ? WeighNcr() : WeighDatalogic();
+                if (json == null) json = "{\"ok\":false,\"reason\":\"silent\",\"message\":\"Vigt svarar ekki — er vigt tengd við kassann?\"}";
+                WriteJson(resp, 200, json);
             }
             catch (Exception ex)
             {
                 Log("vigtun: {0}", ex.Message);
-                WriteJson(resp, 500, "{\"ok\":false,\"reason\":\"error\",\"message\":\"Villa í samskiptum við vigt\"}");
+                try { WriteJson(resp, 500, "{\"ok\":false,\"reason\":\"error\",\"message\":\"Villa í samskiptum við vigt\"}"); } catch { }
             }
             finally { scaleWait = null; Monitor.Exit(scaleLock); }
+        }
+
+        /// Datalogic Magellan single-cable weigh: poll "S14" (state request — answers at once)
+        /// until stable weight or timeout. Reply = "S14" + status digit + weight digits:
+        /// 0 not ready, 1 in motion, 2 over capacity, 3 stable ZERO, 4 stable weight (+ grams,
+        /// 5 digits on a kg unit), 5 under zero. No host zero command exists in this mode.
+        /// Returns response JSON, or null when the port stayed completely silent (device does
+        /// not speak this protocol — caller falls back to NCR).
+        static string WeighDatalogic()
+        {
+            for (int attempt = 0; attempt < 8; attempt++)
+            {
+                if (attempt > 0) Thread.Sleep(300);          // never poll faster than 250 ms
+                var w = new ScaleWait();
+                w.Expect = "S14";
+                scaleWait = w;
+                SendRawLine("S14");
+                bool got = w.Done.WaitOne(600);              // replies are immediate when spoken
+                scaleWait = null;
+                if (!got)
+                {
+                    if (attempt == 0) return null;           // total silence — wrong protocol
+                    continue;                                // mid-sequence hiccup — retry
+                }
+                string f = w.Frame;                          // "S14" + status [+ digits]
+                char st = f.Length > 3 ? f[3] : '?';
+                if (st == '4')
+                {
+                    string digits = f.Substring(4);
+                    int grams;
+                    if (digits.Length == 5 && int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out grams))
+                        return string.Format(CultureInfo.InvariantCulture, "{{\"ok\":true,\"kg\":{0:0.###}}}", grams / 1000.0);
+                    if (digits.Length == 4)
+                        // 4 digits = hundredths of a POUND — the unit is lb-calibrated. Refuse
+                        // rather than convert: a till must never guess units on a trade scale.
+                        return "{\"ok\":false,\"reason\":\"units\",\"message\":\"Vigtin er stillt á pund — þarf kg-stillingu\"}";
+                    Log("vigt: óskiljanlegt S14-svar: {0}", f);
+                    return "{\"ok\":false,\"reason\":\"parse\",\"message\":\"Óskiljanlegt svar frá vigt\"}";
+                }
+                if (st == '3') return "{\"ok\":false,\"reason\":\"zero\",\"message\":\"Ekkert á vigtinni\"}";
+                if (st == '2') return "{\"ok\":false,\"reason\":\"over\",\"message\":\"Of þungt á vigtinni\"}";
+                if (st == '5') return "{\"ok\":false,\"reason\":\"under\",\"message\":\"Vigt undir núlli — núllstilltu vigtina (Zero-takki)\"}";
+                if (st == '0') return "{\"ok\":false,\"reason\":\"notready\",\"message\":\"Vigt ekki tilbúin\"}";
+                // '1' = in motion — loop: wait for the platter to settle and poll again
+            }
+            return "{\"ok\":false,\"reason\":\"motion\",\"message\":\"Vigtin nær ekki jafnvægi — bíddu augnablik\"}";
+        }
+
+        /// NCR RealScan 7874 weigh flow (framed protocol). Returns response JSON, or null when
+        /// the port stayed completely silent (caller falls back to the Datalogic protocol).
+        static string WeighNcr()
+        {
+            bool anyReply = false;
+            var w = new ScaleWait();     // Expect = "11" (weight)
+            scaleWait = w;
+            SendScannerFrame(new byte[] { 0x31, 0x31 });           // Weigh (item already on platter)
+            bool got = w.Done.WaitOne(2500);
+            anyReply |= got;
+            if (got && w.Frame != null && w.Frame.StartsWith("11"))
+            {
+                string d = w.Frame.Substring(2);
+                int raw;
+                if (int.TryParse(d, NumberStyles.None, CultureInfo.InvariantCulture, out raw))
+                    return string.Format(CultureInfo.InvariantCulture, "{{\"ok\":true,\"kg\":{0:0.###}}}", raw / 1000.0);   // 4-5 digits, thousandths of kg
+            }
+            // No stable non-zero weight: cancel the pending weigh, then ask why.
+            var w2 = new ScaleWait();
+            w2.Expect = "13";                                      // only a STATUS frame satisfies this waiter
+            scaleWait = w2;
+            SendScannerFrame(new byte[] { 0x31, 0x32 });           // Cancel weigh
+            Thread.Sleep(150);
+            SendScannerFrame(new byte[] { 0x31, 0x33 });           // Scale status
+            string reason = "unknown", message = "Vigtun mistókst";
+            if (w2.Done.WaitOne(1200) && w2.Frame != null && w2.Frame.Length >= 7)
+            {
+                anyReply = true;
+                char z = w2.Frame[6];   // 13 3V 3W 3X 3Y 3Z — z = ready-state digit
+                if (z == '4')
+                {
+                    // a stable weight is sitting there ready — just weigh again, it answers instantly
+                    var w3 = new ScaleWait();                      // Expect = "11"
+                    scaleWait = w3;
+                    SendScannerFrame(new byte[] { 0x31, 0x31 });
+                    int raw3;
+                    if (w3.Done.WaitOne(1500) && w3.Frame != null &&
+                        int.TryParse(w3.Frame.Substring(2), NumberStyles.None, CultureInfo.InvariantCulture, out raw3))
+                        return string.Format(CultureInfo.InvariantCulture, "{{\"ok\":true,\"kg\":{0:0.###}}}", raw3 / 1000.0);
+                    reason = "ready"; message = "Þyngd tilbúin — reyndu aftur";
+                }
+                else if (z == '0') { reason = "notready"; message = "Vigt ekki tilbúin — núllstilla þarf vigtina"; }
+                else if (z == '1') { reason = "motion"; message = "Vigtin er á hreyfingu — bíddu augnablik"; }
+                else if (z == '2') { reason = "over"; message = "Of þungt á vigtinni"; }
+                else if (z == '3') { reason = "zero"; message = "Ekkert á vigtinni"; }
+                else if (z == '5') { reason = "sent"; message = "Lyftu vörunni af og settu aftur á vigtina"; }
+            }
+            if (!anyReply) return null;
+            return string.Format("{{\"ok\":false,\"reason\":\"{0}\",\"message\":\"{1}\"}}", reason, message);
         }
 
         // ------------------------------------------------------------ misc --

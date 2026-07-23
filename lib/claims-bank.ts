@@ -85,6 +85,10 @@ export async function sendQueuedClaims(auth: Auth = {}): Promise<SendResult> {
         reference,
         billNumber: numberDigits,
         idempotencyKey: c.id, // claim row uuid — a crash-resend is idempotent at the bank
+        // Innheimtugjald (t.d. 100 kr) af kröfusniðinu — bankinn leggur það ofan á;
+        // greiðandinn borgar amount + gjald og mismunurinn bókast á 6100 við uppgjör.
+        paymentFeePrinting: Math.round(profile.notify_fee_paper || 0),
+        paymentFeePaperless: Math.round(profile.notify_fee_paperless || 0),
       }, auth);
       if (res.claimRef) {
         await query(`update acc.claims set status='created', arion_ref=$2, profile_id=$3, last_error=null where id=$1 and status='sending'`,
@@ -118,6 +122,39 @@ export async function sendQueuedClaims(auth: Auth = {}): Promise<SendResult> {
 
 export interface SyncResult { settled: number; checked: number; errors: string[]; reason?: string }
 
+export interface CancelResult { ok: boolean; message: string }
+
+/** Fella niður kröfu. Opinbera REST Claims API-ið hefur ENGA afturköllunaraðgerð (kröfur eru
+ *  read-only eftir stofnun skv. tilvísuninni) — afturköllunin er því staðbundin: queued/failed
+ *  kröfur hverfa úr biðröðinni strax; 'created' krafa er merkt afturkölluð hér en ÞARF LÍKA að
+ *  fella niður í netbankanum (þar til SOAP CancelClaim-leiðin opnast). Greiddri kröfu verður
+ *  ekki hent — hún er bókuð; notaðu bakfærslu fylgiskjalsins ef þarf. */
+export async function cancelClaim(claimId: string): Promise<CancelResult> {
+  const client = await db.connect();
+  try {
+    await client.query("begin");
+    const q = await client.query<{ status: string; arion_ref: string | null }>(
+      "select status, arion_ref from acc.claims where id = $1 for update", [claimId]);
+    const row = q.rows[0];
+    if (!row) { await client.query("rollback"); return { ok: false, message: "Krafa fannst ekki." }; }
+    if (row.status === "paid") { await client.query("rollback"); return { ok: false, message: "Krafan er greidd og bókuð — notaðu bakfærslu í stað þess að eyða." }; }
+    if (row.status === "cancelled") { await client.query("rollback"); return { ok: false, message: "Krafan er þegar afturkölluð." }; }
+    if (row.status === "sending") { await client.query("rollback"); return { ok: false, message: "Krafan er í sendingu — reyndu aftur eftir andartak." }; }
+    const wasAtBank = row.status === "created";
+    const note = wasAtBank
+      ? "Afturkölluð í kerfinu — MUNA að fella kröfuna líka niður í netbanka Arion."
+      : "Afturkölluð áður en hún fór í bankann.";
+    await client.query("update acc.claims set status='cancelled', last_error=$2 where id=$1", [claimId, note]);
+    await client.query("commit");
+    return { ok: true, message: note };
+  } catch (e) {
+    try { await client.query("rollback"); } catch { /* */ }
+    return { ok: false, message: e instanceof Error ? e.message : String(e) };
+  } finally {
+    client.release();
+  }
+}
+
 /** Pull settlements for 'created' claims. When paid in full, post the receipt voucher and mark paid.
  *  Network fetch happens outside the DB transaction; the ledger post is locked + idempotent. */
 export async function syncClaimPayments(auth: Auth = {}): Promise<SyncResult> {
@@ -141,12 +178,14 @@ export async function syncClaimPayments(auth: Auth = {}): Promise<SyncResult> {
     checked++;
     try {
       const pays = await getArionClaimTransactions(c.arion_ref as string, auth);
-      const paid = pays.reduce((a, p) => a + (Number(p.amount) || 0), 0);
+      const paid = Math.round(pays.reduce((a, p) => a + (Number(p.amount) || 0), 0));
       const amount = Math.round(Number(c.amount) || 0);
-      if (Math.round(paid) < amount) continue; // not fully paid yet
+      if (paid < amount) continue; // not fully paid yet
       if (!c.settlement_ledger) { errors.push(`${c.arion_ref}: vantar ráðstöfunarreikning (kröfusnið).`); continue; }
       const lastDate = pays.map((p) => (p.date || "").slice(0, 10)).filter(Boolean).sort().pop() || new Date().toISOString().slice(0, 10);
-      const res = await settleClaim(c.id, c.settlement_ledger, c.ar_account || "7600", amount, c.customer_id, c.arion_ref as string, lastDate);
+      // paid > amount = innheimtugjaldið (og ev. dráttarvextir) sem bankinn lagði ofan á —
+      // bókast á 6100 Vaxtatekjur í settleClaim svo innborgunin stemmi við bankann.
+      const res = await settleClaim(c.id, c.settlement_ledger, c.ar_account || "7600", amount, c.customer_id, c.arion_ref as string, lastDate, paid);
       if (res.ok) settled++; else if (res.message) errors.push(`${c.arion_ref}: ${res.message}`);
     } catch (e) {
       errors.push(`${c.arion_ref}: ${e instanceof Error ? e.message : String(e)}`);
@@ -155,27 +194,37 @@ export async function syncClaimPayments(auth: Auth = {}): Promise<SyncResult> {
   return { settled, checked, errors };
 }
 
-/** Post the receipt that clears a paid claim: Dr settlement bank / Cr customer AR (7600),
- *  customer-tagged. Locked + conditional so a claim settles at most once. */
+/** Post the receipt that clears a paid claim: Dr settlement bank (það sem RAUNVERULEGA barst,
+ *  þ.m.t. innheimtugjald) / Cr customer AR (7600) reikningsupphæðin / Cr 6100 Vaxtatekjur
+ *  yfirborgunin (innheimtugjaldið + ev. dráttarvextir). Locked + conditional so a claim
+ *  settles at most once. */
+const FEE_INCOME_ACCOUNT = "6100"; // Vaxtatekjur — innheimtugjald + dráttarvextir af kröfum
+
 async function settleClaim(
   claimId: string, bankAccount: string, arAccount: string, amount: number, customerId: string | null, arionRef: string, date: string,
+  paidTotal?: number,
 ): Promise<{ ok: boolean; message?: string }> {
   if (bankAccount === arAccount) return { ok: false, message: "Ráðstöfunarreikningur og kröfulykill mega ekki vera sami." };
+  const received = Math.max(Math.round(paidTotal ?? amount), amount);
+  const fee = received - amount;
   const client = await db.connect();
   try {
     await client.query("begin");
     const q = await client.query<{ status: string }>("select status from acc.claims where id = $1 for update", [claimId]);
     if (!q.rows[0]) { await client.query("rollback"); return { ok: false, message: "Krafa fannst ekki." }; }
     if (q.rows[0].status !== "created") { await client.query("rollback"); return { ok: false }; } // already handled
+    const wanted = fee > 0 ? [bankAccount, arAccount, FEE_INCOME_ACCOUNT] : [bankAccount, arAccount];
     const acct = await client.query<{ account_number: string }>(
-      "select account_number from acc.accounts where account_number = any($1) and is_postable", [[bankAccount, arAccount]]);
+      "select account_number from acc.accounts where account_number = any($1) and is_postable", [wanted]);
     const found = new Set(acct.rows.map((r: { account_number: string }) => r.account_number));
     if (!found.has(bankAccount) || !found.has(arAccount)) { await client.query("rollback"); return { ok: false, message: "Lyklar finnast ekki (ráðstöfunar/krafna)." }; }
+    if (fee > 0 && !found.has(FEE_INCOME_ACCOUNT)) { await client.query("rollback"); return { ok: false, message: `Lykill ${FEE_INCOME_ACCOUNT} (vaxtatekjur) finnst ekki fyrir innheimtugjaldið.` }; }
 
     const desc = `Innborgun kröfu ${arionRef}`.slice(0, 140);
     const lines = [
-      { account: bankAccount, debit: amount, credit: 0, vat_code: null, description: desc },
+      { account: bankAccount, debit: received, credit: 0, vat_code: null, description: desc },
       { account: arAccount, debit: 0, credit: amount, vat_code: null, description: desc },
+      ...(fee > 0 ? [{ account: FEE_INCOME_ACCOUNT, debit: 0, credit: fee, vat_code: null, description: `Innheimtugjald/vextir kröfu ${arionRef}`.slice(0, 140) }] : []),
     ];
     const v = await client.query<{ id: string }>(
       "select id from acc.post_voucher('JOURNAL',$1::date,'receipt',$2,$3,'bokhald',$4::jsonb, p_customer_id => $5::uuid)",

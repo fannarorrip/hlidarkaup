@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { arionStatus } from "@/lib/arion";
-import { sendQueuedClaims, syncClaimPayments } from "@/lib/claims-bank";
+import { sendQueuedClaims, syncClaimPayments, cancelClaim } from "@/lib/claims-bank";
 import { claimsEnabled } from "@/lib/claims";
 
 // Bank claims: flush queued claims to Arion (send) and pull settlements into the ledger (sync).
@@ -17,6 +17,15 @@ export async function POST(req: NextRequest) {
     bearerToken: typeof body.token === "string" && body.token.trim() ? body.token.trim() : undefined,
     subscriptionKey: typeof body.subscriptionKey === "string" && body.subscriptionKey.trim() ? body.subscriptionKey.trim() : undefined,
   } : {};
+  // Afturköllun er staðbundin aðgerð og á að virka þótt kröfusending sé óvirk
+  // (biðraðar-kröfur safnast einmitt upp á meðan).
+  if (action === "cancel") {
+    const id = String(body.id || "");
+    if (!id) return NextResponse.json({ ok: false, message: "Vantar kröfu-id." });
+    const res = await cancelClaim(id);
+    return NextResponse.json(res);
+  }
+
   if (!claimsEnabled()) return NextResponse.json({ ok: false, message: "Kröfusending er óvirk. Kveiktu á ARION_CLAIMS_ENABLED þegar innheimtusamningur og skilríki eru komin." });
 
   try {

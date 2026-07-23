@@ -13,6 +13,8 @@ interface Line {
   vat: string;         // "" | "24" | "11" | "0"
   amount: string;      // signed: + = debet, − = kredit
   hasDoc: boolean;
+  autoVat?: boolean;   // sjálfvirk innskattslína — fylgir gjaldalínunni fyrir ofan
+  splitPending?: boolean; // þrep valið á undan upphæð — skipta við amount-blur
 }
 export interface ExtractLine { account?: string; description?: string; vatRate?: number; amount?: number; }
 export interface ExtractData { supplier?: string; invoiceNumber?: string; date?: string; lines?: ExtractLine[]; }
@@ -89,6 +91,73 @@ export default function SkraningForm({ accounts, nextSkjalanumer, initialData, i
   const addLine = () => setLines((p) => [...p, blank()]);
   const removeLine = (i: number) => setLines((p) => (p.length > 1 ? p.filter((_, idx) => idx !== i) : p));
 
+  // --- Sjálfvirkur innskattur -----------------------------------------------
+  // Endurskoðandakrafa: þegar VSK-þrep (24/11) er valið á gjaldalínu er upphæðin
+  // alltaf M/VSK — kerfið á sjálft að lækka línuna í nettó og bæta við sýnilegri
+  // innskattslínu (9510/9512), eins og gerist þegar skjal er lesið inn.
+  // vat = G − round(G/(1+r%)) svo nettó+vsk == brúttó upp á krónu (jafnvægisgáttin).
+  const INNSKATTUR: Record<string, string> = { "24": "9510", "11": "9512" };
+
+  function applyVatChange(i: number, newVat: string) {
+    setLines((p) => {
+      const l = p[i];
+      if (!l) return p;
+      const next = [...p];
+      const hasCompanion = next[i + 1]?.autoVat === true;
+      const acct = resolveAcct(l.acctText);
+      // Aldrei skipta VSK-lyklunum sjálfum eða kreditlínum (mótfærslum)
+      const splittable = acct !== "9510" && acct !== "9512" && acct !== "9520" && !l.autoVat;
+      const gross = () => (Number(l.amount) || 0) + (hasCompanion ? Number(next[i + 1].amount) || 0 : 0);
+
+      if ((newVat === "24" || newVat === "11") && splittable) {
+        const G = gross();
+        if (G > 0) {
+          const net = Math.round(G / (1 + Number(newVat) / 100));
+          const vatAmt = G - net;
+          next[i] = { ...l, vat: newVat, amount: String(net), splitPending: false };
+          const comp: Line = {
+            date: l.date, type: l.type, acctText: acctLabel(INNSKATTUR[newVat]),
+            description: `Innskattur ${newVat}%`, vat: newVat, amount: String(vatAmt),
+            hasDoc: l.hasDoc, autoVat: true,
+          };
+          if (hasCompanion) next[i + 1] = comp; else next.splice(i + 1, 0, comp);
+          return next;
+        }
+        // upphæð ókomin — merkja og skipta við blur á upphæðinni
+        next[i] = { ...l, vat: newVat, splitPending: true };
+        return next;
+      }
+
+      // þrep tekið af (-- eða 0%): afturkalla skiptinguna — brúttó aftur á línuna
+      if (hasCompanion) {
+        const G = gross();
+        next[i] = { ...l, vat: newVat, amount: String(G), splitPending: false };
+        next.splice(i + 1, 1);
+        return next;
+      }
+      next[i] = { ...l, vat: newVat, splitPending: false };
+      return next;
+    });
+  }
+
+  function onAmountBlur(i: number) {
+    const l = lines[i];
+    if (l?.splitPending && (l.vat === "24" || l.vat === "11") && (Number(l.amount) || 0) > 0) {
+      applyVatChange(i, l.vat);
+    }
+    // upphæð breytt á línu sem þegar er skipt → endurreikna skiptinguna út frá nýju brúttói
+    else if ((l?.vat === "24" || l?.vat === "11") && lines[i + 1]?.autoVat && (Number(l.amount) || 0) > 0) {
+      setLines((p) => {
+        const G = Number(p[i].amount) || 0;   // notandinn sló inn nýja BRÚTTÓ-upphæð
+        const net = Math.round(G / (1 + Number(p[i].vat) / 100));
+        const next = [...p];
+        next[i] = { ...next[i], amount: String(net) };
+        next[i + 1] = { ...next[i + 1], vat: p[i].vat, description: `Innskattur ${p[i].vat}%`, acctText: acctLabel(INNSKATTUR[p[i].vat]), amount: String(G - net) };
+        return next;
+      });
+    }
+  }
+
   let debet = 0, kredit = 0;
   for (const l of lines) { const n = Number(l.amount) || 0; if (n > 0) debet += n; else kredit += -n; }
   const diff = debet - kredit;
@@ -142,7 +211,7 @@ export default function SkraningForm({ accounts, nextSkjalanumer, initialData, i
     setBusy(true); setError(""); setOk("");
     const voucherDate = toISO(lines.find((l) => toISO(l.date))?.date || "") || undefined;
     const payloadLines = lines
-      .map((l) => ({ account: resolveAcct(l.acctText), amount: Number(l.amount) || 0, vat_code: l.vat ? ({ "24": "I24", "11": "I11" } as Record<string, string>)[l.vat] || null : null, description: l.description }))
+      .map((l) => ({ account: resolveAcct(l.acctText), amount: Number(l.amount) || 0, vat_code: l.vat ? ({ "24": "I24", "11": "I11", "0": "S00" } as Record<string, string>)[l.vat] || null : null, description: l.description }))
       .filter((l) => l.account && l.amount !== 0)
       .map((l) => ({ account: l.account, debit: l.amount > 0 ? l.amount : 0, credit: l.amount < 0 ? -l.amount : 0, vat_code: l.vat_code, description: l.description }));
     const url = emailMode ? `/api/skraning/email/${emailId}/approve` : "/api/skraning/post";
@@ -257,12 +326,12 @@ export default function SkraningForm({ accounts, nextSkjalanumer, initialData, i
                     <input data-cell data-row={i} value={l.description} placeholder="Lýsing" onChange={(e) => setLine(i, "description", e.target.value)} className={cell} />
                   </td>
                   <td className="border-r border-gray-100 w-24">
-                    <select data-cell data-row={i} value={l.vat} onChange={(e) => setLine(i, "vat", e.target.value)} className={`${cell} appearance-none`}>
+                    <select data-cell data-row={i} value={l.vat} onChange={(e) => applyVatChange(i, e.target.value)} className={`${cell} appearance-none ${l.autoVat ? "bg-amber-50/60" : ""}`}>
                       <option value="">--</option><option value="24">24%</option><option value="11">11%</option><option value="0">0%</option>
                     </select>
                   </td>
                   <td className="border-r border-gray-100 w-32">
-                    <input data-cell data-row={i} value={l.amount} inputMode="numeric" onChange={(e) => setLine(i, "amount", e.target.value.replace(/[^\d-]/g, ""))} className={`${cell} text-right font-medium ${amt < 0 ? "text-red-600" : ""}`} />
+                    <input data-cell data-row={i} value={l.amount} inputMode="numeric" onChange={(e) => setLine(i, "amount", e.target.value.replace(/[^\d-]/g, ""))} onBlur={() => onAmountBlur(i)} className={`${cell} text-right font-medium ${amt < 0 ? "text-red-600" : ""} ${l.autoVat ? "bg-amber-50/60" : ""}`} />
                   </td>
                   <td className="text-center"><button onClick={() => removeLine(i)} className="text-gray-300 hover:text-red-600 px-1" title="Eyða línu">×</button></td>
                 </tr>

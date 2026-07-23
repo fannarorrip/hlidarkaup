@@ -466,6 +466,9 @@ export interface ArionClaimInput {
   billNumber?: string;        // reikningsnúmer (max 7)
   customerNumber?: string;    // viðskiptanúmer (max 16)
   idempotencyKey?: string;    // UUID → X-Idempotency-Key (we pass the claim row id)
+  paymentFeePrinting?: number;  // innheimtu-/tilkynningagjald, prentaður seðill (paymentFee.printingFee)
+  paymentFeePaperless?: number; // sama, rafrænn seðill (paymentFee.paperlessFee) — bankinn leggur
+                                // gjaldið ofan á; greiðandi borgar amount + gjald
 }
 // ok = HTTP 2xx (the request itself succeeded). claimRef may still be empty if the response used
 // an unexpected field name — callers must NOT treat ok+empty-claimRef as a plain failure (the claim
@@ -497,6 +500,9 @@ export async function createArionClaim(claim: ArionClaimInput, opts: { bearerTok
     ...(claim.reference ? { reference: claim.reference.slice(0, 16) } : {}),
     ...(claim.billNumber ? { billNumber: digits(claim.billNumber).slice(0, 7) } : {}),
     ...(claim.customerNumber ? { customerNumber: claim.customerNumber.slice(0, 16) } : {}),
+    ...(claim.paymentFeePrinting || claim.paymentFeePaperless
+      ? { paymentFee: { printingFee: Math.round(claim.paymentFeePrinting || 0), paperlessFee: Math.round(claim.paymentFeePaperless || 0) } }
+      : {}),
   });
   const r = await arionRequest(`${CLAIMS_BASE}/claims`, {
     method: "POST", body, bearerToken: opts.bearerToken, subscriptionKey: claimsSub(opts.subscriptionKey),

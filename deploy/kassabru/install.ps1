@@ -35,10 +35,14 @@ netsh http add urlacl url=http://127.0.0.1:$HttpPort/ user=Everyone 2>$null
 "OK: URL ACL (localhost:$HttpPort)"
 
 # 3. Autostart at logon with THESE settings (visible console -> easy to check/kill)
-$argStr = ('"{0}" "{1}" {2} {3}' -f $PrinterPort, $ScannerPort, $HttpPort, $CodePage)
-$tr = ('"{0}\kassabru.exe" {1}' -f $dir, $argStr)
+# NO quotes in /TR: schtasks mangles embedded quotes (stores a broken command line that
+# silently fails to launch). Neither the exe path nor any port arg contains spaces.
+if ($PrinterPort.Contains(" ") -or $ScannerPort.Contains(" ")) { throw "Port-nofn mega ekki innihalda bil (schtasks /TR quoting): '$PrinterPort' '$ScannerPort'" }
+$argStr = ('{0} {1} {2} {3}' -f $PrinterPort, $ScannerPort, $HttpPort, $CodePage)
+$tr = ('{0}\kassabru.exe {1}' -f $dir, $argStr)
 schtasks /Create /F /TN "Kassabru" /SC ONLOGON /TR $tr | Out-Null
-"OK: autostart registered (Task Scheduler: Kassabru) - $argStr"
+if ($LASTEXITCODE -ne 0) { "!! schtasks skraning mistokst - keyrdu install.ps1 sem admin" }
+else { "OK: autostart registered (Task Scheduler: Kassabru) - $argStr" }
 
 # 4. Start it now
 Start-Process "$dir\kassabru.exe" -WorkingDirectory $dir -ArgumentList $argStr

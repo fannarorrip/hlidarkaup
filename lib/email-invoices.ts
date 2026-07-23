@@ -80,7 +80,14 @@ export async function runEmailPoll(): Promise<PollSummary> {
       const attachments = (await getMessageAttachments(m.id)).filter(isCandidate);
       if (!attachments.length) { await insertRow({ ...meta, status: "skipped", extracted: null, error: "Engin nothæf viðhengi" }); out.skipped++; continue; }
 
-      const first = attachments[0];
+      // The STORED attachment becomes the permanent frumrit (7 ára fylgiskjal) — pick the
+      // most invoice-like one, not just whatever came first in the MIME order: PDF fyrst,
+      // svo töflur, myndir síðast (undirskriftarmyndir smeygja sér fram fyrir PDF annars);
+      // innan flokks vinnur stærsta skjalið.
+      const docRank = (a: GraphAttachment) =>
+        /pdf/i.test(a.contentType || "") || /\.pdf$/i.test(a.name || "") ? 0 :
+        /sheet|excel|csv/i.test(a.contentType || "") || /\.(xlsx?|csv)$/i.test(a.name || "") ? 1 : 2;
+      const first = attachments.slice().sort((a, b) => docRank(a) - docRank(b) || b.size - a.size)[0];
       const att = { name: first.name, mime: first.contentType || "application/octet-stream", size: first.size, bytes: Buffer.from(first.contentBytes, "base64") };
       const data = await extractInvoice({
         classify: true,

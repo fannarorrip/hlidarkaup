@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getClaims, claimsEnabled } from "@/lib/claims";
 import { dags, kr, vNr } from "@/lib/format";
+import CancelClaimButton from "./CancelClaimButton";
 
 export const dynamic = "force-dynamic";
 
@@ -39,21 +40,25 @@ export default async function KrofurPage() {
               <th className="px-4 py-2 font-medium text-right">Upphæð</th>
               <th className="px-4 py-2 font-medium">Gjalddagi</th>
               <th className="px-4 py-2 font-medium">Staða</th>
+              <th className="px-4 py-2"></th>
             </tr>
           </thead>
           <tbody>
             {claims.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-6 text-center text-gray-400">Engar kröfur enn</td></tr>
+              <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-400">Engar kröfur enn</td></tr>
             ) : claims.map((c) => (
               <tr key={c.id} className="border-t border-gray-100 hover:bg-gray-50">
                 <td className="px-4 py-2">
-                  <Link href={`/bokhald/solukerfi/reikningar/${c.voucher_id}`} className="font-mono text-red-700 hover:underline">{vNr(c.series_code, c.voucher_number)}</Link>
+                  {c.voucher_id
+                    ? <Link href={`/bokhald/solukerfi/reikningar/${c.voucher_id}`} className="font-mono text-red-700 hover:underline">{vNr(c.series_code, c.voucher_number)}</Link>
+                    : <span className="font-mono text-gray-600">{c.claim_number ? `M-${c.claim_number}` : "—"}</span>}
                 </td>
                 <td className="px-4 py-2">{c.customer_name ?? "—"}</td>
                 <td className="px-4 py-2 font-mono text-gray-600">{c.kennitala ?? "—"}</td>
                 <td className="px-4 py-2 text-right font-medium">{kr(c.amount)}</td>
                 <td className="px-4 py-2 text-gray-600">{dags(c.due_date)}</td>
                 <td className="px-4 py-2"><span className={`text-xs px-2 py-0.5 rounded ${STATUS_CLS[c.status] ?? "bg-gray-100"}`}>{STATUS_LABEL[c.status] ?? c.status}</span></td>
+                <td className="px-4 py-2 text-right"><CancelClaimButton id={c.id} status={c.status} /></td>
               </tr>
             ))}
           </tbody>

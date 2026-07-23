@@ -7,7 +7,7 @@ export interface ClaimRow {
   id: string; voucher_id: string; customer_id: string | null; customer_name: string | null;
   kennitala: string | null; amount: string; due_date: string | null; status: string;
   arion_ref: string | null; last_error: string | null; created_at: string;
-  series_code: string | null; voucher_number: string | null;
+  series_code: string | null; voucher_number: string | null; claim_number: string | null;
 }
 
 export function claimsEnabled(): boolean {
@@ -79,7 +79,7 @@ export async function enqueueMonthlyClaim(billingInvoiceId: string): Promise<Enq
 export const getClaims = (limit = 200) =>
   query<ClaimRow>(`
     select cl.id, cl.voucher_id, cl.customer_id, c.name as customer_name, cl.kennitala,
-           cl.amount, cl.due_date::text as due_date, cl.status, cl.arion_ref, cl.last_error, cl.created_at::text as created_at,
+           cl.amount, cl.due_date::text as due_date, cl.status, cl.arion_ref, cl.last_error, cl.created_at::text as created_at, cl.claim_number::text as claim_number,
            v.series_code, v.voucher_number
     from acc.claims cl
     left join shop.customers c on c.id = cl.customer_id

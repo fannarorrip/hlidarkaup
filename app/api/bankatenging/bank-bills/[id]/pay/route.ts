@@ -80,13 +80,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Completed — book the payment: Dr lánadrottinn / Cr bank, at the ACTUAL amount withdrawn.
+    // Þolmörk (endurskoðandakrafa): munur 1–500 kr milli þess sem fór af reikningnum og
+    // kröfuupphæðarinnar (innheimtukostnaður) bókast á 6200 Vaxtagjöld og flaggast í
+    // acc.recon_adjustments til mánaðaryfirferðar — lánadrottinn fær þá bara kröfuupphæðina.
     const paid = res.paidAmount && res.paidAmount > 0 ? res.paidAmount : amount;
     const apAccount = b.ap_account || "9300";
+    const FEE_EXPENSE = "6200"; // Vaxtagjöld
+    const feeDiff = paid - amount;
+    const splitFee = feeDiff > 0 && feeDiff <= 500;
     const client = await db.connect();
     try {
       await client.query("begin");
+      const wanted = splitFee ? [apAccount, bankAccount, FEE_EXPENSE] : [apAccount, bankAccount];
       const acct = await client.query<{ account_number: string }>(
-        "select account_number from acc.accounts where account_number = any($1) and is_postable", [[apAccount, bankAccount]]);
+        "select account_number from acc.accounts where account_number = any($1) and is_postable", [wanted]);
       const found = new Set(acct.rows.map((r: { account_number: string }) => r.account_number));
       if (!found.has(apAccount) || !found.has(bankAccount)) {
         await client.query("rollback");
@@ -96,14 +103,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           [id, res.paymentId ?? null]);
         return NextResponse.json({ ok: true, booked: false, message: `Greiðslan tókst (${res.paymentId ?? ""}) en bókun mistókst — bankalykill/skuldalykill er ekki færanlegur. Bókaðu handvirkt.` });
       }
+      const useFeeSplit = splitFee && found.has(FEE_EXPENSE);
       const desc = `Greiðsla kröfu – ${payeeName}`.slice(0, 140);
-      const lines = [
-        { account: apAccount, debit: paid, credit: 0, vat_code: null, description: desc },
-        { account: bankAccount, debit: 0, credit: paid, vat_code: null, description: desc },
-      ];
+      const lines = useFeeSplit
+        ? [
+            { account: apAccount, debit: amount, credit: 0, vat_code: null, description: desc },
+            { account: FEE_EXPENSE, debit: feeDiff, credit: 0, vat_code: null, description: `Innheimtukostnaður – ${payeeName}`.slice(0, 140) },
+            { account: bankAccount, debit: 0, credit: paid, vat_code: null, description: desc },
+          ]
+        : [
+            { account: apAccount, debit: paid, credit: 0, vat_code: null, description: desc },
+            { account: bankAccount, debit: 0, credit: paid, vat_code: null, description: desc },
+          ];
       const v = await client.query<{ id: string; series_code: string; voucher_number: string }>(
         "select id, series_code, voucher_number::text as voucher_number from acc.post_voucher('JOURNAL',current_date,'payment',$1,$2,'bokhald',$3::jsonb, p_supplier_id => $4::uuid)",
         [desc, b.number || "krafa", JSON.stringify(lines), b.supplier_id]);
+      if (useFeeSplit) {
+        await client.query(
+          `insert into acc.recon_adjustments (voucher_id, source, supplier_id, amount, note)
+           values ($1,'bank_bill',$2,$3,$4)`,
+          [v.rows[0].id, b.supplier_id, feeDiff, `Krafa ${b.number ?? ""} – ${payeeName}: greitt ${paid} kr., krafa ${amount} kr.`.slice(0, 300)]);
+      }
       await client.query(
         `update acc.bank_bills set status='paid', payment_status='paid', payment_ref=$2,
                 payment_voucher_id=$3, paid_at=now() where id=$1`,

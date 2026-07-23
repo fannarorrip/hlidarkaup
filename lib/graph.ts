@@ -100,14 +100,16 @@ export async function listInboxMessages(sinceISO?: string, top = 50): Promise<Gr
   return (data.value ?? []).filter((m) => m.hasAttachments);
 }
 
-export interface GraphAttachment { id: string; name: string; contentType: string; size: number; contentBytes: string }
+export interface GraphAttachment { id: string; name: string; contentType: string; size: number; contentBytes: string; isInline?: boolean }
 
-/** Get the file attachments (with base64 contentBytes) of a message. */
+/** Get the file attachments (with base64 contentBytes) of a message. Inline attachments
+ *  (signature images like image001.png embedded in the HTML body) are filtered out —
+ *  they are decoration, not documents, and were being stored as the invoice "frumrit". */
 export async function getMessageAttachments(messageId: string): Promise<GraphAttachment[]> {
   const c = cfg();
   const data = await graphGet<{ value: (GraphAttachment & { "@odata.type"?: string })[] }>(
     `/users/${encodeURIComponent(c.mailbox)}/messages/${encodeURIComponent(messageId)}/attachments`);
-  return (data.value ?? []).filter((a) => a["@odata.type"] === "#microsoft.graph.fileAttachment" && a.contentBytes);
+  return (data.value ?? []).filter((a) => a["@odata.type"] === "#microsoft.graph.fileAttachment" && a.contentBytes && !a.isInline);
 }
 
 /** Light connectivity probe: fetch a token and read the inbox message count. */
