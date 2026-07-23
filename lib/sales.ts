@@ -22,7 +22,9 @@ export type PayMode = "card" | "account" | "cash" | "transfer";
 // Only honoured on the staffed till (trusted); the kiosk/web never send these.
 export interface SaleItem { id: string; quantity: number; unitPrice?: number; discount?: number; }
 export interface PaymentInfo { approved: boolean; processor?: string; stan?: string; last4?: string; verification?: string; }
-export interface ExtraLine { description: string; gross: number; vat_rate: number; }
+// A free (non-catalog) line. gross = whole-line gross incl. VAT. quantity/unitPrice are optional
+// display metadata (manual invoices show "3 × 1.500 kr"); default to 1 × gross for legacy callers.
+export interface ExtraLine { description: string; gross: number; vat_rate: number; quantity?: number; unitPrice?: number; }
 
 export interface PostSaleOpts {
   mode: PayMode;
@@ -38,6 +40,7 @@ export interface PostSaleOpts {
   decrementStock?: boolean;
   source?: string; // sales channel: 'till' | 'kiosk' | 'web' | 'eldhus'
   registerId?: string | null; // which register rang it (kassi1-3 / sjalfsafgreidsla1-2)
+  skipBilling?: boolean; // manual invoice: caller drives claim + delivery itself (no auto-billing)
 }
 
 interface ProductRow {
@@ -144,10 +147,12 @@ export async function postSale(items: SaleItem[], opts: PostSaleOpts): Promise<{
     }
     for (const ex of opts.extraLines ?? []) {
       ln++;
+      const qty = ex.quantity ?? 1;
+      const unit = ex.unitPrice ?? Math.round(ex.gross);
       await client.query(
         `insert into shop.sale_lines (voucher_id, line_no, product_number, name, quantity, unit_price_gross, line_total, vat_rate)
-         values ($1,$2,null,$3,1,$4,$4,$5)`,
-        [v.id, ln, ex.description, Math.round(ex.gross), Number(ex.vat_rate)]);
+         values ($1,$2,null,$3,$4,$5,$6,$7)`,
+        [v.id, ln, ex.description, qty, unit, Math.round(ex.gross), Number(ex.vat_rate)]);
     }
 
     if (decrementStock) {
@@ -165,7 +170,8 @@ export async function postSale(items: SaleItem[], opts: PostSaleOpts): Promise<{
 
     // Account sale → per-customer billing: per-trip customers get an invoice + krafa now;
     // consolidated customers wait for the month-end run. Best-effort — never breaks the sale.
-    if (!isReturn && opts.mode === "account" && opts.customerId) {
+    // skipBilling: the manual "Búa til reikning" flow drives claim + delivery itself.
+    if (!isReturn && opts.mode === "account" && opts.customerId && !opts.skipBilling) {
       await handleAccountSaleBilling(v.id, opts.customerId);
     }
 

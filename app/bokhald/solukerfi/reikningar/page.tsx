@@ -9,7 +9,10 @@ export default async function ReikningarPage() {
   const rows = await getSalesInvoices(200);
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-1">Reikningar</h1>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-2xl font-bold">Reikningar</h1>
+        <Link href="/bokhald/solukerfi/reikningar/nyr" className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700">+ Búa til reikning</Link>
+      </div>
       <p className="text-sm text-gray-500 mb-6">Öll sala — kassasala og reikningar</p>
       <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
         <table className="w-full text-sm min-w-[820px]">
