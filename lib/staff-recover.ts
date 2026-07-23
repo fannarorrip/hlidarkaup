@@ -6,8 +6,10 @@ import { query } from "@/lib/db";
 import { ensureSupabaseUser, generateRecoveryLink, staffAdminConfigured } from "@/lib/staff-auth";
 
 export function staffResetRedirect(): string {
+  // Public top-level path (NOT under /starf, which is LAN-only) so the emailed link opens
+  // from the internet. Must be in Supabase Auth → Redirect URLs.
   const base = process.env.STAFF_RESET_URL
-    || `${(process.env.NEXT_PUBLIC_SITE_URL || "https://hlidarkaup.is").replace(/\/$/, "")}/starf/nytt-lykilord`;
+    || `${(process.env.NEXT_PUBLIC_SITE_URL || "https://hlidarkaup.is").replace(/\/$/, "")}/nytt-lykilord`;
   return base;
 }
 

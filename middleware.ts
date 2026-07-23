@@ -53,7 +53,12 @@ function rolesFor(pathname: string): string[] | null {
 
 // Staff-auth endpoints + login page need no session (they ARE the way in) — but they still fall
 // under the LAN-only block below, so the login screen isn't even visible from the internet.
-const PUBLIC_STAFF = ["/starf/login", "/starf/nytt-lykilord", "/api/auth/staff/login", "/api/auth/staff/mfa", "/api/auth/staff/recover", "/api/auth/staff/logout"];
+const PUBLIC_STAFF = ["/starf/login", "/api/auth/staff/login", "/api/auth/staff/mfa", "/api/auth/staff/recover", "/api/auth/staff/logout"];
+// Genuinely public pages that must be reachable from the INTERNET (not just LAN) and must
+// render even during the coming-soon window. The password reset/activation page lives here:
+// staff open the emailed link off-LAN; it only consumes a Supabase recovery token (no admin
+// data), and it sits OUTSIDE /starf so the cloudflared 404 rules and ADMIN_LAN_ONLY leave it be.
+const PUBLIC_PAGES = ["/nytt-lykilord"];
 // In-store kiosk surfaces (self-checkout, price checker) — private to the shop, like the back office.
 const KIOSK = ["/kassi", "/api/kassi", "/verdskanni"];
 // Price checker + the two endpoints it needs (barcode lookup + ad slideshow). VERDSKANNI_PUBLIC=true
@@ -73,8 +78,9 @@ export async function middleware(req: NextRequest) {
     !!rolesFor(pathname) ||
     KIOSK.some((p) => pathname === p || pathname.startsWith(p + "/")) ||
     PUBLIC_STAFF.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  const isPublicPage = PUBLIC_PAGES.some((p) => pathname === p || pathname.startsWith(p + "/"));
   if (!isBackOffice && pathname !== "/vinnsla") {
-    if (isComingSoon()) {
+    if (isComingSoon() && !isPublicPage) {
       const url = req.nextUrl.clone();
       url.pathname = "/vinnsla";
       return NextResponse.rewrite(url); // same URL, splash content

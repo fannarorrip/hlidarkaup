@@ -1,0 +1,11 @@
+hafa sjáfkrafa ef ég vel efra þreð lykil eða neðraþrep á vsk% að koma upp (skráning) ef ég set inn fjárhæð er hun alltaf m/vsk svo þarf að vera önnur lína sem slær sjálfkrafa inn innskatt eins og gerist ef ég les inn skjal.
+
+skjal á tölvupósti sýnir ekki reikning en les hann, sýndi bara signature frá sendanda en ekki reikning.
+
+frumrir reiknings sýnir ekki xml heldur bara kóða undir hreyfingar og svo fylgiskjöl.
+
+Bæta inn að geta hent út kröfum undir kröfur
+
+Bæta inn í reikning þegar sendar eru kröfur 100kr í innheimtukostnað. Við ætlum að rukka 100kr fyrir hverja kröfu. Þegar krafa er greidd á 100kr af því að fara í bókhaldslykilinn 6100 vaxtatekjur.
+
+Hafa 0-500kr zone sem leyfir afstemmingu að rúlla í gegn á hverjum reikning frá birgjum vegna innheimtukostnaðar sem er á bilinu 0-500kr. Það þarf að búa til færslu á vaxtagjöld semsagt mismun milli greiðlsu og reiknings svo hægt sé að skoða það svo síðar. Hafðu flagg á öllum svona sem þú samþykkir svo hægt sé að renna yfir það í lok mánaðar.

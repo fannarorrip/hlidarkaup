@@ -1,13 +1,11 @@
 "use client";
 import { useState, useEffect, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
-// Password reset / activation landing. The Supabase recovery link drops a recovery
-// session into the URL; supabase-js (detectSessionInUrl) picks it up. We then set the
-// new password (min 12 chars) and send the user to the login page.
+// Password reset / activation landing — a PUBLIC top-level page (staff open the emailed
+// link off-LAN). It only handles a Supabase recovery token; no admin data is exposed. The
+// recovery session arrives in the URL and supabase-js (detectSessionInUrl) picks it up.
 export default function NyttLykilord() {
-  const router = useRouter();
   const [ready, setReady] = useState<"checking" | "ok" | "invalid">("checking");
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
@@ -17,7 +15,6 @@ export default function NyttLykilord() {
 
   useEffect(() => {
     if (!supabase) { setReady("invalid"); return; }
-    // supabase-js processes the recovery token from the URL hash on load.
     const sub = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" || session) setReady("ok");
     });
@@ -39,7 +36,6 @@ export default function NyttLykilord() {
     if (err) { setError(err.message || "Tókst ekki að setja lykilorð."); return; }
     await supabase.auth.signOut().catch(() => {});
     setDone(true);
-    setTimeout(() => router.replace("/starf/login"), 1800);
   }
 
   const inp = "w-full rounded-xl border border-[#E4F1F0] bg-white px-4 py-3 text-sm text-[#21323A] outline-none focus:border-[#8CC7C4] focus:ring-2 focus:ring-[#E4F1F0]";
@@ -53,7 +49,7 @@ export default function NyttLykilord() {
         {ready === "checking" && <p className="text-sm text-[#5C6B72]">Athuga hlekk…</p>}
         {ready === "invalid" && (
           <p className="text-sm text-[#DB1A1A] bg-[#FFF6F6] border border-[#F3D2D2] rounded-xl px-4 py-3">
-            Hlekkurinn er útrunninn eða ógildur. Biddu um nýjan á innskráningarsíðunni.
+            Hlekkurinn er útrunninn eða ógildur. Biddu stjórnanda um nýjan.
           </p>
         )}
         {ready === "ok" && !done && (
@@ -74,7 +70,11 @@ export default function NyttLykilord() {
             </button>
           </form>
         )}
-        {done && <p className="text-sm font-medium text-[#2C687B] bg-[#E4F1F0] border border-[#8CC7C4] rounded-xl px-4 py-3">Lykilorð vistað. Beini þér á innskráningu…</p>}
+        {done && (
+          <p className="text-sm font-medium text-[#2C687B] bg-[#E4F1F0] border border-[#8CC7C4] rounded-xl px-4 py-3">
+            Lykilorð vistað. Skráðu þig nú inn í starfsmannakerfinu (í versluninni eða um VPN).
+          </p>
+        )}
       </div>
     </div>
   );
