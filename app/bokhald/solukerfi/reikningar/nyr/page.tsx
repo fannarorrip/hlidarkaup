@@ -5,6 +5,7 @@ import { kr } from "@/lib/format";
 
 interface Customer { id: string; name: string; kennitala: string | null; is_account: boolean }
 interface Line { description: string; quantity: string; unitPrice: string; vatRate: number }
+interface ProdHit { id: string; name: string; price: number; vatPct: number }
 interface Booked { voucherId: string; invoiceNumber: string; claimQueued: boolean; customer: { rafraen: boolean; email: string | null; hasKennitala: boolean; name: string } }
 type Sent = "" | "einvoice" | "email" | "none";
 
@@ -25,6 +26,9 @@ export default function NyrReikningur() {
   const [deliverMsg, setDeliverMsg] = useState("");
   const [emailTo, setEmailTo] = useState("");
   const [sent, setSent] = useState<Sent>("");
+  // Per-line product search — picking a catalog product just PREFILLS the line (name/price/vat).
+  // Typing freely keeps a custom line; nothing here creates or saves a product.
+  const [search, setSearch] = useState<{ i: number; hits: ProdHit[] } | null>(null);
 
   const total = useMemo(() => lines.reduce((a, l) => a + lineGross(l), 0), [lines]);
   const vatOf = (rate: number) => lines.filter((l) => l.vatRate === rate).reduce((a, l) => { const g = lineGross(l); return a + (g - Math.round((g * 100) / (100 + rate))); }, 0);
@@ -39,6 +43,20 @@ export default function NyrReikningur() {
   const setLine = (i: number, patch: Partial<Line>) => setLines((p) => p.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
   const addLine = () => setLines((p) => [...p, blankLine()]);
   const removeLine = (i: number) => setLines((p) => (p.length > 1 ? p.filter((_, idx) => idx !== i) : p));
+
+  async function onDescChange(i: number, v: string) {
+    setLine(i, { description: v });
+    if (v.trim().length < 2) { setSearch(null); return; }
+    const r = await fetch(`/api/kassi/search?q=${encodeURIComponent(v.trim())}`).catch(() => null);
+    const d = r ? await r.json().catch(() => ({})) : {};
+    const hits: ProdHit[] = (d.products ?? []).slice(0, 8);
+    setSearch(hits.length ? { i, hits } : null);
+  }
+  function pickProduct(i: number, p: ProdHit) {
+    // Prefill from catalog; it becomes an ordinary invoice line (no product link, no stock move).
+    setLine(i, { description: p.name, unitPrice: String(Math.round(p.price)), vatRate: p.vatPct });
+    setSearch(null);
+  }
 
   async function book() {
     setError("");
@@ -158,7 +176,20 @@ export default function NyrReikningur() {
           <tbody>
             {lines.map((l, i) => (
               <tr key={i} className="border-t border-gray-100">
-                <td className="px-3 py-1.5"><input value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} placeholder="Vara eða þjónusta" className={`${inp} w-full`} /></td>
+                <td className="px-3 py-1.5 relative">
+                  <input value={l.description} onChange={(e) => onDescChange(i, e.target.value)} onFocus={() => onDescChange(i, l.description)} onBlur={() => setTimeout(() => setSearch((s) => (s?.i === i ? null : s)), 150)} placeholder="Leita að vöru eða skrifa frjálst…" className={`${inp} w-full`} />
+                  {search?.i === i && (
+                    <div className="absolute z-20 left-3 right-3 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                      {search.hits.map((p) => (
+                        <button key={p.id} type="button" onMouseDown={(e) => { e.preventDefault(); pickProduct(i, p); }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-red-50 flex justify-between gap-3">
+                          <span className="truncate">{p.name}</span>
+                          <span className="text-gray-400 whitespace-nowrap">{kr(p.price)} · {p.vatPct}%</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </td>
                 <td className="px-3 py-1.5"><input value={l.quantity} inputMode="decimal" onChange={(e) => setLine(i, { quantity: e.target.value.replace(/[^\d.,]/g, "") })} className={`${inp} w-full text-right`} /></td>
                 <td className="px-3 py-1.5"><input value={l.unitPrice} inputMode="numeric" onChange={(e) => setLine(i, { unitPrice: e.target.value.replace(/\D/g, "") })} className={`${inp} w-full text-right`} /></td>
                 <td className="px-3 py-1.5">
