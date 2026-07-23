@@ -28,12 +28,11 @@ export default function StaffManager({ staff }: { staff: StaffRow[] }) {
     await fetch("/api/staff", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: targetEmail, ...patch }) });
     router.refresh();
   }
-  async function resetPassword(targetEmail: string) {
-    const pw = prompt(`Nýtt lykilorð fyrir ${targetEmail} (a.m.k. 8 stafir):`);
-    if (!pw) return;
-    const r = await fetch("/api/staff", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: targetEmail, password: pw }) });
+  async function sendReset(targetEmail: string) {
+    if (!confirm(`Senda lykilorðs-/virkjunarpóst á ${targetEmail}?`)) return;
+    const r = await fetch("/api/staff", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: targetEmail, sendReset: true }) });
     const d = await r.json();
-    alert(r.ok ? `Lykilorð uppfært fyrir ${targetEmail}. Láttu starfsmanninn vita.` : (d.error ?? "Mistókst"));
+    alert(r.ok ? (d.created ? `Aðgangur stofnaður og virkjunarpóstur sendur á ${targetEmail}.` : `Endurstillingarpóstur sendur á ${targetEmail}.`) : (d.error ?? "Mistókst"));
   }
 
   return (
@@ -43,7 +42,7 @@ export default function StaffManager({ staff }: { staff: StaffRow[] }) {
         <div className="grid md:grid-cols-4 gap-3 mb-3">
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Netfang *" className={inp} />
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nafn" className={inp} />
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Lykilorð *" className={inp} />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Lykilorð * (12+ stafir)" className={inp} />
           <select value={role} onChange={(e) => setRole(e.target.value as Role)} className={`${inp} bg-white`}>
             {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
           </select>
@@ -82,7 +81,7 @@ export default function StaffManager({ staff }: { staff: StaffRow[] }) {
                   <input type="checkbox" checked={m.is_active} onChange={(e) => update(m.email, { is_active: e.target.checked })} className="w-4 h-4 accent-red-600" />
                 </td>
                 <td className="px-4 py-2">
-                  <button onClick={() => resetPassword(m.email)} className="text-xs text-red-600 hover:text-red-800 hover:underline">Endurstilla</button>
+                  <button onClick={() => sendReset(m.email)} className="text-xs text-red-600 hover:text-red-800 hover:underline">Senda póst</button>
                 </td>
               </tr>
             ))}

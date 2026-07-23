@@ -53,7 +53,7 @@ function rolesFor(pathname: string): string[] | null {
 
 // Staff-auth endpoints + login page need no session (they ARE the way in) — but they still fall
 // under the LAN-only block below, so the login screen isn't even visible from the internet.
-const PUBLIC_STAFF = ["/starf/login", "/api/auth/staff/login", "/api/auth/staff/logout"];
+const PUBLIC_STAFF = ["/starf/login", "/starf/nytt-lykilord", "/api/auth/staff/login", "/api/auth/staff/mfa", "/api/auth/staff/recover", "/api/auth/staff/logout"];
 // In-store kiosk surfaces (self-checkout, price checker) — private to the shop, like the back office.
 const KIOSK = ["/kassi", "/api/kassi", "/verdskanni"];
 // Price checker + the two endpoints it needs (barcode lookup + ad slideshow). VERDSKANNI_PUBLIC=true

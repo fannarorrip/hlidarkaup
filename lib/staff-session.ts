@@ -25,10 +25,10 @@ async function sign(data: string): Promise<string> {
   return b64urlFromBytes(new Uint8Array(sig));
 }
 
-export interface StaffSession { email: string; sub?: string; role: string; exp: number; }
+export interface StaffSession { email: string; sub?: string; role: string; exp: number; mfa?: boolean; }
 
 export async function createStaffSession(
-  payload: { email: string; sub?: string; role: string }, ttlSeconds = 60 * 60 * 12,
+  payload: { email: string; sub?: string; role: string; mfa?: boolean }, ttlSeconds = 60 * 60 * 12,
 ): Promise<string> {
   const body: StaffSession = { ...payload, exp: Math.floor(Date.now() / 1000) + ttlSeconds };
   const p = b64urlEncode(JSON.stringify(body));
