@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   try {
     // Book the invoice (á reikning) as a real sölureikningur. skipBilling: we drive claim + delivery.
     const res = await postSale([], {
-      mode: "account", series: "SALES", voucherType: "sölureikningur",
+      mode: "account", series: "SALES", voucherType: "account_sale",
       customerId, extraLines: lines, decrementStock: false, ignoreStock: true,
       description: (body.description || `Reikningur – ${cust.name}`).slice(0, 140),
       reference: (body.reference || "").trim() || undefined,

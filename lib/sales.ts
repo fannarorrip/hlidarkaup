@@ -149,10 +149,12 @@ export async function postSale(items: SaleItem[], opts: PostSaleOpts): Promise<{
       ln++;
       const qty = ex.quantity ?? 1;
       const unit = ex.unitPrice ?? Math.round(ex.gross);
+      // On a credit note (isReturn) free lines flip sign too, like product lines — the ledger
+      // sign is already handled by saleSide/moneySide, this keeps the sale_lines display correct.
       await client.query(
         `insert into shop.sale_lines (voucher_id, line_no, product_number, name, quantity, unit_price_gross, line_total, vat_rate)
          values ($1,$2,null,$3,$4,$5,$6,$7)`,
-        [v.id, ln, ex.description, qty, unit, Math.round(ex.gross), Number(ex.vat_rate)]);
+        [v.id, ln, ex.description, isReturn ? -qty : qty, unit, isReturn ? -Math.round(ex.gross) : Math.round(ex.gross), Number(ex.vat_rate)]);
     }
 
     if (decrementStock) {

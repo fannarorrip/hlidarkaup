@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSaleReceipt } from "@/lib/accounting-queries";
 import { dags, kr, vType, vatLetter, vNr } from "@/lib/format";
+import CreditButton from "./CreditButton";
 
 export const dynamic = "force-dynamic";
 
@@ -63,9 +64,10 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-4 mt-4">
+      <div className="flex items-center justify-center flex-wrap gap-4 mt-4">
         <a href={`/api/reikningur/${v.id}/pdf`} target="_blank" rel="noopener"
            className="text-sm px-3 py-1.5 rounded-lg bg-red-700 text-white hover:bg-red-800">Sækja PDF</a>
+        <CreditButton voucherId={v.id} voucherType={v.voucher_type} />
         <Link href={`/bokhald/fylgiskjol/${v.id}`} className="text-sm text-red-700 hover:underline">Sjá bókhaldsfærslu →</Link>
       </div>
     </div>
