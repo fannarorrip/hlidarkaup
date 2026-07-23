@@ -6,13 +6,16 @@ import { enqueueEinvoice, sendOutbox, getOutbox } from "@/lib/einvoice-outbox";
 // Middleware-gated: stjornandi/bokari.
 export const runtime = "nodejs";
 
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ voucherId: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ voucherId: string }> }) {
   const { voucherId } = await params;
-  const enq = await enqueueEinvoice(voucherId);
+  // force: manual "Búa til reikning" sends electronically as a per-invoice choice, regardless
+  // of the customer's saved rafræn-viðskipti setting (kennitala still required).
+  const body = await req.json().catch(() => ({} as { force?: boolean }));
+  const enq = await enqueueEinvoice(voucherId, { force: body?.force === true });
   if (!enq.enqueued) {
     const msg =
       enq.reason === "not_flagged" ? "Viðskiptamaður er ekki skráður í rafræn viðskipti." :
-      enq.reason === "no_kennitala" ? "Kennitölu vantar fyrir rafræna sendingu." :
+      enq.reason === "no_kennitala" ? "Kennitölu vantar fyrir rafræna sendingu (þarf 10 stafa kt.)." :
       enq.reason === "not_found" ? "Reikningur fannst ekki." :
       (enq.error || "Ekki tókst að undirbúa rafrænan reikning.");
     return NextResponse.json({ ok: false, error: msg }, { status: 400 });

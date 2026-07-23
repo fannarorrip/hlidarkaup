@@ -6,6 +6,7 @@ import { kr } from "@/lib/format";
 interface Customer { id: string; name: string; kennitala: string | null; is_account: boolean }
 interface Line { description: string; quantity: string; unitPrice: string; vatRate: number }
 interface Booked { voucherId: string; invoiceNumber: string; claimQueued: boolean; customer: { rafraen: boolean; email: string | null; hasKennitala: boolean; name: string } }
+type Sent = "" | "einvoice" | "email" | "none";
 
 const inp = "border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-red-400";
 const blankLine = (): Line => ({ description: "", quantity: "1", unitPrice: "", vatRate: 24 });
@@ -23,6 +24,7 @@ export default function NyrReikningur() {
   const [booked, setBooked] = useState<Booked | null>(null);
   const [deliverMsg, setDeliverMsg] = useState("");
   const [emailTo, setEmailTo] = useState("");
+  const [sent, setSent] = useState<Sent>("");
 
   const total = useMemo(() => lines.reduce((a, l) => a + lineGross(l), 0), [lines]);
   const vatOf = (rate: number) => lines.filter((l) => l.vatRate === rate).reduce((a, l) => { const g = lineGross(l); return a + (g - Math.round((g * 100) / (100 + rate))); }, 0);
@@ -58,9 +60,13 @@ export default function NyrReikningur() {
   async function sendEinvoice() {
     if (!booked) return;
     setBusy(true); setDeliverMsg("");
-    const r = await fetch(`/api/einvoice/${booked.voucherId}/send`, { method: "POST" });
+    // force: this is a per-invoice choice, independent of the customer's saved rafræn-setting.
+    const r = await fetch(`/api/einvoice/${booked.voucherId}/send`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ force: true }),
+    });
     const d = await r.json(); setBusy(false);
-    setDeliverMsg(r.ok && d.ok ? "✓ Rafrænn reikningur sendur (inExchange)." : `Villa: ${d.error ?? "sending mistókst"}`);
+    if (r.ok && d.ok) { setSent("einvoice"); setDeliverMsg("✓ Rafrænn reikningur sendur (inExchange)."); }
+    else setDeliverMsg(`Villa: ${d.error ?? "sending mistókst"}`);
   }
   async function sendEmail() {
     if (!booked) return;
@@ -70,7 +76,8 @@ export default function NyrReikningur() {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: emailTo }),
     });
     const d = await r.json(); setBusy(false);
-    setDeliverMsg(r.ok && d.ok ? `✓ Reikningur sendur í tölvupósti á ${emailTo}.` : `Villa: ${d.error ?? "sending mistókst"}`);
+    if (r.ok && d.ok) { setSent("email"); setDeliverMsg(`✓ Reikningur sendur í tölvupósti á ${emailTo}.`); }
+    else setDeliverMsg(`Villa: ${d.error ?? "sending mistókst"}`);
   }
 
   // ---- Booked: delivery step ----
@@ -82,24 +89,30 @@ export default function NyrReikningur() {
           Reikningur <b>{booked.invoiceNumber}</b> bókaður á {booked.customer.name}.
           {booked.claimQueued ? " Krafa stofnuð (fer í bankann þegar kröfusending er keyrð)." : " (Krafa var ekki stofnuð — sjá kröfustillingar.)"}
         </div>
-        <p className="text-sm font-semibold text-gray-700 mb-3">Sendu reikninginn:</p>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div className="border border-gray-200 rounded-xl p-4">
-            <p className="font-semibold text-sm mb-1">Rafrænn (inExchange)</p>
-            <p className="text-xs text-gray-500 mb-3">{booked.customer.rafraen ? "Viðskiptamaður er í rafrænum viðskiptum." : "⚠︎ Viðskiptamaður er ekki skráður í rafræn viðskipti."}</p>
-            <button onClick={sendEinvoice} disabled={busy} className="w-full px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50">Senda rafrænt</button>
+        <p className="text-sm font-semibold text-gray-700 mb-1">Hvernig viltu senda reikninginn?</p>
+        <p className="text-xs text-gray-500 mb-3">Þetta er val fyrir þennan reikning — óháð stillingum viðskiptamannsins.</p>
+        <div className="grid sm:grid-cols-3 gap-4">
+          <div className={`border rounded-xl p-4 ${sent === "einvoice" ? "border-green-300 bg-green-50" : "border-gray-200"}`}>
+            <p className="font-semibold text-sm mb-1">Rafrænt (inExchange)</p>
+            <p className="text-xs text-gray-500 mb-3">{booked.customer.hasKennitala ? "Sent sem rafrænn reikningur." : "⚠︎ Kennitölu vantar — rafræn sending ekki möguleg."}</p>
+            <button onClick={sendEinvoice} disabled={busy || !booked.customer.hasKennitala || sent === "einvoice"} className="w-full px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-40">{sent === "einvoice" ? "✓ Sent" : "Senda rafrænt"}</button>
           </div>
-          <div className="border border-gray-200 rounded-xl p-4">
+          <div className={`border rounded-xl p-4 ${sent === "email" ? "border-green-300 bg-green-50" : "border-gray-200"}`}>
             <p className="font-semibold text-sm mb-1">PDF í tölvupósti</p>
             <input value={emailTo} onChange={(e) => setEmailTo(e.target.value)} placeholder="netfang@..." className={`${inp} w-full mb-2`} />
             <button onClick={sendEmail} disabled={busy} className="w-full px-4 py-2 rounded-lg bg-gray-800 text-white text-sm font-semibold hover:bg-gray-900 disabled:opacity-50">Senda PDF</button>
+          </div>
+          <div className={`border rounded-xl p-4 ${sent === "none" ? "border-green-300 bg-green-50" : "border-gray-200"}`}>
+            <p className="font-semibold text-sm mb-1">Ekki senda</p>
+            <p className="text-xs text-gray-500 mb-3">Bara bóka — sendu handvirkt síðar af reikningnum.</p>
+            <button onClick={() => { setSent("none"); setDeliverMsg("Reikningur bókaður án sendingar."); }} disabled={busy} className="w-full px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50 disabled:opacity-50">Sleppa sendingu</button>
           </div>
         </div>
         {deliverMsg && <p className="text-sm mt-4 font-medium text-gray-700">{deliverMsg}</p>}
         <div className="flex gap-4 mt-6 text-sm">
           <Link href={`/bokhald/solukerfi/reikningar/${booked.voucherId}`} className="text-red-700 hover:underline">Skoða reikning →</Link>
           <a href={`/api/reikningur/${booked.voucherId}/pdf`} target="_blank" rel="noopener" className="text-red-700 hover:underline">PDF</a>
-          <Link href="/bokhald/solukerfi/reikningar/nyr" onClick={() => window.location.reload()} className="text-gray-500 hover:underline">Nýr reikningur</Link>
+          <a href="/bokhald/solukerfi/reikningar/nyr" className="text-gray-500 hover:underline">Nýr reikningur</a>
         </div>
       </div>
     );

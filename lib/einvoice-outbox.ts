@@ -21,9 +21,11 @@ export const getOutbox = (voucherId: string) =>
 
 export interface EnqueueResult { enqueued: boolean; reason?: string; sent?: boolean; error?: string }
 
-/** Build+queue an e-invoice for a sölureikningur, if its customer is flagged for rafræn viðskipti.
- *  Idempotent (one row per voucher). Auto-transmits when sending is enabled. Never throws. */
-export async function enqueueEinvoice(voucherId: string): Promise<EnqueueResult> {
+/** Build+queue an e-invoice for a sölureikningur. Auto-flow requires the customer's rafræn-
+ *  viðskipti flag; the manual "Búa til reikning" flow passes force to send electronically as a
+ *  per-invoice choice regardless of the customer's saved setting (kennitala is still required —
+ *  that's a technical requirement of e-invoicing, not a preference). Idempotent; never throws. */
+export async function enqueueEinvoice(voucherId: string, opts: { force?: boolean } = {}): Promise<EnqueueResult> {
   try {
     const r = await getSaleReceipt(voucherId);
     if (!r) return { enqueued: false, reason: "not_found" };
@@ -33,7 +35,8 @@ export async function enqueueEinvoice(voucherId: string): Promise<EnqueueResult>
       address: string | null; postal_code: string | null; city: string | null; rafraen_vidskipti: boolean;
     }>(`select c.id, c.name, c.kennitala, c.address, c.postal_code, c.city, c.rafraen_vidskipti
           from acc.vouchers v join shop.customers c on c.id = v.customer_id where v.id = $1`, [voucherId]))[0];
-    if (!cust || !cust.rafraen_vidskipti) return { enqueued: false, reason: "not_flagged" };
+    if (!cust) return { enqueued: false, reason: "not_found" };
+    if (!opts.force && !cust.rafraen_vidskipti) return { enqueued: false, reason: "not_flagged" };
 
     const invoiceNumber = `${r.voucher.series_code}-${String(r.voucher.voucher_number).padStart(6, "0")}`;
     const kt = (cust.kennitala || "").replace(/\D/g, "");
