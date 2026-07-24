@@ -7,20 +7,24 @@ Gátlisti fyrir yfirtökudaginn. Þrír hlutar: (A) hver kassi, (B) Rocky, (C) p
 Afritaðu `deploy/kassabru/` (install.ps1 + kassabru.cs) og `deploy/till-fullscreen.ps1`
 á kassann (USB-lykill eða TeamViewer). Svo í **admin PowerShell**:
 
-### 1. Finna COM-port skanna/vigtar
-Device Manager → Ports (COM & LPT) → skrifa niður COM-númer NCR skanna-vigtarinnar
-(getur verið mismunandi milli véla — á fyrsta kassanum var það COM7).
+### 1. Finna COM-portin (tvö á NCR-kassanum)
+Device Manager → Ports (COM & LPT) → skrifa niður:
+- **prentari** (NCR 7197) — var COM3 á fyrsta kassanum
+- **skanni-vigt** (NCR RealScan 7874) — var COM4 á fyrsta kassanum
+(Edgeport USB-serial raðar þeim eins ef vélbúnaðurinn er eins, en STAÐFESTA á hverri vél.)
 
-### 2. Kassabrú (skanni + vigt + autostart)
+### 2. Kassabrú (prentari + skanni + vigt + autostart)
 ```powershell
-powershell -ExecutionPolicy Bypass -File install.ps1 -PrinterPort none -ScannerPort COM7 -CodePage 8
+powershell -ExecutionPolicy Bypass -File install.ps1 -PrinterPort COM3 -ScannerPort COM4 -CodePage 8
 ```
-- `-ScannerPort` = COM-númerið úr skrefi 1. NCR skanna-vigtin er EITT port — sama
-  port skannar og vigtar (kassabrú velur NCR/Datalogic samskiptamál sjálfkrafa).
-- `-PrinterPort none` þegar kassinn prentar á Volcora yfir netið (Rocky sér um það).
-  EF NCR-kvittanaprentari er tengdur beint við kassann í staðinn: `-PrinterPort COM3`.
+- Allt NCR eins og upphaflega: prentari, skanni og vigt gegnum kassabrú — engin
+  netprentun. Skúffan tengist prentaranum (kick gegnum COM3).
+- Skanna-vigtin er EITT port — sama port skannar og vigtar (NCR-samskiptamál valið
+  sjálfkrafa). `-CodePage 8` = NCR 7197 (CP1252 fyrir íslensku).
 - Skriptan: þýðir exe, skráir autostart (Task Scheduler „Kassabru"), slekkur á USB
   selective suspend (drap COM-portið síðast), ræsir og heilsutékkar.
+- Muna: skanninn er ÓVIRKUR þar til kassabrú sendir enable — ef hann pípir ekki við
+  skann, athuga að brúin sé í gangi (`http://127.0.0.1:8974/health`).
 
 ### 3. Fullskjár beint við ræsingu
 ```powershell
@@ -41,10 +45,12 @@ password" → OK → slá inn lykilorðið. Eftir þetta: kveikja á vélinni = 
 sudo bash /opt/hlidarkaup/deploy/update.sh
 ```
 
-### 2. Prentarar (ef Volcora á hverjum kassa)
-Hver kassi þarf sitt `PRINTER_IP_KASSI1/2/3` í `/opt/hlidarkaup/.env.local`
-(fast IP á hverjum Volcora — taka frá í router/DHCP). Endurræsa eftir breytingu:
-`sudo systemctl restart hlidarkaup`.
+### 2. Prentun
+Öll prentun fer gegnum kassabrú á hverjum kassa (NCR 7197) — engin
+`PRINTER_IP_*` stilling þarf á Rocky. Brúin hefur alltaf forgang; gömul
+`PRINTER_IP_KASSI*` gildi frá Volcora-prófunum eru meinlaus (aðeins varaleið
+ef brúin svarar ekki) en hreinlegast að fjarlægja þau úr
+`/opt/hlidarkaup/.env.local`.
 
 ### 3. ⚠️ BÓKHALD Á NÚLL — afrit FYRST, svo núllstilling
 ```bash
