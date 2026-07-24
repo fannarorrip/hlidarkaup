@@ -44,7 +44,14 @@ schtasks /Create /F /TN "Kassabru" /SC ONLOGON /TR $tr | Out-Null
 if ($LASTEXITCODE -ne 0) { "!! schtasks skraning mistokst - keyrdu install.ps1 sem admin" }
 else { "OK: autostart registered (Task Scheduler: Kassabru) - $argStr" }
 
-# 4. Start it now
+# 4. USB selective suspend OFF — Windows quietly powers down USB-serial adapters
+# otherwise, which killed the scanner/scale COM port mid-shift once already.
+powercfg /SETACVALUEINDEX SCHEME_CURRENT 2a737441-1930-4402-8d77-b2bebba308a3 48e6b7a6-50f5-4782-a5d4-53bb3f4be838 0 2>$null
+powercfg /SETDCVALUEINDEX SCHEME_CURRENT 2a737441-1930-4402-8d77-b2bebba308a3 48e6b7a6-50f5-4782-a5d4-53bb3f4be838 0 2>$null
+powercfg /SETACTIVE SCHEME_CURRENT 2>$null
+"OK: USB selective suspend av"
+
+# 5. Start it now
 Start-Process "$dir\kassabru.exe" -WorkingDirectory $dir -ArgumentList $argStr
 Start-Sleep 2
 try {

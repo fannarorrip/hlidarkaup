@@ -48,6 +48,8 @@ truncate
   acc.price_suggestions,
   acc.temp_readings,
   acc.write_offs,
+  acc.recon_adjustments,
+  acc.staff_login_tickets,
   acc.audit_log,
   shop.sale_lines,
   shop.stock_movements,
