@@ -37,11 +37,12 @@ export async function passwordGrant(email: string, password: string): Promise<Pa
 
 export interface Factor { id: string; status: string; factor_type: string }
 
-/** List a user's MFA factors (needs their access token). */
+/** List a user's MFA factors (needs their access token). GoTrue hefur ekki
+ *  GET /factors (405) — factoralistinn fylgir notandahlutnum á GET /user. */
 export async function listFactors(accessToken: string): Promise<Factor[]> {
-  const r = await goTrue(`/factors`, { method: "GET", token: accessToken });
+  const r = await goTrue(`/user`, { method: "GET", token: accessToken });
   if (!r.ok) return [];
-  const arr = (Array.isArray(r.json) ? r.json : (r.json?.factors ?? r.json?.totp)) as Factor[] | undefined;
+  const arr = (r.json?.factors ?? []) as Factor[] | undefined;
   return Array.isArray(arr) ? arr : [];
 }
 
