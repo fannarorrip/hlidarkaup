@@ -216,10 +216,23 @@ export async function GET(req: NextRequest) {
     having coalesce((select q from last7 where last7.nr = sl.product_number),0) = 0
     order by max(v.voucher_date) asc limit 15`));
 
+  // Fyrri eigandi (acc.prev_pos_daily): same-weekday average around this season last year,
+  // plus the exact date a year ago — the "okkar sala vs hann" baseline for the takeover year.
+  const prevOwnerP = safe<{ avg_wd: number; n: number; last_year_day: number }>(query(`
+    select
+      coalesce(avg(total) filter (where extract(isodow from day) = extract(isodow from current_date)
+        and day between (current_date - interval '1 year' - interval '21 days')::date
+                    and (current_date - interval '1 year' + interval '21 days')::date),0)::int as avg_wd,
+      count(*) filter (where extract(isodow from day) = extract(isodow from current_date)
+        and day between (current_date - interval '1 year' - interval '21 days')::date
+                    and (current_date - interval '1 year' + interval '21 days')::date)::int as n,
+      coalesce(sum(total) filter (where day = (current_date - interval '1 year')::date),0)::int as last_year_day
+    from acc.prev_pos_daily`));
+
   const [kpiRows, todaySrc, weekProfile, weekdayExp, spark, intraday, heatmap, marginRows,
-         returnsRows, reversedRows, series, categories, payRows, top, movers, channelRows, dead] =
+         returnsRows, reversedRows, series, categories, payRows, top, movers, channelRows, dead, prevOwnerRows] =
     await Promise.all([kpiP, todaySrcP, weekProfileP, weekdayExpP, sparkP, intradayP, heatmapP, marginP,
-      returnsP, reversedP, seriesP, categoriesP, paymentsP, topP, moversP, channelsP, deadP]);
+      returnsP, reversedP, seriesP, categoriesP, paymentsP, topP, moversP, channelsP, deadP, prevOwnerP]);
 
   const kpi = kpiRows[0] ?? EMPTY_KPI;
   const curDow = kpi.cur_dow || 1;
@@ -349,6 +362,12 @@ export async function GET(req: NextRequest) {
     movers: movers.map((r) => ({ nr: r.nr, name: r.name, cur: r.cur, prev: r.prev, diff: r.cur - r.prev })),
     channels,
     deadStock: dead.map((r) => ({ nr: r.nr, name: r.name, grp: r.grp, lastSold: r.last_sold })),
+    prevOwner: (() => {
+      const po = prevOwnerRows[0];
+      return po && po.n > 0
+        ? { sameWeekday: po.avg_wd, n: po.n, sameDateLastYear: po.last_year_day }
+        : null;
+    })(),
   });
 }
 

@@ -56,6 +56,7 @@ interface Data {
   movers: { nr: string; name: string; cur: number; prev: number; diff: number }[];
   channels: { bucket: string; till: number; kiosk: number; web: number; eldhus: number; other: number }[];
   deadStock: { nr: string; name: string; grp: string | null; lastSold: string }[];
+  prevOwner?: { sameWeekday: number; n: number; sameDateLastYear: number } | null;
 }
 
 const SOURCE_LABEL: Record<string, string> = { till: "Kassi", kiosk: "Sjálfsafgr.", web: "Vefur", eldhus: "Eldhús", "?": "Annað" };
@@ -194,6 +195,12 @@ export default function YfirlitCharts() {
           <Delta now={today.sala} prev={today.sameWeekday} absolute />
           <Sparkline values={data.sparkline} />
           <p className="text-[11px] text-gray-400 mt-1">sami vd. í síð. viku: {krFull(today.sameWeekday)} · í gær: {krFull(today.yesterday)}</p>
+          {data.prevOwner && (
+            <p className="text-[11px] text-gray-400 mt-0.5" title={`Meðaltal ${data.prevOwner.n} sömu vikudaga á sama árstíma hjá fyrri eiganda (úr Reglu)`}>
+              fyrri eigandi, sami vd. í fyrra: <span className="font-medium text-gray-500">{krFull(data.prevOwner.sameWeekday)}</span>
+              {data.prevOwner.sameDateLastYear > 0 && <> · þessi dags. í fyrra: {krFull(data.prevOwner.sameDateLastYear)}</>}
+            </p>
+          )}
         </Kpi>
 
         <Kpi title="Spáð dagslok" value={pace.hasHistory && pace.projected != null ? krFull(pace.projected) : krFull(pace.todaySoFar)}
