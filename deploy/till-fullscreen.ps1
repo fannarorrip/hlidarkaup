@@ -50,14 +50,18 @@ End If
 Set-Content -Path "C:\kassabru\kassi-start.vbs" -Value $vbs -Encoding Default
 "OK: launcher C:\kassabru\kassi-start.vbs -> $Url"
 
-# 2. Startup shortcut (current user)
+# 2. Startup shortcut — All-Users startup so it launches for the dedicated kiosk
+# user (kassi01/02/03), whoever auto-logs-in, not just the admin who ran this.
+$startup = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Startup"
 $ws = New-Object -ComObject WScript.Shell
-$lnk = $ws.CreateShortcut((Join-Path ([Environment]::GetFolderPath("Startup")) "Kassi.lnk"))
+$lnk = $ws.CreateShortcut((Join-Path $startup "Kassi.lnk"))
 $lnk.TargetPath = "wscript.exe"
 $lnk.Arguments = '"C:\kassabru\kassi-start.vbs"'
 $lnk.Description = "Hlidarkaup kassi - $Reg"
 $lnk.Save()
-"OK: startup shortcut"
+# tína burt eldri eintök úr núverandi-notanda startup (eldri uppsetning)
+Remove-Item (Join-Path ([Environment]::GetFolderPath("Startup")) "Kassi.lnk") -Force -ErrorAction SilentlyContinue
+"OK: startup shortcut (All-Users)"
 
 # 3. Never sleep, screen always on (AC)
 powercfg /change standby-timeout-ac 0

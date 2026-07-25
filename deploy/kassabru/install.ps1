@@ -34,15 +34,22 @@ if ($LASTEXITCODE -ne 0) { throw "Compile failed" }
 netsh http add urlacl url=http://127.0.0.1:$HttpPort/ user=Everyone 2>$null
 "OK: URL ACL (localhost:$HttpPort)"
 
-# 3. Autostart at logon with THESE settings (visible console -> easy to check/kill)
-# NO quotes in /TR: schtasks mangles embedded quotes (stores a broken command line that
-# silently fails to launch). Neither the exe path nor any port arg contains spaces.
-if ($PrinterPort.Contains(" ") -or $ScannerPort.Contains(" ")) { throw "Port-nofn mega ekki innihalda bil (schtasks /TR quoting): '$PrinterPort' '$ScannerPort'" }
+# 3. Autostart at logon — All-Users Startup shortcut (NOT a per-user scheduled task).
+# The till auto-logs-in as a dedicated STANDARD kiosk user (e.g. kassi01/02/03); an
+# ONLOGON task is bound to the author's account and would not fire for that user. An
+# All-Users startup shortcut launches for whoever logs into the interactive session,
+# shows the console (easy to check/kill), and needs no password. kassabru handles a
+# double start gracefully, so this never conflicts with a still-running instance.
 $argStr = ('{0} {1} {2} {3}' -f $PrinterPort, $ScannerPort, $HttpPort, $CodePage)
-$tr = ('{0}\kassabru.exe {1}' -f $dir, $argStr)
-schtasks /Create /F /TN "Kassabru" /SC ONLOGON /TR $tr | Out-Null
-if ($LASTEXITCODE -ne 0) { "!! schtasks skraning mistokst - keyrdu install.ps1 sem admin" }
-else { "OK: autostart registered (Task Scheduler: Kassabru) - $argStr" }
+$startup = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Startup"
+$ws = New-Object -ComObject WScript.Shell
+$klnk = $ws.CreateShortcut((Join-Path $startup "Kassabru.lnk"))
+$klnk.TargetPath = "$dir\kassabru.exe"
+$klnk.Arguments = $argStr
+$klnk.WorkingDirectory = $dir
+$klnk.Save()
+schtasks /Delete /TN "Kassabru" /F 2>$null | Out-Null   # remove any older task-based install
+"OK: autostart (All-Users startup: Kassabru.lnk) - $argStr"
 
 # 4. USB selective suspend OFF — Windows quietly powers down USB-serial adapters
 # otherwise, which killed the scanner/scale COM port mid-shift once already.
