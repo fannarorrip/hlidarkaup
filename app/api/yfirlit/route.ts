@@ -184,6 +184,15 @@ export async function GET(req: NextRequest) {
     where v.status <> 'reversed' and ${CUR} and sl.product_number is not null
     group by 1 order by 3 desc limit 12`));
 
+  // Same, but ranked by UNITS sold (stk) — söluhæsta stk vara. Set may differ from by-revenue.
+  const topUnitsP = safe<{ nr: string; name: string; s: number; q: number }>(query(`
+    select sl.product_number nr, max(sl.name) name,
+      sum(sl.line_total)::int s, sum(sl.quantity)::float8 q
+    from shop.sale_lines sl
+    join acc.vouchers v on v.id = sl.voucher_id
+    where v.status <> 'reversed' and ${CUR} and sl.product_number is not null
+    group by 1 order by sum(sl.quantity) desc limit 12`));
+
   // Biggest movers (kr swing this window vs prior).
   const moversP = safe<{ nr: string; name: string; cur: number; prev: number }>(query(`
     select sl.product_number nr, max(sl.name) name,
@@ -233,6 +242,7 @@ export async function GET(req: NextRequest) {
          returnsRows, reversedRows, series, categories, payRows, top, movers, channelRows, dead, prevOwnerRows] =
     await Promise.all([kpiP, todaySrcP, weekProfileP, weekdayExpP, sparkP, intradayP, heatmapP, marginP,
       returnsP, reversedP, seriesP, categoriesP, paymentsP, topP, moversP, channelsP, deadP, prevOwnerP]);
+  const topUnits = await topUnitsP;
 
   const kpi = kpiRows[0] ?? EMPTY_KPI;
   const curDow = kpi.cur_dow || 1;
@@ -323,6 +333,7 @@ export async function GET(req: NextRequest) {
     coverage: t.s > 0 ? t.covered / t.s : 0,
     rankNow: t.rnk, rankPrev: priorRank.get(t.nr) ?? null,
   }));
+  const topProductsUnits = topUnits.map((t, i) => ({ nr: t.nr, name: t.name, sala: t.s, magn: t.q, rankNow: i + 1 }));
 
   // Channels pivot.
   const channelBuckets = new Map<string, { bucket: string; till: number; kiosk: number; web: number; eldhus: number; other: number }>();
@@ -359,6 +370,7 @@ export async function GET(req: NextRequest) {
     categories: cats,
     payments,
     topProducts,
+    topProductsUnits,
     movers: movers.map((r) => ({ nr: r.nr, name: r.name, cur: r.cur, prev: r.prev, diff: r.cur - r.prev })),
     channels,
     deadStock: dead.map((r) => ({ nr: r.nr, name: r.name, grp: r.grp, lastSold: r.last_sold })),

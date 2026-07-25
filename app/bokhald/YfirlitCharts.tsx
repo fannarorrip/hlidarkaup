@@ -53,6 +53,7 @@ interface Data {
   categories: { grp: string; sala: number; salaPrev: number; framlegdPct: number | null; coverage: number }[];
   payments: { name: string; value: number; share: number; sharePrev: number }[];
   topProducts: { nr: string; name: string; sala: number; magn: number; marginPct: number | null; coverage: number; rankNow: number; rankPrev: number | null }[];
+  topProductsUnits: { nr: string; name: string; sala: number; magn: number; rankNow: number }[];
   movers: { nr: string; name: string; cur: number; prev: number; diff: number }[];
   channels: { bucket: string; till: number; kiosk: number; web: number; eldhus: number; other: number }[];
   deadStock: { nr: string; name: string; grp: string | null; lastSold: string }[];
@@ -609,26 +610,34 @@ function RankArrow({ now, prev }: { now: number; prev: number | null }) {
   return <span className={`text-[10px] font-medium ${d > 0 ? "text-emerald-600" : "text-red-600"}`}>{d > 0 ? `↑${d}` : `↓${-d}`}</span>;
 }
 function TopProducts({ data, bil }: { data: Data; bil: Bil }) {
-  const top = data.topProducts;
-  const max = Math.max(1, ...top.map((p) => p.sala));
+  const [byUnits, setByUnits] = useState(false);
+  const top = byUnits ? data.topProductsUnits : data.topProducts;
+  const val = (p: { sala: number; magn: number }) => (byUnits ? p.magn : p.sala);
+  const max = Math.max(1, ...top.map(val));
+  const btn = (on: boolean) => `px-2.5 py-1 rounded-md text-xs font-semibold transition ${on ? "bg-[#21323A] text-white" : "text-gray-500 hover:bg-gray-100"}`;
   return (
-    <Panel title="Söluhæstu vörur" subtitle={`${WINDOW_LABEL[bil]} · álagning + hreyfing frá fyrra tímabili`}>
+    <Panel title="Söluhæstu vörur" subtitle={`${WINDOW_LABEL[bil]} · ${byUnits ? "eftir seldu magni (stk)" : "eftir veltu (kr)"}`}>
+      <div className="flex gap-1 mb-3">
+        <button onClick={() => setByUnits(false)} className={btn(!byUnits)}>kr</button>
+        <button onClick={() => setByUnits(true)} className={btn(byUnits)}>stk</button>
+      </div>
       {top.length === 0 ? <Empty>Engin sala á tímabilinu</Empty> : (
         <div className="space-y-2.5">
           {top.slice(0, 10).map((p) => (
             <div key={p.nr}>
               <div className="flex justify-between text-sm mb-0.5 gap-2">
                 <span className="truncate flex items-center gap-1.5" style={{ color: INK }}>
-                  <RankArrow now={p.rankNow} prev={p.rankPrev} />{p.name}
+                  {!byUnits && <RankArrow now={p.rankNow} prev={(p as unknown as { rankPrev: number | null }).rankPrev} />}{p.name}
                 </span>
                 <span className="tabular-nums shrink-0 flex items-center gap-2">
-                  <MarginChip pct={p.marginPct} coverage={p.coverage} />
-                  <span className="text-gray-400 text-xs">{magn(p.magn)} stk</span>
-                  <span className="font-semibold">{krFull(p.sala)}</span>
+                  {!byUnits && <MarginChip pct={(p as unknown as { marginPct: number | null }).marginPct} coverage={(p as unknown as { coverage: number }).coverage} />}
+                  {byUnits
+                    ? <><span className="text-gray-400 text-xs">{krFull(p.sala)}</span><span className="font-semibold">{magn(p.magn)} stk</span></>
+                    : <><span className="text-gray-400 text-xs">{magn(p.magn)} stk</span><span className="font-semibold">{krFull(p.sala)}</span></>}
                 </span>
               </div>
               <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: `${(p.sala / max) * 100}%`, background: TEAL_LIGHT }} />
+                <div className="h-full rounded-full" style={{ width: `${(val(p) / max) * 100}%`, background: TEAL_LIGHT }} />
               </div>
             </div>
           ))}
