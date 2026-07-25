@@ -104,6 +104,7 @@ export function formatReceipt(o: {
   change?: number;
   isReturn?: boolean;
   buyer?: { name?: string | null; kennitala?: string | null }; // print buyer name+kt (nóta með kennitölu)
+  reprint?: boolean; // marks a re-printed receipt of an older sale
 }): string {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -118,6 +119,7 @@ export function formatReceipt(o: {
   out.push("!C!kt. 650725-0420 · VSK-nr. 158053");
   out.push("");
   if (o.isReturn) out.push("!BIG!ENDURGREIÐSLA");
+  if (o.reprint) out.push("!C!— endurprentun —");
   out.push(row(`Kvittun ${o.invoiceNumber}`, stamp));
   // Buyer kennitala on the receipt (VSK/expense claims): shown when a customer is selected.
   const buyerKt = (o.buyer?.kennitala || "").replace(/\D/g, "");

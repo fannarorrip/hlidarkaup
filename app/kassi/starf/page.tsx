@@ -7,6 +7,7 @@ import { kbHealth, kbScanEvents, kbPrint, kbDrawer, kbWeigh, formatReceipt, vatC
 // They differ for price-embedded (verðmerkt) packs, where every scan must stay its own line.
 interface Line { uid: string; id: string; name: string; price: number; vatPct?: number; quantity: number; priceOverride?: number; discount?: number; }
 interface Customer { id: string; name: string; kennitala: string | null; is_account: boolean; discount_pct?: number; }
+interface RecentSale { id: string; invoiceNumber: string; time: string; total: number; mode: string; buyer?: { name?: string | null; kennitala?: string | null }; lines: { name: string; quantity: number; price: number; vatPct: number; discount: number }[]; }
 interface SItem { id: string; name: string; price: number; vatPct?: number; image?: string; useScale?: boolean; embeddedPrice?: number; embeddedKg?: number | null; embeddedWeightKg?: number; }
 interface Category { group: string; name: string; count: number; }
 type Mode = "card" | "cash" | "account" | "transfer";
@@ -34,6 +35,9 @@ export default function StaffTill() {
   const [receiptKt, setReceiptKt] = useState(""); // kennitala á nótu — walk-in, engin skráning
   const [ktOpen, setKtOpen] = useState(false);
   const fmtKt = (s: string) => (s.length > 6 ? `${s.slice(0, 6)}-${s.slice(6)}` : s);
+  const [recentOpen, setRecentOpen] = useState(false);
+  const [recent, setRecent] = useState<RecentSale[]>([]);
+  const [recentBusy, setRecentBusy] = useState(false);
   const [custOpen, setCustOpen] = useState(false);
   const [custQ, setCustQ] = useState("");
   const [custResults, setCustResults] = useState<Customer[]>([]);
@@ -166,7 +170,7 @@ export default function StaffTill() {
   // Hard overlays that block a stray scan (mid-payment / modal). NOTE: `done` is deliberately
   // NOT here — scanning on the "Sala skráð" screen should auto-start the next sale (see addByCode).
   const overlayRef = useRef(false);
-  useEffect(() => { overlayRef.current = !!(cashFor || edit || custOpen || waiting); });
+  useEffect(() => { overlayRef.current = !!(cashFor || edit || custOpen || waiting || ktOpen || recentOpen); });
   const doneRef = useRef(false);
   useEffect(() => { doneRef.current = !!done; });
   useEffect(() => {
@@ -244,6 +248,19 @@ export default function StaffTill() {
         window.print();
       }
     });
+  }
+
+  // Fyrri sölur: fetch recent sales for this register, reprint any as a receipt/nóta.
+  async function openRecent() {
+    setRecentOpen(true); setRecentBusy(true);
+    const r = await fetch(`/api/kassi/receipts?reg=${encodeURIComponent(regRef.current ?? "")}`).catch(() => null);
+    const d = r ? await r.json().catch(() => ({ sales: [] })) : { sales: [] };
+    setRecent(d.sales ?? []); setRecentBusy(false);
+  }
+  function reprint(s: RecentSale) {
+    const text = formatReceipt({ invoiceNumber: s.invoiceNumber, total: s.total, mode: s.mode, lines: s.lines, buyer: s.buyer, reprint: true });
+    if (bridgeRef.current) kbPrint(text);
+    else fetch("/api/kassi/print", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reg: regRef.current, text }) }).catch(() => {});
   }
 
   async function checkout(mode: Mode, change?: number) {
@@ -359,6 +376,7 @@ export default function StaffTill() {
         </div>
         <div className="flex items-center gap-2">
           <span className="tabular-nums text-base text-[#E4F1F0] mr-1">{clock}</span>
+          <button onClick={openRecent} className="px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-sm transition">Fyrri sölur</button>
           <button onClick={openDrawer} className="px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-sm transition">Opna skúffu</button>
           {/* Locked kiosk (auto-login afgreidsla) hides back-office links: uppgjör/staff are manager tasks. */}
           {!kiosk && <a href="/bokhald/solukerfi/kassauppgjor" className="px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-sm transition">Uppgjör</a>}
@@ -559,6 +577,27 @@ export default function StaffTill() {
 
 
       {/* Cash modal — with number pad */}
+      {recentOpen && (
+        <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={() => setRecentOpen(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3"><h2 className="font-bold text-lg">Fyrri sölur</h2><button onClick={() => setRecentOpen(false)} className="text-gray-400 text-3xl leading-none w-10 h-10" aria-label="Loka">×</button></div>
+            {recentBusy ? <p className="text-gray-400 py-8 text-center">Sæki…</p> : recent.length === 0 ? <p className="text-gray-400 py-8 text-center">Engar sölur</p> : (
+              <div className="overflow-y-auto -mx-2 px-2 divide-y divide-gray-100">
+                {recent.map((s) => (
+                  <div key={s.id} className="flex items-center gap-3 py-2.5">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-mono text-sm text-[#21323A]">{s.invoiceNumber} · <span className="tabular-nums">{kr(s.total)}</span></p>
+                      <p className="text-xs text-gray-400 truncate">{new Date(s.time).toLocaleString("is-IS", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}{s.buyer?.name ? ` · ${s.buyer.name}` : ""}</p>
+                    </div>
+                    <button onClick={() => reprint(s)} className="px-4 py-2 rounded-lg bg-[#21323A] text-white text-sm font-semibold hover:bg-[#2C687B] active:scale-95 transition shrink-0">Prenta</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {ktOpen && (
         <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={() => setKtOpen(false)}>
           <div className="bg-white rounded-2xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
