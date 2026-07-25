@@ -17,10 +17,16 @@ export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
   if (q.length < 2) return NextResponse.json({ products: [] });
 
+  // Match by name (contains), or by product number / barcode (prefix) so an unscannable
+  // barcode can be typed into "Leita að vöru" — staff reads the digits and finds the product.
   const rows = await query<ProductRow>(
     `select product_number, name, price_gross, vat_rate, stock_quantity, is_stock_controlled, image_url, use_scale
-       from shop.products
-      where is_active and price_gross > 0 and name ilike '%' || $1 || '%'
+       from shop.products p
+      where is_active and price_gross > 0
+        and ( name ilike '%' || $1 || '%'
+              or product_number ilike $1 || '%'
+              or exists (select 1 from shop.product_barcodes b
+                          where b.product_number = p.product_number and b.barcode ilike $1 || '%') )
       order by name
       limit 24`,
     [q],
