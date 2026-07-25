@@ -99,7 +99,7 @@ export default function StaffTill() {
     if (d.price <= 0) {
       const line = { uid: `${d.id}~${++uidSeq.current}`, id: d.id, name: d.name, price: d.price, vatPct: d.vatPct, quantity: qty };
       setCart((p) => [...p, line]);
-      openEdit(line);
+      openEdit(line, "unit"); // open-price: land straight on einingaverð so staff types the price
       return;
     }
     setCart((p) => { const e = p.find((l) => l.uid === d.id); return e ? p.map((l) => l.uid === d.id ? { ...l, quantity: l.quantity + qty } : l) : [...p, { uid: d.id, id: d.id, name: d.name, price: d.price, vatPct: d.vatPct, quantity: qty }]; });
@@ -107,8 +107,10 @@ export default function StaffTill() {
   // ±1 makes no sense for weighed (fractional-kg) lines — those adjust via the line editor.
   const changeQty = (uid: string, d: number) => setCart((p) => p.map((l) => l.uid === uid && Number.isInteger(l.quantity) ? { ...l, quantity: l.quantity + d } : l).filter((l) => l.quantity > 0));
   const removeLine = (uid: string) => setCart((p) => p.filter((l) => l.uid !== uid));
-  const openEdit = (l: Line) => { setEditField("qty"); setEditFresh(true); setEdit({ id: l.uid, name: l.name, catalog: l.price, qty: String(l.quantity), unit: String(effUnit(l)), disc: String(l.discount ?? 0), discPct: false }); };
+  const openEdit = (l: Line, field: "qty" | "unit" = "qty") => { setEditField(field); setEditFresh(true); setEdit({ id: l.uid, name: l.name, catalog: l.price, qty: String(l.quantity), unit: String(effUnit(l)), disc: String(l.discount ?? 0), discPct: false }); };
   const selectField = (f: "qty" | "unit" | "disc") => { setEditField(f); setEditFresh(true); };
+  // Closing an open-price line that never got a price drops it — no 0-kr lines survive.
+  const closeEdit = () => { if (edit && edit.catalog === 0 && (Number(edit.unit) || 0) <= 0) removeLine(edit.id); setEdit(null); };
   function applyEdit() {
     if (!edit) return;
     // Fractional quantities are legitimate (vigtarvara in kg) — don't round them away.
@@ -581,7 +583,7 @@ export default function StaffTill() {
 
       {/* Line editor — magn / verð / afsláttur, with a number pad for touch */}
       {edit && (
-        <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={() => setEdit(null)}>
+        <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={closeEdit}>
           <div className="bg-white rounded-2xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-bold text-lg mb-4 truncate">{edit.name}</h2>
             <div className="grid grid-cols-2 gap-5">
@@ -615,8 +617,8 @@ export default function StaffTill() {
             </div>
             <div className="flex gap-2 mt-5">
               <button onClick={() => { removeLine(edit.id); setEdit(null); }} className="px-4 py-3.5 rounded-xl border-2 border-gray-200 text-[#DB1A1A] font-semibold hover:bg-red-50">Fjarlægja</button>
-              <button onClick={() => setEdit(null)} className="flex-1 py-3.5 rounded-xl border-2 border-gray-200 font-semibold hover:bg-gray-50">Hætta</button>
-              <button onClick={applyEdit} className={`flex-1 py-3.5 rounded-xl ${RED} text-white font-semibold`}>Vista</button>
+              <button onClick={closeEdit} className="flex-1 py-3.5 rounded-xl border-2 border-gray-200 font-semibold hover:bg-gray-50">Hætta</button>
+              <button onClick={applyEdit} disabled={edit.catalog === 0 && (Number(edit.unit) || 0) <= 0} className={`flex-1 py-3.5 rounded-xl ${RED} text-white font-semibold disabled:opacity-40`}>{edit.catalog === 0 && (Number(edit.unit) || 0) <= 0 ? "Sláðu inn verð" : "Vista"}</button>
             </div>
           </div>
         </div>
