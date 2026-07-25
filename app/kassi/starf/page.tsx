@@ -257,7 +257,7 @@ export default function StaffTill() {
     setWaiting("Fylgdu leiðbeiningum á posanum…"); setError("");
     const ac = new AbortController(); terminalAbort.current = ac;
     try {
-      const r = await fetch("/api/kassi/terminal/pay", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount: total, ref: `till-${Date.now()}` }), signal: ac.signal });
+      const r = await fetch("/api/kassi/terminal/pay", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount: total, ref: `till-${Date.now()}`, reg: regRef.current }), signal: ac.signal });
       const d = await r.json().catch(() => ({}));
       setWaiting("");
       if (!d.approved) { setError(d.error ? `Posi: ${d.error}` : "Greiðslu hafnað"); return; }
