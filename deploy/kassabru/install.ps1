@@ -46,10 +46,12 @@ else { "OK: autostart registered (Task Scheduler: Kassabru) - $argStr" }
 
 # 4. USB selective suspend OFF — Windows quietly powers down USB-serial adapters
 # otherwise, which killed the scanner/scale COM port mid-shift once already.
-powercfg /SETACVALUEINDEX SCHEME_CURRENT 2a737441-1930-4402-8d77-b2bebba308a3 48e6b7a6-50f5-4782-a5d4-53bb3f4be838 0 2>$null
-powercfg /SETDCVALUEINDEX SCHEME_CURRENT 2a737441-1930-4402-8d77-b2bebba308a3 48e6b7a6-50f5-4782-a5d4-53bb3f4be838 0 2>$null
-powercfg /SETACTIVE SCHEME_CURRENT 2>$null
-"OK: USB selective suspend av"
+# cmd /c + full redirect: some OEM power plans (NCR) lack this setting, and under
+# $ErrorActionPreference=Stop a redirected native stderr would kill the script.
+cmd /c "powercfg /SETACVALUEINDEX SCHEME_CURRENT 2a737441-1930-4402-8d77-b2bebba308a3 48e6b7a6-50f5-4782-a5d4-53bb3f4be838 0 >nul 2>&1"
+cmd /c "powercfg /SETDCVALUEINDEX SCHEME_CURRENT 2a737441-1930-4402-8d77-b2bebba308a3 48e6b7a6-50f5-4782-a5d4-53bb3f4be838 0 >nul 2>&1"
+cmd /c "powercfg /SETACTIVE SCHEME_CURRENT >nul 2>&1"
+"OK: USB selective suspend av (ef stillingin er til - annars: Device Manager -> USB hubs -> Power Management)"
 
 # 5. Start it now
 Start-Process "$dir\kassabru.exe" -WorkingDirectory $dir -ArgumentList $argStr
