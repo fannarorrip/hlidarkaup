@@ -30,16 +30,15 @@ if (-not (Test-Path $edge)) { $edge = "C:\Program Files\Microsoft\Edge\Applicati
 if (-not (Test-Path $edge)) { throw "Edge fannst ekki" }
 
 # 1. VBS launcher: open the till in Edge app mode, fullscreen via --start-fullscreen.
-# Edge only honours --start-fullscreen on a FRESH launch — if an msedge process is already
-# running it opens the --app window WINDOWED. So kill any Edge first, then launch clean.
-# (At boot there is no Edge yet, so the kill is a no-op; it only matters on manual re-runs.)
+# Edge honours --start-fullscreen only on a FRESH launch — but at BOOT no Edge is running,
+# so a clean launch here is exactly that. (Do NOT taskkill Edge first: a force-kill makes
+# Edge think it crashed and reopen a blank restore window instead of the app URL — that only
+# bites manual re-runs anyway; the real path is boot, where Edge starts fresh.)
 # This replaces the old AppActivate/F11 dance, which was flaky: focus theft by the kassabru
 # console / toast windows ate the F11, leaving the till windowed on some machines.
 New-Item -ItemType Directory -Force "C:\kassabru" | Out-Null
 $vbs = @"
 Set sh = CreateObject("WScript.Shell")
-sh.Run "taskkill /F /IM msedge.exe", 0, True
-WScript.Sleep 1200
 sh.Run """$edge"" --app=$Url --no-first-run --start-fullscreen", 1, False
 "@
 Set-Content -Path "C:\kassabru\kassi-start.vbs" -Value $vbs -Encoding Default
