@@ -55,7 +55,7 @@ export interface TerminalResult { approved: boolean; error?: string; poiTxId?: s
 
 /** Run a card payment on the terminal. Blocks until the customer completes (or it times out).
  *  `opts` lets a specific register override the terminal (POIID) and SaleID it charges. */
-export async function sendPaymentToTerminal(amountKr: number, ref: string, opts?: { poiid?: string; saleId?: string }): Promise<TerminalResult> {
+export async function sendPaymentToTerminal(amountKr: number, ref: string, opts?: { poiid?: string; saleId?: string; serviceId?: string }): Promise<TerminalResult> {
   const c = adyenConfig();
   if (!adyenEnabled()) return { approved: false, error: "Posa-tenging er ekki uppsett." };
   const poiId = opts?.poiid || c.poiId;
@@ -63,7 +63,7 @@ export async function sendPaymentToTerminal(amountKr: number, ref: string, opts?
 
   const body = {
     SaleToPOIRequest: {
-      MessageHeader: { ProtocolVersion: "3.0", MessageClass: "Service", MessageCategory: "Payment", MessageType: "Request", SaleID: saleId, ServiceID: String(Date.now()).slice(-10), POIID: poiId },
+      MessageHeader: { ProtocolVersion: "3.0", MessageClass: "Service", MessageCategory: "Payment", MessageType: "Request", SaleID: saleId, ServiceID: opts?.serviceId || String(Date.now()).slice(-10), POIID: poiId },
       PaymentRequest: {
         SaleData: { SaleTransactionID: { TransactionID: ref, TimeStamp: new Date().toISOString() } },
         PaymentTransaction: { AmountsReq: { Currency: c.currency, RequestedAmount: requestedAmount(amountKr, c.currency) } },
@@ -102,4 +102,31 @@ export async function sendPaymentToTerminal(amountKr: number, ref: string, opts?
   let msg = String(resp.ErrorCondition || resp.AdditionalResponse || "Greiðslu hafnað");
   try { msg = decodeURIComponent(msg); } catch { /* leave raw */ }
   return { approved: false, error: msg, poiTxId };
+}
+
+/** Cancel an in-flight payment ON the terminal (Nexo Abort) — cashier pressed "Hætta við" so the
+ *  posi clears itself instead of needing the red X pressed physically. serviceId = the payment's. */
+export async function abortTerminalPayment(opts: { poiid?: string; saleId?: string; serviceId: string }): Promise<{ ok: boolean; error?: string }> {
+  const c = adyenConfig();
+  if (!adyenEnabled()) return { ok: false, error: "Posa-tenging er ekki uppsett." };
+  const poiId = opts.poiid || c.poiId;
+  const saleId = opts.saleId || c.saleId;
+  const body = {
+    SaleToPOIRequest: {
+      MessageHeader: { ProtocolVersion: "3.0", MessageClass: "Service", MessageCategory: "Abort", MessageType: "Request", SaleID: saleId, ServiceID: String(Date.now()).slice(-10), POIID: poiId },
+      AbortRequest: {
+        AbortReason: "MerchantAbort",
+        MessageReference: { MessageCategory: "Payment", SaleID: saleId, ServiceID: opts.serviceId },
+      },
+    },
+  };
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 15_000);
+  try {
+    const res = await fetch(endpoint(c), { method: "POST", headers: { ...authHeaders(c), "content-type": "application/json" }, body: JSON.stringify(body), signal: ctrl.signal });
+    await res.text().catch(() => "");
+    return { ok: res.ok };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "" };
+  } finally { clearTimeout(t); }
 }

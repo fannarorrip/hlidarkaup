@@ -300,20 +300,33 @@ export default function StaffTill() {
     checkout(mode);
   }
   const terminalAbort = useRef<AbortController | null>(null);
-  async function cardViaTerminal() {
+  const terminalSvcId = useRef<string>("");
+  async function cardViaTerminal(amount = total): Promise<boolean> {
     setWaiting("Fylgdu leiðbeiningum á posanum…"); setError("");
     const ac = new AbortController(); terminalAbort.current = ac;
+    const svc = String(Date.now()).slice(-10); terminalSvcId.current = svc; // so "Hætta við" can Abort THIS payment
     try {
-      const r = await fetch("/api/kassi/terminal/pay", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount: total, ref: `till-${Date.now()}`, reg: regRef.current }), signal: ac.signal });
+      const r = await fetch("/api/kassi/terminal/pay", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount, ref: `till-${Date.now()}`, reg: regRef.current, serviceId: svc }), signal: ac.signal });
       const d = await r.json().catch(() => ({}));
       setWaiting("");
-      if (!d.approved) { setError(d.error ? `Posi: ${d.error}` : "Greiðslu hafnað"); return; }
+      if (!d.approved) { setError(d.error ? `Posi: ${d.error}` : "Greiðslu hafnað"); return false; }
       await checkout("card");
+      return true;
     } catch (e) {
       setWaiting("");
-      if (ac.signal.aborted) { setError("Hætt við — athugaðu stöðu greiðslunnar á posanum áður en þú reynir aftur."); return; }
+      if (ac.signal.aborted) { setError("Hætt við — greiðslan var afturkölluð á posanum."); return false; }
       setError(e instanceof Error ? e.message : "Villa við posa");
+      return false;
     }
+  }
+  // "Hætta við" on the posi-waiting screen: tell the terminal to cancel (Nexo Abort) so it clears
+  // itself — no need to press the red X on the posi — then abort our waiting request.
+  async function cancelTerminal() {
+    if (terminalSvcId.current) {
+      fetch("/api/kassi/terminal/abort", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reg: regRef.current, serviceId: terminalSvcId.current }) }).catch(() => {});
+    }
+    terminalAbort.current?.abort();
+    setWaiting("");
   }
   function newSale() { setDone(null); setError(""); setCart([]); setCustomer(null); setReceiptKt(""); setSearch(""); setResults([]); setReturnMode(false); setTimeout(() => scanRef.current?.focus(), 50); }
 
@@ -667,7 +680,7 @@ export default function StaffTill() {
             <h1 className="text-xl font-bold mb-1">Greiðsla á posa</h1>
             <p className="text-3xl font-bold tabular-nums my-2">{kr(total)}</p>
             <p className="text-gray-500">{waiting}</p>
-            <button onClick={() => { terminalAbort.current?.abort(); setWaiting(""); }} className="mt-5 px-6 py-3 rounded-xl border-2 border-gray-200 font-semibold hover:bg-gray-50">Hætta við</button>
+            <button onClick={cancelTerminal} className="mt-5 px-6 py-3 rounded-xl border-2 border-gray-200 font-semibold hover:bg-gray-50">Hætta við</button>
           </div>
         </div>
       )}
