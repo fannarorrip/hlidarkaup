@@ -143,6 +143,7 @@ export default function StaffTill() {
   }
   async function addByCode(code: string) {
     const c = code.trim(); if (!c) return;
+    if (doneRef.current) newSale(); // scanning after "Sala skráð" starts the next sale automatically
     const r = await fetch(`/api/kassi/scan?code=${encodeURIComponent(c)}`); const d = await r.json();
     if (!r.ok) { setError(d.error ?? "Vara fannst ekki"); setScan(""); return; }
     await addProduct(d);
@@ -157,8 +158,12 @@ export default function StaffTill() {
   // is treated as a scan — human typing has slower gaps so it never triggers.
   // Gated OFF while any overlay is open, so a stray scan can't mutate the cart behind a modal
   // (or corrupt a payment mid-flow).
+  // Hard overlays that block a stray scan (mid-payment / modal). NOTE: `done` is deliberately
+  // NOT here — scanning on the "Sala skráð" screen should auto-start the next sale (see addByCode).
   const overlayRef = useRef(false);
-  useEffect(() => { overlayRef.current = !!(cashFor || edit || custOpen || done || waiting); });
+  useEffect(() => { overlayRef.current = !!(cashFor || edit || custOpen || waiting); });
+  const doneRef = useRef(false);
+  useEffect(() => { doneRef.current = !!done; });
   useEffect(() => {
     let buf = ""; let last = 0;
     const onKey = (e: KeyboardEvent) => {
