@@ -38,7 +38,7 @@ export default function StaffTill() {
   const [error, setError] = useState("");
   const [cashFor, setCashFor] = useState(false);
   const [cashGot, setCashGot] = useState("");
-  const [done, setDone] = useState<{ invoiceNumber: string; total: number; mode: Mode; change?: number; lines: Line[]; isReturn?: boolean } | null>(null);
+  const [done, setDone] = useState<{ invoiceNumber: string; total: number; mode: Mode; change?: number; lines: Line[]; isReturn?: boolean; buyer?: { name?: string | null; kennitala?: string | null } } | null>(null);
   const [returnMode, setReturnMode] = useState(false);
   const [edit, setEdit] = useState<{ id: string; name: string; catalog: number; qty: string; unit: string; disc: string; discPct: boolean } | null>(null);
   const [editField, setEditField] = useState<"qty" | "unit" | "disc">("qty");
@@ -208,6 +208,7 @@ export default function StaffTill() {
     const text = formatReceipt({
       invoiceNumber: d.invoiceNumber, total: d.total, mode: d.mode, change: d.change, isReturn: d.isReturn,
       lines: d.lines.map((l) => ({ name: l.name, quantity: l.quantity, price: effUnit(l), vatPct: l.vatPct, discount: l.discount })),
+      buyer: d.buyer,
     });
     const serverPrint = async (): Promise<boolean> => {
       const r = await fetch("/api/kassi/print", {
@@ -240,7 +241,8 @@ export default function StaffTill() {
     const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: cart.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, customerId: customer?.id, reg: regRef.current, payment: { approved: true, processor: "STAFF" } }) });
     const d = await r.json(); setBusy(false);
     if (!r.ok) { setError(d.error ?? "Villa við að skrá söluna"); return; }
-    const doneObj = { invoiceNumber: d.invoiceNumber, total, mode, change, lines: snapshot };
+    const buyer = customer ? { name: customer.name, kennitala: customer.kennitala } : undefined;
+    const doneObj = { invoiceNumber: d.invoiceNumber, total, mode, change, lines: snapshot, buyer };
     setDone(doneObj);
     if (bridgeRef.current || netPrintRef.current) printReceipt(doneObj, mode === "cash"); // receipt + drawer kick in one go
     else if (mode === "cash") fetch("/api/kassi/drawer", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reg: regRef.current }) }).catch(() => {}); // auto-open on cash
@@ -293,7 +295,8 @@ export default function StaffTill() {
     const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: cart.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, kind: "return", customerId: customer?.id, reg: regRef.current, payment: { approved: true, processor: "STAFF" } }) });
     const d = await r.json(); setBusy(false);
     if (!r.ok) { setError(d.error ?? "Villa við skil"); return; }
-    const doneObj = { invoiceNumber: d.invoiceNumber, total, mode, lines: snapshot, isReturn: true };
+    const buyer = customer ? { name: customer.name, kennitala: customer.kennitala } : undefined;
+    const doneObj = { invoiceNumber: d.invoiceNumber, total, mode, lines: snapshot, isReturn: true, buyer };
     setDone(doneObj);
     if (bridgeRef.current || netPrintRef.current) printReceipt(doneObj);
     setCart([]); setCustomer(null); setReturnMode(false);

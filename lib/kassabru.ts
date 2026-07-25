@@ -103,6 +103,7 @@ export function formatReceipt(o: {
   mode: string;
   change?: number;
   isReturn?: boolean;
+  buyer?: { name?: string | null; kennitala?: string | null }; // print buyer name+kt (nóta með kennitölu)
 }): string {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -118,6 +119,12 @@ export function formatReceipt(o: {
   out.push("");
   if (o.isReturn) out.push("!BIG!ENDURGREIÐSLA");
   out.push(row(`Kvittun ${o.invoiceNumber}`, stamp));
+  // Buyer kennitala on the receipt (VSK/expense claims): shown when a customer is selected.
+  const buyerKt = (o.buyer?.kennitala || "").replace(/\D/g, "");
+  if (o.buyer?.name || buyerKt.length === 10) {
+    if (o.buyer?.name) out.push(`Kaupandi: ${o.buyer.name}`);
+    if (buyerKt.length === 10) out.push(`kt. ${buyerKt.slice(0, 6)}-${buyerKt.slice(6)}`);
+  }
   out.push(div);
 
   // VAT per class (prices are gross): every line carries its class letter (A/B/C),
