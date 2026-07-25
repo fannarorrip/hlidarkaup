@@ -155,6 +155,17 @@ export function formatReceipt(o: {
     out.push(row3(`${vatClass(rate)} = ${rate}%`, kr(cls.gross), kr(Math.round(cls.vat))));
   }
   out.push("");
+  // Account sales are signed for: leave room above a signature line so the customer
+  // acknowledges the charge on their reikningur.
+  if (o.mode === "account") {
+    out.push("");
+    out.push("!C!Móttekið – greiðist skv. reikningi");
+    out.push("");
+    out.push("");
+    out.push(div);
+    out.push("!C!Undirskrift");
+    out.push("");
+  }
   out.push("!C!Takk fyrir viðskiptin!");
   out.push("");
   return out.join("\n");
