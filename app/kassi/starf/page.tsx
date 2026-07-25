@@ -89,7 +89,18 @@ export default function StaffTill() {
     return () => clearTimeout(t);
   }, [custQ, custOpen]);
 
-  const addItem = (d: SItem, qty = 1) => { setError(""); setCart((p) => { const e = p.find((l) => l.uid === d.id); return e ? p.map((l) => l.uid === d.id ? { ...l, quantity: l.quantity + qty } : l) : [...p, { uid: d.id, id: d.id, name: d.name, price: d.price, vatPct: d.vatPct, quantity: qty }]; }); };
+  const addItem = (d: SItem, qty = 1) => {
+    setError("");
+    // Open-price items ("Ýmsar vörur", verð 0): each tap is its OWN line with its own price —
+    // never merged into a quantity — and the price editor opens so staff types the price.
+    if (d.price <= 0) {
+      const line = { uid: `${d.id}~${++uidSeq.current}`, id: d.id, name: d.name, price: d.price, vatPct: d.vatPct, quantity: qty };
+      setCart((p) => [...p, line]);
+      openEdit(line);
+      return;
+    }
+    setCart((p) => { const e = p.find((l) => l.uid === d.id); return e ? p.map((l) => l.uid === d.id ? { ...l, quantity: l.quantity + qty } : l) : [...p, { uid: d.id, id: d.id, name: d.name, price: d.price, vatPct: d.vatPct, quantity: qty }]; });
+  };
   // ±1 makes no sense for weighed (fractional-kg) lines — those adjust via the line editor.
   const changeQty = (uid: string, d: number) => setCart((p) => p.map((l) => l.uid === uid && Number.isInteger(l.quantity) ? { ...l, quantity: l.quantity + d } : l).filter((l) => l.quantity > 0));
   const removeLine = (uid: string) => setCart((p) => p.filter((l) => l.uid !== uid));
