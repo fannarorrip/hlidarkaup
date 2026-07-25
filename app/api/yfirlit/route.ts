@@ -181,16 +181,18 @@ export async function GET(req: NextRequest) {
     from shop.sale_lines sl
     join acc.vouchers v on v.id = sl.voucher_id
     left join shop.products p on p.product_number = sl.product_number
-    where v.status <> 'reversed' and ${CUR} and sl.product_number is not null
+    where v.status <> 'reversed' and ${CUR} and sl.product_number is not null and sl.line_total > 0
     group by 1 order by 3 desc limit 12`));
 
   // Same, but ranked by UNITS sold (stk) — söluhæsta stk vara. Set may differ from by-revenue.
+  // line_total > 0: exclude 0-kr / open-price placeholder rings (e.g. unpriced BRAUÐ) so a free
+  // item rung many times doesn't top the best-seller list.
   const topUnitsP = safe<{ nr: string; name: string; s: number; q: number }>(query(`
     select sl.product_number nr, max(sl.name) name,
       sum(sl.line_total)::int s, sum(sl.quantity)::float8 q
     from shop.sale_lines sl
     join acc.vouchers v on v.id = sl.voucher_id
-    where v.status <> 'reversed' and ${CUR} and sl.product_number is not null
+    where v.status <> 'reversed' and ${CUR} and sl.product_number is not null and sl.line_total > 0
     group by 1 order by sum(sl.quantity) desc limit 12`));
 
   // Biggest movers (kr swing this window vs prior).
