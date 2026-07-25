@@ -48,7 +48,9 @@ $klnk.TargetPath = "$dir\kassabru.exe"
 $klnk.Arguments = $argStr
 $klnk.WorkingDirectory = $dir
 $klnk.Save()
-schtasks /Delete /TN "Kassabru" /F 2>$null | Out-Null   # remove any older task-based install
+# remove any older task-based install — cmd /c so a "task not found" stderr can't
+# terminate the script under $ErrorActionPreference=Stop (same guard as powercfg above)
+cmd /c "schtasks /Delete /TN Kassabru /F >nul 2>&1"
 "OK: autostart (All-Users startup: Kassabru.lnk) - $argStr"
 
 # 4. USB selective suspend OFF — Windows quietly powers down USB-serial adapters
