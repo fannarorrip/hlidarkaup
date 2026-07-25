@@ -41,6 +41,7 @@ export interface PostSaleOpts {
   source?: string; // sales channel: 'till' | 'kiosk' | 'web' | 'eldhus'
   registerId?: string | null; // which register rang it (kassi1-3 / sjalfsafgreidsla1-2)
   skipBilling?: boolean; // manual invoice: caller drives claim + delivery itself (no auto-billing)
+  tenders?: { mode: PayMode; amount: number }[]; // split payment — one money-in line per tender (sum = total)
 }
 
 interface ProductRow {
@@ -119,12 +120,19 @@ export async function postSale(items: SaleItem[], opts: PostSaleOpts): Promise<{
       totalGross += gross;
     }
 
-    const payDesc = opts.mode === "account" ? "Á reikning"
-      : opts.mode === "cash" ? "Reiðufé"
-      : opts.mode === "transfer" ? "Símgreiðsla / millifærsla"
-      : `Kortagreiðsla${opts.payment?.last4 ? " **** " + opts.payment.last4 : ""}`;
-    const debitDesc = isReturn ? `Endurgreiðsla – ${payDesc}` : payDesc;
-    const lines = [{ account: debitAccount, ...moneySide(totalGross), vat_code: null, description: debitDesc }, ...creditLines];
+    const acctFor = (m: PayMode) => m === "cash" ? CASH_ACCOUNT : m === "transfer" ? TRANSFER_ACCOUNT : m === "account" ? debitAccount : CARD_ACCOUNT;
+    const descFor = (m: PayMode) => m === "account" ? "Á reikning" : m === "cash" ? "Reiðufé" : m === "transfer" ? "Símgreiðsla / millifærsla" : "Kortagreiðsla";
+    // Split payment: one money-in line per tender (cash + card + …); else a single line for the mode.
+    let debitLines: { account: string; debit: number; credit: number; vat_code: null; description: string }[];
+    if (opts.tenders && opts.tenders.length) {
+      const sum = opts.tenders.reduce((s, t) => s + Math.round(t.amount), 0);
+      if (sum !== totalGross) throw new SaleError(`Greiðslur (${sum}) stemma ekki við samtölu (${totalGross})`, 400);
+      debitLines = opts.tenders.map((t) => ({ account: acctFor(t.mode), ...moneySide(Math.round(t.amount)), vat_code: null, description: (isReturn ? "Endurgreiðsla – " : "") + descFor(t.mode) }));
+    } else {
+      const payDesc = descFor(opts.mode) + (opts.mode === "card" && opts.payment?.last4 ? " **** " + opts.payment.last4 : "");
+      debitLines = [{ account: debitAccount, ...moneySide(totalGross), vat_code: null, description: isReturn ? `Endurgreiðsla – ${payDesc}` : payDesc }];
+    }
+    const lines = [...debitLines, ...creditLines];
 
     const ref = opts.reference ?? `${series}-${opts.payment?.stan ?? Date.now()}`;
     const today = new Date().toISOString().slice(0, 10);

@@ -105,6 +105,7 @@ export function formatReceipt(o: {
   isReturn?: boolean;
   buyer?: { name?: string | null; kennitala?: string | null }; // print buyer name+kt (nóta með kennitölu)
   reprint?: boolean; // marks a re-printed receipt of an older sale
+  tenders?: { mode: string; amount: number }[]; // split payment breakdown
 }): string {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -154,9 +155,13 @@ export function formatReceipt(o: {
 
   out.push(div);
   out.push(`!B!${row("SAMTALS", kr(o.total))}`);
-  const modeName =
-    o.mode === "cash" ? "Reiðufé" : o.mode === "card" ? "Kort" : o.mode === "account" ? "Á reikning" : "Millifærsla";
-  out.push(row("Greitt með", modeName));
+  const nameOf = (m: string) => m === "cash" ? "Reiðufé" : m === "card" ? "Kort" : m === "account" ? "Á reikning" : "Símgreiðsla";
+  if (o.tenders && o.tenders.length > 1) {
+    out.push(row("Greitt með", "Skipt greiðsla"));
+    for (const t of o.tenders) out.push(row("  " + nameOf(t.mode), kr(t.amount)));
+  } else {
+    out.push(row("Greitt með", nameOf(o.mode)));
+  }
   if (o.change !== undefined && o.change > 0) out.push(row("Skiptimynt", kr(o.change)));
   out.push("");
   out.push(row3("VSK-flokkur", "Velta m/VSK", "VSK"));

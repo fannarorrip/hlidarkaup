@@ -45,7 +45,10 @@ export default function StaffTill() {
   const [error, setError] = useState("");
   const [cashFor, setCashFor] = useState(false);
   const [cashGot, setCashGot] = useState("");
-  const [done, setDone] = useState<{ invoiceNumber: string; total: number; mode: Mode; change?: number; lines: Line[]; isReturn?: boolean; buyer?: { name?: string | null; kennitala?: string | null } } | null>(null);
+  const [done, setDone] = useState<{ invoiceNumber: string; total: number; mode: Mode; change?: number; lines: Line[]; isReturn?: boolean; buyer?: { name?: string | null; kennitala?: string | null }; tenders?: { mode: Mode; amount: number }[] } | null>(null);
+  const [splitOpen, setSplitOpen] = useState(false);
+  const [splitTenders, setSplitTenders] = useState<{ mode: Mode; amount: number }[]>([]);
+  const [splitAmt, setSplitAmt] = useState("");
   const [returnMode, setReturnMode] = useState(false);
   const [edit, setEdit] = useState<{ id: string; name: string; catalog: number; qty: string; unit: string; disc: string; discPct: boolean } | null>(null);
   const [editField, setEditField] = useState<"qty" | "unit" | "disc">("qty");
@@ -181,7 +184,7 @@ export default function StaffTill() {
   // Hard overlays that block a stray scan (mid-payment / modal). NOTE: `done` is deliberately
   // NOT here — scanning on the "Sala skráð" screen should auto-start the next sale (see addByCode).
   const overlayRef = useRef(false);
-  useEffect(() => { overlayRef.current = !!(cashFor || edit || custOpen || waiting || ktOpen || recentOpen); });
+  useEffect(() => { overlayRef.current = !!(cashFor || edit || custOpen || waiting || ktOpen || recentOpen || splitOpen); });
   const doneRef = useRef(false);
   useEffect(() => { doneRef.current = !!done; });
   useEffect(() => {
@@ -236,7 +239,7 @@ export default function StaffTill() {
     const text = formatReceipt({
       invoiceNumber: d.invoiceNumber, total: d.total, mode: d.mode, change: d.change, isReturn: d.isReturn,
       lines: d.lines.map((l) => ({ name: l.name, quantity: l.quantity, price: effUnit(l), vatPct: l.vatPct, discount: l.discount })),
-      buyer: d.buyer,
+      buyer: d.buyer, tenders: d.tenders,
     });
     const serverPrint = async (): Promise<boolean> => {
       const r = await fetch("/api/kassi/print", {
@@ -274,25 +277,41 @@ export default function StaffTill() {
     else fetch("/api/kassi/print", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reg: regRef.current, text }) }).catch(() => {});
   }
 
-  async function checkout(mode: Mode, change?: number) {
+  async function checkout(mode: Mode, change?: number, tenders?: { mode: Mode; amount: number }[]) {
     if (!cart.length) return;
     if (mode === "account" && (!customer || !customer.is_account)) { setError("Veldu reikningsviðskiptamann"); return; }
     setBusy(true); setError("");
     const snapshot = cart.map((l) => ({ ...l, discount: lineDisc(l) })); // bake customer discount into each line
-    const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: snapshot.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, customerId: customer?.id, reg: regRef.current, payment: { approved: true, processor: "STAFF" } }) });
+    const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: snapshot.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, tenders, customerId: customer?.id, reg: regRef.current, payment: { approved: true, processor: "STAFF" } }) });
     const d = await r.json(); setBusy(false);
     if (!r.ok) { setError(d.error ?? "Villa við að skrá söluna"); return; }
     const buyer = customer
       ? { name: customer.name, kennitala: customer.kennitala }
       : (receiptKt.length === 10 ? { kennitala: receiptKt } : undefined);
-    const doneObj = { invoiceNumber: d.invoiceNumber, total, mode, change, lines: snapshot, buyer };
+    const doneObj = { invoiceNumber: d.invoiceNumber, total, mode, change, lines: snapshot, buyer, tenders };
     setDone(doneObj);
     // Auto-print ONLY for account sales — the viðskiptamaður signs (kvittar). Cash/card/transfer
-    // print on demand via "Prenta kvittun" on the done screen. Cash drawer always opens on cash.
+    // print on demand via "Prenta kvittun" on the done screen. Cash drawer opens if any cash is taken.
     if (mode === "account" && (bridgeRef.current || netPrintRef.current)) printReceipt(doneObj, false);
-    if (mode === "cash") { if (bridgeRef.current) kbDrawer().catch(() => {}); else fetch("/api/kassi/drawer", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reg: regRef.current }) }).catch(() => {}); }
+    const tookCash = mode === "cash" || !!tenders?.some((t) => t.mode === "cash");
+    if (tookCash) { if (bridgeRef.current) kbDrawer().catch(() => {}); else fetch("/api/kassi/drawer", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reg: regRef.current }) }).catch(() => {}); }
     setCart([]); setCustomer(null); setCashFor(false); setCashGot("");
   }
+  // Skipt greiðsla: collect several tenders (cash + posi) until the total is covered, then post once.
+  const splitCollected = splitTenders.reduce((s, t) => s + t.amount, 0);
+  const splitRemaining = Math.max(0, total - splitCollected);
+  function openSplit() { if (!cart.length) { setError("Karfan er tóm"); return; } setSplitTenders([]); setSplitAmt(String(total)); setError(""); setSplitOpen(true); }
+  async function collectTender(m: Mode) {
+    const amt = Math.min(Math.round(Number(splitAmt) || 0), splitRemaining);
+    if (amt <= 0) return;
+    if (m === "card") { const ok = await chargeCard(amt); if (!ok) return; } // posi charges its portion now
+    const next = [...splitTenders, { mode: m, amount: amt }];
+    setSplitTenders(next);
+    const remaining = total - next.reduce((s, t) => s + t.amount, 0);
+    if (remaining <= 0) { setSplitOpen(false); setSplitTenders([]); setSplitAmt(""); await checkout(m, undefined, next); }
+    else setSplitAmt(String(remaining));
+  }
+
   function pay(mode: Mode) {
     if (!cart.length) { setError("Karfan er tóm"); return; }
     if (mode === "cash") { setCashGot(""); setCashFor(true); return; }
@@ -301,7 +320,8 @@ export default function StaffTill() {
   }
   const terminalAbort = useRef<AbortController | null>(null);
   const terminalSvcId = useRef<string>("");
-  async function cardViaTerminal(amount = total): Promise<boolean> {
+  // Charge a (partial) amount on the posi. Returns approval only — no sale posting.
+  async function chargeCard(amount: number): Promise<boolean> {
     setWaiting("Fylgdu leiðbeiningum á posanum…"); setError("");
     const ac = new AbortController(); terminalAbort.current = ac;
     const svc = String(Date.now()).slice(-10); terminalSvcId.current = svc; // so "Hætta við" can Abort THIS payment
@@ -310,7 +330,6 @@ export default function StaffTill() {
       const d = await r.json().catch(() => ({}));
       setWaiting("");
       if (!d.approved) { setError(d.error ? `Posi: ${d.error}` : "Greiðslu hafnað"); return false; }
-      await checkout("card");
       return true;
     } catch (e) {
       setWaiting("");
@@ -319,6 +338,7 @@ export default function StaffTill() {
       return false;
     }
   }
+  async function cardViaTerminal() { if (await chargeCard(total)) await checkout("card"); }
   // "Hætta við" on the posi-waiting screen: tell the terminal to cancel (Nexo Abort) so it clears
   // itself — no need to press the red X on the posi — then abort our waiting request.
   async function cancelTerminal() {
@@ -521,12 +541,15 @@ export default function StaffTill() {
                 <PayBtn label="Endurgr. á kort" cls={`${RED} text-white`} onClick={() => doReturn("card")} disabled={busy || !cart.length} />
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2.5">
-                <PayBtn label="Reiðufé" cls={`${INK} text-white`} onClick={() => pay("cash")} disabled={busy || !cart.length} />
-                <PayBtn label="Kort" cls={`${RED} text-white`} onClick={() => pay("card")} disabled={busy || !cart.length} />
-                <PayBtn label="Á reikning" cls="bg-white border-2 border-[#21323A] text-[#21323A] hover:bg-gray-50" onClick={() => pay("account")} disabled={busy || !cart.length || !customer?.is_account} />
-                <PayBtn label="Símgreiðsla" cls="bg-white border-2 border-gray-300 text-gray-600 hover:bg-gray-50" onClick={() => pay("transfer")} disabled={busy || !cart.length} />
-              </div>
+              <>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <PayBtn label="Reiðufé" cls={`${INK} text-white`} onClick={() => pay("cash")} disabled={busy || !cart.length} />
+                  <PayBtn label="Kort" cls={`${RED} text-white`} onClick={() => pay("card")} disabled={busy || !cart.length} />
+                  <PayBtn label="Á reikning" cls="bg-white border-2 border-[#21323A] text-[#21323A] hover:bg-gray-50" onClick={() => pay("account")} disabled={busy || !cart.length || !customer?.is_account} />
+                  <PayBtn label="Símgreiðsla" cls="bg-white border-2 border-gray-300 text-gray-600 hover:bg-gray-50" onClick={() => pay("transfer")} disabled={busy || !cart.length} />
+                </div>
+                <button onClick={openSplit} disabled={busy || !cart.length} className="mt-2 w-full py-2.5 rounded-lg border-2 border-dashed border-gray-300 text-gray-600 text-sm font-semibold hover:bg-gray-50 disabled:opacity-40">Skipta greiðslu</button>
+              </>
             )}
           </div>
         </div>
@@ -618,6 +641,32 @@ export default function StaffTill() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {splitOpen && (
+        <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={() => setSplitOpen(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-bold text-lg mb-2">Skipta greiðslu</h2>
+            <div className="flex justify-between text-sm"><span className="text-gray-500">Samtals</span><span className="tabular-nums font-semibold">{kr(total)}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-gray-500">Greitt</span><span className="tabular-nums text-[#2C687B]">{kr(splitCollected)}</span></div>
+            <div className="flex justify-between text-base mb-2"><span className="font-semibold">Eftir</span><span className="tabular-nums font-bold">{kr(splitRemaining)}</span></div>
+            {splitTenders.length > 0 && <div className="mb-2 text-xs text-gray-500 space-y-0.5 border-t border-gray-100 pt-2">{splitTenders.map((t, i) => <div key={i} className="flex justify-between"><span>{t.mode === "cash" ? "Reiðufé" : "Kort"}</span><span className="tabular-nums">{kr(t.amount)}</span></div>)}</div>}
+            <input inputMode="none" readOnly value={kr(Number(splitAmt) || 0)} className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-2xl text-right outline-none mb-2 tabular-nums" />
+            <div className="flex gap-2 mb-2">
+              <button onClick={() => setSplitAmt(String(Math.round(splitRemaining / 2)))} className="flex-1 py-2 rounded-lg bg-gray-100 text-sm hover:bg-gray-200">½</button>
+              <button onClick={() => setSplitAmt(String(Math.round(total * 0.7)))} className="flex-1 py-2 rounded-lg bg-gray-100 text-sm hover:bg-gray-200">70%</button>
+              <button onClick={() => setSplitAmt(String(Math.round(total / 3)))} className="flex-1 py-2 rounded-lg bg-gray-100 text-sm hover:bg-gray-200">⅓</button>
+              <button onClick={() => setSplitAmt(String(splitRemaining))} className="flex-1 py-2 rounded-lg bg-gray-100 text-sm hover:bg-gray-200">Allt</button>
+            </div>
+            <div className="mb-3"><NumPad onDigit={(d) => setSplitAmt((v) => (v === "0" ? "" : v) + d)} onBackspace={() => setSplitAmt((v) => v.slice(0, -1))} onClear={() => setSplitAmt("")} /></div>
+            <div className="flex gap-3 mb-2">
+              <button onClick={() => collectTender("cash")} disabled={busy || (Number(splitAmt) || 0) <= 0} className={`flex-1 py-3 rounded-xl ${INK} text-white font-semibold disabled:opacity-40`}>Reiðufé</button>
+              <button onClick={() => collectTender("card")} disabled={busy || (Number(splitAmt) || 0) <= 0} className={`flex-1 py-3 rounded-xl ${RED} text-white font-semibold disabled:opacity-40`}>Kort (posi)</button>
+            </div>
+            {error && <p className="text-sm text-[#DB1A1A] mb-2">{error}</p>}
+            <button onClick={() => setSplitOpen(false)} className="w-full py-2 rounded-xl border-2 border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50">Loka</button>
           </div>
         </div>
       )}

@@ -20,16 +20,22 @@ export async function POST(req: NextRequest) {
   const payment: PaymentInfo = b.payment ?? { approved: true, processor: "STAFF" };
   if (mode === "card" && !payment.approved) return NextResponse.json({ error: "Greiðsla ekki staðfest" }, { status: 402 });
   const kind: "sale" | "return" = b.kind === "return" ? "return" : "sale";
+  // Split payment: multiple money-in tenders (cash + card + …). Ledger posts one debit line each.
+  const tenders: { mode: PayMode; amount: number }[] | undefined = Array.isArray(b.tenders) && b.tenders.length
+    ? b.tenders.filter((t: { mode: PayMode; amount: number }) => MODES.includes(t.mode) && Number(t.amount) > 0)
+        .map((t: { mode: PayMode; amount: number }) => ({ mode: t.mode, amount: Math.round(Number(t.amount)) }))
+    : undefined;
 
   try {
     const { invoiceNumber, voucherId } = await postSale(items, {
-      mode, kind,
+      mode: tenders && tenders.length ? "cash" : mode, kind, // mode ignored when tenders drive the debit lines
       customerId: b.customerId ?? null,
       payment,
       source: "till",
       registerId: knownRegisterId(b.reg),
       voucherType: kind === "return" ? "credit_note" : mode === "account" ? "account_sale" : "kassi_sale",
-      description: kind === "return" ? `Skil – endurgreiðsla (${mode})` : DESC[mode],
+      description: kind === "return" ? `Skil – endurgreiðsla (${mode})` : tenders ? "Kassasala – skipt greiðsla (afgreiðsla)" : DESC[mode],
+      tenders,
     });
     return NextResponse.json({ invoiceNumber, voucherId });
   } catch (err) {
