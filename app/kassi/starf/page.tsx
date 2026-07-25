@@ -21,6 +21,11 @@ const lineTotal = (l: Line) => Math.max(0, effUnit(l) * l.quantity - (l.discount
 const RED = "bg-[#DB1A1A] hover:bg-[#c01414]";
 const INK = "bg-[#21323A] hover:bg-[#2d434e]";
 
+// Idle lock: after LOCK_MS with no activity the till locks; the PIN unlocks it (deterrent when the
+// cashier steps away). Change the PIN via NEXT_PUBLIC_TILL_LOCK_PIN without touching code.
+const LOCK_PIN = process.env.NEXT_PUBLIC_TILL_LOCK_PIN || "2026";
+const LOCK_MS = 10 * 60_000;
+
 export default function StaffTill() {
   const [cart, setCart] = useState<Line[]>([]);
   const [kiosk, setKiosk] = useState(false); // locked till (auto-login afgreidsla): hide back-office links
@@ -60,6 +65,8 @@ export default function StaffTill() {
   const [waiting, setWaiting] = useState("");
   const [clock, setClock] = useState("");
   const [kb, setKb] = useState<"search" | "customer" | null>(null); // on-screen keyboard target
+  const [locked, setLocked] = useState(false); // idle lock — needs PIN to reopen
+  const [pin, setPin] = useState("");
 
   // Customer fixed discount (%): applied live on top of any manual AFSL, per line (VAT-correct).
   const custPct = customer?.discount_pct ?? 0;
@@ -70,6 +77,23 @@ export default function StaffTill() {
   const vat = Math.round(cart.reduce((s, l) => { const r = l.vatPct ?? 24; return s + (lineTot(l) * r) / (100 + r); }, 0));
 
   useEffect(() => { const f = () => setClock(new Date().toLocaleTimeString("is-IS", { hour: "2-digit", minute: "2-digit" })); f(); const t = setInterval(f, 20000); return () => clearInterval(t); }, []);
+
+  // Idle lock: reset a timer on any activity; after LOCK_MS idle → lock. Not while a card payment
+  // is waiting (never lock mid-terminal). Unlocking (correct PIN) reschedules via the deps.
+  useEffect(() => {
+    if (locked) return;
+    let t: ReturnType<typeof setTimeout>;
+    const reset = () => { clearTimeout(t); if (!waiting) t = setTimeout(() => { setPin(""); setLocked(true); }, LOCK_MS); };
+    reset();
+    const evs = ["mousedown", "keydown", "touchstart", "wheel"] as const;
+    evs.forEach((e) => window.addEventListener(e, reset, { passive: true }));
+    return () => { clearTimeout(t); evs.forEach((e) => window.removeEventListener(e, reset)); };
+  }, [locked, waiting]);
+  const pinDigit = (d: string) => {
+    const next = (pin + d).slice(0, LOCK_PIN.length);
+    setPin(next);
+    if (next.length === LOCK_PIN.length) { if (next === LOCK_PIN) { setLocked(false); setPin(""); } else setTimeout(() => setPin(""), 350); }
+  };
   useEffect(() => { fetch("/api/kassi/categories").then((r) => r.json()).then((d) => { setCats(d.categories ?? []); if (d.categories?.[0]) selectCat(d.categories[0].group); }).catch(() => {}); }, []);
   useEffect(() => { fetch("/api/kassi/terminal/status").then((r) => r.json()).then((d) => setTerminalEnabled(!!d.enabled)).catch(() => {}); }, []);
 
@@ -186,7 +210,7 @@ export default function StaffTill() {
   // Hard overlays that block a stray scan (mid-payment / modal). NOTE: `done` is deliberately
   // NOT here — scanning on the "Sala skráð" screen should auto-start the next sale (see addByCode).
   const overlayRef = useRef(false);
-  useEffect(() => { overlayRef.current = !!(cashFor || edit || custOpen || waiting || ktOpen || recentOpen || splitOpen); });
+  useEffect(() => { overlayRef.current = !!(cashFor || edit || custOpen || waiting || ktOpen || recentOpen || splitOpen || locked); });
   const doneRef = useRef(false);
   useEffect(() => { doneRef.current = !!done; });
   useEffect(() => {
@@ -770,6 +794,26 @@ export default function StaffTill() {
                 <div key={r} style={{ display: "flex", justifyContent: "space-between" }}><span>{vatClass(r)} = {r}% af {kr(e.g)}</span><span>VSK {kr(Math.round(e.v))}</span></div>
               ));
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* Idle lock — covers everything (z-50), PIN to reopen. */}
+      {locked && (
+        <div className="fixed inset-0 z-50 bg-[#21323A] flex flex-col items-center justify-center text-white select-none">
+          <svg className="w-12 h-12 mb-4 text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+          <p className="text-xl font-bold mb-1">Kassinn er læstur</p>
+          <p className="text-sm text-white/50 mb-7">Sláðu inn PIN til að halda áfram</p>
+          <div className="flex gap-3 mb-8">
+            {Array.from({ length: LOCK_PIN.length }).map((_, i) => <span key={i} className={`w-4 h-4 rounded-full transition ${i < pin.length ? "bg-white" : "bg-white/20"}`} />)}
+          </div>
+          <div className="grid grid-cols-3 gap-3 w-72">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+              <button key={n} onClick={() => pinDigit(String(n))} className="py-5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-2xl font-semibold transition">{n}</button>
+            ))}
+            <button onClick={() => setPin("")} className="py-5 rounded-2xl bg-white/5 hover:bg-white/10 text-sm text-white/70 transition">Hreinsa</button>
+            <button onClick={() => pinDigit("0")} className="py-5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-2xl font-semibold transition">0</button>
+            <button onClick={() => setPin((p) => p.slice(0, -1))} className="py-5 rounded-2xl bg-white/5 hover:bg-white/10 text-xl text-white/70 transition">⌫</button>
           </div>
         </div>
       )}
