@@ -14,11 +14,16 @@
 # ============================================================================
 param(
   [string]$Reg = "kassi1",
-  [string]$Url = ""
+  [string]$Url = "",
+  [string]$Key = ""   # KIOSK_KEY — auto-authenticates the till as afgreidsla (no manual login)
 )
 $ErrorActionPreference = "Stop"
 
-if (-not $Url) { $Url = "http://192.168.1.70:3000/kassi/starf?reg=$Reg" }
+# The till auto-logs into /kassi/starf via the kiosk key (must match KIOSK_KEY on the server).
+if (-not $Url) {
+  $Url = "http://192.168.1.70:3000/kassi/starf?reg=$Reg"
+  if ($Key) { $Url = "$Url&k=$Key&kiosk=1" }   # kiosk=1 hides back-office links (locked till)
+}
 
 $edge = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 if (-not (Test-Path $edge)) { $edge = "C:\Program Files\Microsoft\Edge\Application\msedge.exe" }

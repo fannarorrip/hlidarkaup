@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { verifyStaffSession, STAFF_COOKIE } from "@/lib/staff-session";
+import { verifyStaffSession, createStaffSession, STAFF_COOKIE } from "@/lib/staff-session";
 import { isComingSoon } from "@/lib/site-status";
+
+const KIOSK_TTL = 60 * 60 * 24 * 7; // kiosk session lives a week (till re-mints on every launch)
 
 // Role-based access for the unified admin. Most-specific prefix first.
 const RULES: { prefix: string; roles: string[] }[] = [
@@ -129,13 +131,31 @@ export async function middleware(req: NextRequest) {
   }
 
   const token = req.cookies.get(STAFF_COOKIE)?.value;
-  const session = token ? await verifyStaffSession(token) : null;
+  let session = token ? await verifyStaffSession(token) : null;
+
+  // Kiosk auto-auth: a till launches /kassi/starf?reg=kassiN&k=<KIOSK_KEY>. On the LAN-only
+  // kassi surface a valid key mints a limited "afgreidsla" kiosk session — no manual login —
+  // scoped to kiosk paths only. The key lives solely in the till's local launcher URL.
+  const isKioskPath = KIOSK.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  let mintedKiosk: string | null = null;
+  if (!session && isKioskPath && process.env.KIOSK_KEY && req.nextUrl.searchParams.get("k") === process.env.KIOSK_KEY) {
+    mintedKiosk = await createStaffSession({ email: "kassi@kiosk.local", role: "afgreidsla", mfa: true, kiosk: true }, KIOSK_TTL);
+    session = await verifyStaffSession(mintedKiosk);
+  }
 
   if (!session) {
     if (isApi) return NextResponse.json({ error: "Innskráning starfsmanns krafist" }, { status: 401 });
     const url = req.nextUrl.clone();
     url.pathname = "/starf/login";
     url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // A kiosk session may ONLY touch kiosk surfaces — never bókhald/admin/starf.
+  if (session.kiosk && !isKioskPath) {
+    if (isApi) return NextResponse.json({ error: "Ekki næg réttindi" }, { status: 403 });
+    const url = req.nextUrl.clone();
+    url.pathname = "/kassi/starf";
     return NextResponse.redirect(url);
   }
 
@@ -146,7 +166,10 @@ export async function middleware(req: NextRequest) {
     url.pathname = "/starf"; // staff home shows what this role can access
     return NextResponse.redirect(url);
   }
-  return NextResponse.next();
+
+  const res = NextResponse.next();
+  if (mintedKiosk) res.cookies.set(STAFF_COOKIE, mintedKiosk, { httpOnly: true, sameSite: "lax", path: "/", maxAge: KIOSK_TTL });
+  return res;
 }
 
 export const config = {

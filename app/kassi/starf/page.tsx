@@ -22,6 +22,7 @@ const INK = "bg-[#21323A] hover:bg-[#2d434e]";
 
 export default function StaffTill() {
   const [cart, setCart] = useState<Line[]>([]);
+  const [kiosk, setKiosk] = useState(false); // locked till (auto-login afgreidsla): hide back-office links
   const [scan, setScan] = useState("");
   const scanRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
@@ -180,7 +181,9 @@ export default function StaffTill() {
   // Hardware detection: kassabrú local bridge (NCR serial gear) if present;
   // otherwise ask the server whether a network printer (Volcora) is configured.
   useEffect(() => {
-    regRef.current = new URLSearchParams(window.location.search).get("reg");
+    const params = new URLSearchParams(window.location.search);
+    regRef.current = params.get("reg");
+    setKiosk(params.get("kiosk") === "1");
     let stop = false;
     let cleanup: (() => void) | undefined;
     kbHealth().then((ok) => {
@@ -335,9 +338,10 @@ export default function StaffTill() {
         <div className="flex items-center gap-2.5">
           <span className="tabular-nums text-lg text-[#E4F1F0] mr-2">{clock}</span>
           <button onClick={openDrawer} className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-base transition">Opna skúffu</button>
-          <a href="/bokhald/solukerfi/kassauppgjor" className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-base transition">Uppgjör</a>
-          <a href="/kassi" className="px-4 py-3 rounded-xl text-[#8CC7C4] hover:bg-white/10 text-sm transition">Sjálfsafgr. →</a>
-          <a href="/starf" className="px-4 py-3 rounded-xl text-[#8CC7C4] hover:bg-white/10 text-sm transition" aria-label="Starfsmannakerfi">⌂</a>
+          {/* Locked kiosk (auto-login afgreidsla) hides back-office links: uppgjör/staff are manager tasks. */}
+          {!kiosk && <a href="/bokhald/solukerfi/kassauppgjor" className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-base transition">Uppgjör</a>}
+          {!kiosk && <a href="/kassi" className="px-4 py-3 rounded-xl text-[#8CC7C4] hover:bg-white/10 text-sm transition">Sjálfsafgr. →</a>}
+          {!kiosk && <a href="/starf" className="px-4 py-3 rounded-xl text-[#8CC7C4] hover:bg-white/10 text-sm transition" aria-label="Starfsmannakerfi">⌂</a>}
         </div>
       </header>
 
