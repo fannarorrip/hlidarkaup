@@ -117,8 +117,9 @@ export default function StaffLogin() {
                   (Google Authenticator, Microsoft Authenticator eða Authy) og sláðu svo inn 6 stafa kóðann.
                 </p>
                 {mfa.qr && (
+                  // Supabase returns the QR as a raw <svg> string — wrap it as a data URI so <img> renders it.
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={mfa.qr} alt="QR-kóði" className="w-44 h-44 mx-auto mb-3 border border-[#E4F1F0] rounded-xl bg-white" />
+                  <img src={mfa.qr.startsWith("data:") ? mfa.qr : `data:image/svg+xml;utf8,${encodeURIComponent(mfa.qr)}`} alt="QR-kóði" className="w-44 h-44 mx-auto mb-3 border border-[#E4F1F0] rounded-xl bg-white p-2" />
                 )}
                 {mfa.secret && (
                   <p className="text-center text-[11px] text-[#9DB0B6] mb-5">Handvirkt: <span className="font-mono text-[#5C6B72]">{mfa.secret}</span></p>
