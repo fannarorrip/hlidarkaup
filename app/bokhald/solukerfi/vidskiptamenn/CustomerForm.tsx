@@ -17,6 +17,7 @@ export default function CustomerForm({ customer }: { customer?: CustomerRow | nu
     address: customer?.address ?? "", postal_code: customer?.postal_code ?? "", city: customer?.city ?? "",
     phone: customer?.phone ?? "", email: customer?.email ?? "",
     payment_terms_days: String(customer?.payment_terms_days ?? 0),
+    discount_pct: String(customer?.discount_pct ?? 0),
     is_account: customer?.is_account ?? false, is_active: customer?.is_active ?? true,
     rafraen_vidskipti: customer?.rafraen_vidskipti ?? false,
     billing_mode: ["per_trip", "per_trip_invoice"].includes(customer?.billing_mode ?? "") ? (customer!.billing_mode as string) : "consolidated",
@@ -65,6 +66,7 @@ export default function CustomerForm({ customer }: { customer?: CustomerRow | nu
         <Field label="Póstnúmer"><input value={f.postal_code} onChange={(e) => set("postal_code", e.target.value)} className={inp} /></Field>
         <Field label="Staður"><input value={f.city} onChange={(e) => set("city", e.target.value)} className={inp} /></Field>
         <Field label="Greiðslufrestur (dagar)"><input type="number" value={f.payment_terms_days} onChange={(e) => set("payment_terms_days", e.target.value)} className={inp} /></Field>
+        <Field label="Fastur afsláttur (%)"><input type="number" min="0" max="100" step="0.5" value={f.discount_pct} onChange={(e) => set("discount_pct", e.target.value)} className={inp} /></Field>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-2">

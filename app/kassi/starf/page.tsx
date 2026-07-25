@@ -6,7 +6,7 @@ import { kbHealth, kbScanEvents, kbPrint, kbDrawer, kbWeigh, formatReceipt, vatC
 // uid = the LINE's identity (edit/remove/merge); id = the product number (what the sale posts).
 // They differ for price-embedded (verðmerkt) packs, where every scan must stay its own line.
 interface Line { uid: string; id: string; name: string; price: number; vatPct?: number; quantity: number; priceOverride?: number; discount?: number; }
-interface Customer { id: string; name: string; kennitala: string | null; is_account: boolean; }
+interface Customer { id: string; name: string; kennitala: string | null; is_account: boolean; discount_pct?: number; }
 interface SItem { id: string; name: string; price: number; vatPct?: number; image?: string; useScale?: boolean; embeddedPrice?: number; embeddedKg?: number | null; embeddedWeightKg?: number; }
 interface Category { group: string; name: string; count: number; }
 type Mode = "card" | "cash" | "account" | "transfer";
@@ -54,8 +54,13 @@ export default function StaffTill() {
   const [clock, setClock] = useState("");
   const [kb, setKb] = useState<"search" | "customer" | null>(null); // on-screen keyboard target
 
-  const total = cart.reduce((s, l) => s + lineTotal(l), 0);
-  const vat = Math.round(cart.reduce((s, l) => { const r = l.vatPct ?? 24; return s + (lineTotal(l) * r) / (100 + r); }, 0));
+  // Customer fixed discount (%): applied live on top of any manual AFSL, per line (VAT-correct).
+  const custPct = customer?.discount_pct ?? 0;
+  const lineDisc = (l: Line) => Math.min(effUnit(l) * l.quantity, (l.discount ?? 0) + (custPct > 0 ? Math.round((effUnit(l) * l.quantity - (l.discount ?? 0)) * custPct / 100) : 0));
+  const lineTot = (l: Line) => Math.max(0, effUnit(l) * l.quantity - lineDisc(l));
+
+  const total = cart.reduce((s, l) => s + lineTot(l), 0);
+  const vat = Math.round(cart.reduce((s, l) => { const r = l.vatPct ?? 24; return s + (lineTot(l) * r) / (100 + r); }, 0));
 
   useEffect(() => { const f = () => setClock(new Date().toLocaleTimeString("is-IS", { hour: "2-digit", minute: "2-digit" })); f(); const t = setInterval(f, 20000); return () => clearInterval(t); }, []);
   useEffect(() => { fetch("/api/kassi/categories").then((r) => r.json()).then((d) => { setCats(d.categories ?? []); if (d.categories?.[0]) selectCat(d.categories[0].group); }).catch(() => {}); }, []);
@@ -245,8 +250,8 @@ export default function StaffTill() {
     if (!cart.length) return;
     if (mode === "account" && (!customer || !customer.is_account)) { setError("Veldu reikningsviðskiptamann"); return; }
     setBusy(true); setError("");
-    const snapshot = cart;
-    const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: cart.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, customerId: customer?.id, reg: regRef.current, payment: { approved: true, processor: "STAFF" } }) });
+    const snapshot = cart.map((l) => ({ ...l, discount: lineDisc(l) })); // bake customer discount into each line
+    const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: snapshot.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, customerId: customer?.id, reg: regRef.current, payment: { approved: true, processor: "STAFF" } }) });
     const d = await r.json(); setBusy(false);
     if (!r.ok) { setError(d.error ?? "Villa við að skrá söluna"); return; }
     const buyer = customer
@@ -303,8 +308,8 @@ export default function StaffTill() {
   async function doReturn(mode: Mode) {
     if (!cart.length) return;
     setBusy(true); setError("");
-    const snapshot = cart;
-    const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: cart.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, kind: "return", customerId: customer?.id, reg: regRef.current, payment: { approved: true, processor: "STAFF" } }) });
+    const snapshot = cart.map((l) => ({ ...l, discount: lineDisc(l) })); // bake customer discount into each line
+    const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: snapshot.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, kind: "return", customerId: customer?.id, reg: regRef.current, payment: { approved: true, processor: "STAFF" } }) });
     const d = await r.json(); setBusy(false);
     if (!r.ok) { setError(d.error ?? "Villa við skil"); return; }
     const buyer = customer
@@ -452,13 +457,13 @@ export default function StaffTill() {
                   <p className="text-xs text-gray-400">
                     {kr(effUnit(l))}
                     {l.priceOverride != null && <span className="ml-1 text-amber-600">· verð breytt</span>}
-                    {l.discount ? <span className="ml-1 text-[#DB1A1A]">· −{kr(l.discount)}</span> : null}
+                    {lineDisc(l) > 0 ? <span className="ml-1 text-[#DB1A1A]">· −{kr(lineDisc(l))}{custPct > 0 && !l.discount ? ` (${custPct}%)` : ""}</span> : null}
                   </p>
                 </button>
                 <button onClick={() => changeQty(l.uid, -1)} className="w-11 h-11 rounded-lg bg-gray-100 text-xl leading-none hover:bg-gray-200 active:scale-95 transition">−</button>
                 <span className="w-7 text-center font-bold tabular-nums text-base">{l.quantity}</span>
                 <button onClick={() => changeQty(l.uid, 1)} className="w-11 h-11 rounded-lg bg-gray-100 text-xl leading-none hover:bg-gray-200 active:scale-95 transition">+</button>
-                <span className="w-16 text-right font-semibold tabular-nums text-sm">{kr(lineTotal(l))}</span>
+                <span className="w-16 text-right font-semibold tabular-nums text-sm">{kr(lineTot(l))}</span>
                 <button onClick={() => removeLine(l.uid)} className="text-gray-300 hover:text-[#DB1A1A] text-xl w-9 h-11" aria-label="Fjarlægja">×</button>
               </div>
             ))}

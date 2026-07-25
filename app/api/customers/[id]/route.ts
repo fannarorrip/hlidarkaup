@@ -12,7 +12,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
          payment_terms_days = coalesce($10, payment_terms_days),
          is_account = coalesce($11, is_account), is_active = coalesce($12, is_active),
          rafraen_vidskipti = coalesce($13, rafraen_vidskipti),
-         billing_mode = coalesce($14, billing_mode)
+         billing_mode = coalesce($14, billing_mode),
+         discount_pct = coalesce($15, discount_pct)
        where id = $1 returning id`,
       [id, b.customer_number || null, b.kennitala || null, b.name ?? null, b.address || null,
        b.postal_code || null, b.city || null, b.phone || null, b.email || null,
@@ -20,7 +21,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
        typeof b.is_account === "boolean" ? b.is_account : null,
        typeof b.is_active === "boolean" ? b.is_active : null,
        typeof b.rafraen_vidskipti === "boolean" ? b.rafraen_vidskipti : null,
-       ["per_trip", "per_trip_invoice", "consolidated"].includes(b.billing_mode) ? b.billing_mode : null],
+       ["per_trip", "per_trip_invoice", "consolidated"].includes(b.billing_mode) ? b.billing_mode : null,
+       b.discount_pct != null ? Math.min(100, Math.max(0, Number(b.discount_pct) || 0)) : null],
     );
     if (!rows.length) return NextResponse.json({ error: "Viðskiptamaður fannst ekki" }, { status: 404 });
     return NextResponse.json({ ok: true });

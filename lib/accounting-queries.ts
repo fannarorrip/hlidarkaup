@@ -549,6 +549,7 @@ export interface CustomerRow {
   payment_terms_days: number; is_account: boolean; is_active: boolean; is_generic: boolean; ar_account: string | null;
   rafraen_vidskipti: boolean;
   billing_mode: string;   // 'consolidated' | 'per_trip'
+  discount_pct: number;   // fastur afsláttur % á kassanum
   balance: string;
 }
 export const getCustomers = () =>

@@ -3,8 +3,8 @@ import { query } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
-  const rows = await query<{ id: string; name: string; kennitala: string | null; is_account: boolean }>(
-    `select id, name, kennitala, is_account
+  const rows = await query<{ id: string; name: string; kennitala: string | null; is_account: boolean; discount_pct: number }>(
+    `select id, name, kennitala, is_account, discount_pct
        from shop.customers
       where is_active and not is_generic
         and (unaccent(name) ilike unaccent('%' || $1 || '%') or coalesce(kennitala,'') like $1 || '%')
