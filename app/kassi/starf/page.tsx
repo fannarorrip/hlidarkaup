@@ -31,6 +31,9 @@ export default function StaffTill() {
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [grid, setGrid] = useState<SItem[]>([]);
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [receiptKt, setReceiptKt] = useState(""); // kennitala á nótu — walk-in, engin skráning
+  const [ktOpen, setKtOpen] = useState(false);
+  const fmtKt = (s: string) => (s.length > 6 ? `${s.slice(0, 6)}-${s.slice(6)}` : s);
   const [custOpen, setCustOpen] = useState(false);
   const [custQ, setCustQ] = useState("");
   const [custResults, setCustResults] = useState<Customer[]>([]);
@@ -241,7 +244,9 @@ export default function StaffTill() {
     const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: cart.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, customerId: customer?.id, reg: regRef.current, payment: { approved: true, processor: "STAFF" } }) });
     const d = await r.json(); setBusy(false);
     if (!r.ok) { setError(d.error ?? "Villa við að skrá söluna"); return; }
-    const buyer = customer ? { name: customer.name, kennitala: customer.kennitala } : undefined;
+    const buyer = customer
+      ? { name: customer.name, kennitala: customer.kennitala }
+      : (receiptKt.length === 10 ? { kennitala: receiptKt } : undefined);
     const doneObj = { invoiceNumber: d.invoiceNumber, total, mode, change, lines: snapshot, buyer };
     setDone(doneObj);
     if (bridgeRef.current || netPrintRef.current) printReceipt(doneObj, mode === "cash"); // receipt + drawer kick in one go
@@ -270,7 +275,7 @@ export default function StaffTill() {
       setError(e instanceof Error ? e.message : "Villa við posa");
     }
   }
-  function newSale() { setDone(null); setError(""); setCart([]); setCustomer(null); setSearch(""); setResults([]); setReturnMode(false); setTimeout(() => scanRef.current?.focus(), 50); }
+  function newSale() { setDone(null); setError(""); setCart([]); setCustomer(null); setReceiptKt(""); setSearch(""); setResults([]); setReturnMode(false); setTimeout(() => scanRef.current?.focus(), 50); }
 
   async function openDrawer() {
     if (bridgeRef.current) {
@@ -295,7 +300,9 @@ export default function StaffTill() {
     const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: cart.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, kind: "return", customerId: customer?.id, reg: regRef.current, payment: { approved: true, processor: "STAFF" } }) });
     const d = await r.json(); setBusy(false);
     if (!r.ok) { setError(d.error ?? "Villa við skil"); return; }
-    const buyer = customer ? { name: customer.name, kennitala: customer.kennitala } : undefined;
+    const buyer = customer
+      ? { name: customer.name, kennitala: customer.kennitala }
+      : (receiptKt.length === 10 ? { kennitala: receiptKt } : undefined);
     const doneObj = { invoiceNumber: d.invoiceNumber, total, mode, lines: snapshot, isReturn: true, buyer };
     setDone(doneObj);
     if (bridgeRef.current || netPrintRef.current) printReceipt(doneObj);
@@ -412,6 +419,12 @@ export default function StaffTill() {
               <p className="font-semibold text-[#21323A]">{customer ? customer.name : "Staðgreitt"}</p>
             </div>
             <span className="text-[#8CC7C4] text-lg">›</span>
+          </button>
+
+          {/* Kennitala á nótu — walk-in, prentast á nótuna án þess að skrá viðskiptamann. */}
+          <button onClick={() => setKtOpen(true)} className="shrink-0 mx-2.5 mt-2 flex items-center justify-between px-3.5 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-left transition">
+            <span className="text-[13px] text-[#5C6B72]">Kennitala á nótu</span>
+            <span className="font-mono text-[13px] text-[#21323A]">{receiptKt ? fmtKt(receiptKt) : "—"}</span>
           </button>
 
           <div className="shrink-0 grid grid-cols-1 gap-2 m-3 mb-0">
@@ -534,6 +547,27 @@ export default function StaffTill() {
 
 
       {/* Cash modal — with number pad */}
+      {ktOpen && (
+        <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={() => setKtOpen(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-bold text-lg mb-1">Kennitala á nótu</h2>
+            <p className="text-sm text-gray-500 mb-4">Prentast á nótuna — fyrir VSK/kostnaðaruppgjör.</p>
+            <input inputMode="none" readOnly value={fmtKt(receiptKt)} placeholder="000000-0000" className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-2xl text-center outline-none mb-3 tabular-nums" />
+            <div className="mb-3">
+              <NumPad
+                onDigit={(d) => setReceiptKt((v) => (v.length < 10 ? v + d : v))}
+                onBackspace={() => setReceiptKt((v) => v.slice(0, -1))}
+                onClear={() => setReceiptKt("")}
+              />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => { setReceiptKt(""); setKtOpen(false); }} className="flex-1 py-3 rounded-xl border-2 border-gray-200 font-semibold hover:bg-gray-50">Hreinsa</button>
+              <button onClick={() => setKtOpen(false)} disabled={receiptKt.length !== 0 && receiptKt.length !== 10} className={`flex-1 py-3 rounded-xl ${INK} text-white font-semibold disabled:opacity-40`}>Í lagi</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {cashFor && (
         <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={() => setCashFor(false)}>
           <div className="bg-white rounded-2xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
