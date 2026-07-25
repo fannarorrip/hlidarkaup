@@ -29,28 +29,14 @@ $edge = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 if (-not (Test-Path $edge)) { $edge = "C:\Program Files\Microsoft\Edge\Application\msedge.exe" }
 if (-not (Test-Path $edge)) { throw "Edge fannst ekki" }
 
-# 1. VBS launcher: open the till in app mode, then send F11 ONCE for fullscreen.
-# Robust: poll up to 90s (cold Edge start on first boot is slow) and match the
-# title by ASCII prefix "Hl" — AppActivate does a begins-with match, so the
-# Icelandic chars í/ð can never cause a codepage mismatch in the ANSI .vbs.
-# Single F11 only (a second press would toggle fullscreen back OFF); a long
-# settle wait before it avoids the keystroke being eaten during page load.
+# 1. VBS launcher: open the till in Edge app mode, fullscreen via --start-fullscreen.
+# Edge honours --start-fullscreen in --app mode on this hardware, so it is deterministic —
+# no AppActivate/F11 dance (which was flaky at boot: focus theft by the kassabru console /
+# toast windows would eat the F11, leaving the till windowed on some machines).
 New-Item -ItemType Directory -Force "C:\kassabru" | Out-Null
 $vbs = @"
 Set sh = CreateObject("WScript.Shell")
-sh.Run """$edge"" --app=$Url --no-first-run", 1, False
-ok = False
-For i = 1 To 180
-  WScript.Sleep 500
-  ok = sh.AppActivate("Hl")
-  If ok Then Exit For
-Next
-If ok Then
-  WScript.Sleep 2500
-  sh.AppActivate "Hl"
-  WScript.Sleep 300
-  sh.SendKeys "{F11}"
-End If
+sh.Run """$edge"" --app=$Url --no-first-run --start-fullscreen", 1, False
 "@
 Set-Content -Path "C:\kassabru\kassi-start.vbs" -Value $vbs -Encoding Default
 "OK: launcher C:\kassabru\kassi-start.vbs -> $Url"
