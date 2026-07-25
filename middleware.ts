@@ -136,7 +136,12 @@ export async function middleware(req: NextRequest) {
   // Kiosk auto-auth: a till launches /kassi/starf?reg=kassiN&k=<KIOSK_KEY>. On the LAN-only
   // kassi surface a valid key mints a limited "afgreidsla" kiosk session — no manual login —
   // scoped to kiosk paths only. The key lives solely in the till's local launcher URL.
-  const isKioskPath = KIOSK.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  // Read-only endpoints the staffed till legitimately needs beyond /kassi — the account-sale
+  // customer picker searches here. Kept tight (search only; no create/edit) so the kiosk
+  // session stays locked down.
+  const KIOSK_EXTRA = ["/api/customers/search"];
+  const isKioskPath = KIOSK.some((p) => pathname === p || pathname.startsWith(p + "/"))
+    || KIOSK_EXTRA.some((p) => pathname === p);
   let mintedKiosk: string | null = null;
   if (!session && isKioskPath && process.env.KIOSK_KEY && req.nextUrl.searchParams.get("k") === process.env.KIOSK_KEY) {
     mintedKiosk = await createStaffSession({ email: "kassi@kiosk.local", role: "afgreidsla", mfa: true, kiosk: true }, KIOSK_TTL);

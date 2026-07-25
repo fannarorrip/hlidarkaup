@@ -335,23 +335,23 @@ export default function StaffTill() {
           <span className="text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/10 text-[#8CC7C4]">Kassi</span>
           {bridge && <span className="text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-400/20 text-emerald-200">Vél tengd</span>}
         </div>
-        <div className="flex items-center gap-2.5">
-          <span className="tabular-nums text-lg text-[#E4F1F0] mr-2">{clock}</span>
-          <button onClick={openDrawer} className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-base transition">Opna skúffu</button>
+        <div className="flex items-center gap-2">
+          <span className="tabular-nums text-base text-[#E4F1F0] mr-1">{clock}</span>
+          <button onClick={openDrawer} className="px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-sm transition">Opna skúffu</button>
           {/* Locked kiosk (auto-login afgreidsla) hides back-office links: uppgjör/staff are manager tasks. */}
-          {!kiosk && <a href="/bokhald/solukerfi/kassauppgjor" className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-base transition">Uppgjör</a>}
-          {!kiosk && <a href="/kassi" className="px-4 py-3 rounded-xl text-[#8CC7C4] hover:bg-white/10 text-sm transition">Sjálfsafgr. →</a>}
-          {!kiosk && <a href="/starf" className="px-4 py-3 rounded-xl text-[#8CC7C4] hover:bg-white/10 text-sm transition" aria-label="Starfsmannakerfi">⌂</a>}
+          {!kiosk && <a href="/bokhald/solukerfi/kassauppgjor" className="px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-sm transition">Uppgjör</a>}
+          {!kiosk && <a href="/kassi" className="px-3 py-2 rounded-lg text-[#8CC7C4] hover:bg-white/10 text-sm transition">Sjálfsafgr. →</a>}
+          {!kiosk && <a href="/starf" className="px-3 py-2 rounded-lg text-[#8CC7C4] hover:bg-white/10 text-sm transition" aria-label="Starfsmannakerfi">⌂</a>}
         </div>
       </header>
 
       <div className="flex-1 flex min-h-0">
         {/* CATALOG (left) */}
         <div className="relative flex-1 flex flex-col min-w-0">
-          <div className="p-3 flex gap-2.5 bg-white border-b border-gray-200">
-            <input ref={scanRef} value={scan} onChange={(e) => setScan(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addByCode(scan)} onFocus={() => setKb(null)} autoFocus placeholder="Skanna strikamerki…" className="flex-1 border-2 border-gray-200 rounded-xl px-5 py-4 text-lg outline-none focus:border-[#8CC7C4] bg-[#F8FAFA]" />
-            <div className="relative w-80">
-              <input value={search} onChange={(e) => setSearch(e.target.value)} onFocus={() => setKb("search")} onClick={() => setKb("search")} inputMode="none" placeholder="Leita að vöru…" className="w-full border-2 border-gray-200 rounded-xl pl-5 pr-12 py-4 text-lg outline-none focus:border-[#8CC7C4]" />
+          <div className="p-2.5 flex gap-2 bg-white border-b border-gray-200">
+            <input ref={scanRef} value={scan} onChange={(e) => setScan(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addByCode(scan)} onFocus={() => setKb(null)} autoFocus placeholder="Skanna strikamerki…" className="flex-1 border-2 border-gray-200 rounded-lg px-4 py-2.5 text-base outline-none focus:border-[#8CC7C4] bg-[#F8FAFA]" />
+            <div className="relative w-64">
+              <input value={search} onChange={(e) => setSearch(e.target.value)} onFocus={() => setKb("search")} onClick={() => setKb("search")} inputMode="none" placeholder="Leita að vöru…" className="w-full border-2 border-gray-200 rounded-lg pl-4 pr-10 py-2.5 text-base outline-none focus:border-[#8CC7C4]" />
               <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
             </div>
           </div>
@@ -360,7 +360,7 @@ export default function StaffTill() {
             <div className="px-3 pt-3 flex gap-2 overflow-x-auto shrink-0 [scrollbar-width:none]">
               {cats.map((c) => { const on = activeCat === c.group; return (
                 <button key={c.group} onClick={() => selectCat(c.group)}
-                  className={`px-6 py-3.5 rounded-xl text-base font-semibold whitespace-nowrap transition active:scale-[0.97] ${on ? "bg-[#21323A] text-white shadow-sm" : "bg-white border border-gray-200 text-[#21323A] hover:border-[#8CC7C4]"}`}>
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition active:scale-[0.97] ${on ? "bg-[#21323A] text-white shadow-sm" : "bg-white border border-gray-200 text-[#21323A] hover:border-[#8CC7C4]"}`}>
                   {c.name}
                 </button>
               ); })}
@@ -369,22 +369,22 @@ export default function StaffTill() {
 
           <div className={`flex-1 overflow-y-auto p-3 ${kb === "search" ? "pb-[320px]" : ""}`}>
             {/* 5 columns only on the full 1920px till (100% scaling) — 4 at 125%-scaled 1536px */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 min-[1800px]:grid-cols-5 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 min-[1500px]:grid-cols-4 min-[1800px]:grid-cols-5 gap-2">
               {gridItems.map((p) => (
                 <button key={p.id} onClick={() => addProduct(p)}
-                  className="relative text-left rounded-xl overflow-hidden min-h-[112px] bg-white border border-gray-200 active:scale-[0.97] transition hover:border-[#8CC7C4] hover:shadow-sm">
+                  className="relative text-left rounded-xl overflow-hidden min-h-[88px] bg-white border border-gray-200 active:scale-[0.97] transition hover:border-[#8CC7C4] hover:shadow-sm">
                   {p.image ? (
                     <>
                       {/* photo fills the whole tile; name+price in dark text over a light bottom scrim */}
                       <div className="absolute inset-0 bg-white bg-cover bg-center" style={{ backgroundImage: `url(${p.image})` }} aria-hidden />
                       <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-white/85 via-white/40 to-transparent" aria-hidden />
-                      <div className="relative min-h-[112px] flex flex-col justify-end p-2.5">
+                      <div className="relative min-h-[88px] flex flex-col justify-end p-2.5">
                         <p className="text-[13px] font-semibold leading-snug line-clamp-2 text-[#21323A]">{p.name}</p>
                         <p className="text-lg font-bold text-[#2C687B]">{kr(p.price)}</p>
                       </div>
                     </>
                   ) : (
-                    <div className="min-h-[112px] flex flex-col justify-between p-3">
+                    <div className="min-h-[88px] flex flex-col justify-between p-3">
                       <p className="text-[15px] font-semibold leading-snug line-clamp-3 text-[#21323A]">{p.name}</p>
                       <p className="text-lg font-bold text-[#2C687B]">{kr(p.price)}</p>
                     </div>
@@ -402,8 +402,8 @@ export default function StaffTill() {
         </div>
 
         {/* SALE (right) */}
-        <div className="w-[26rem] shrink-0 flex flex-col bg-white border-l border-gray-200">
-          <button onClick={() => { setCustOpen(true); setCustQ(""); }} className="shrink-0 m-3 mb-0 flex items-center justify-between px-4 py-3.5 rounded-xl bg-[#F0F7F6] hover:bg-[#E4F1F0] text-left transition">
+        <div className="w-[21rem] shrink-0 flex flex-col bg-white border-l border-gray-200">
+          <button onClick={() => { setCustOpen(true); setCustQ(""); }} className="shrink-0 m-2.5 mb-0 flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-[#F0F7F6] hover:bg-[#E4F1F0] text-left transition">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-[#5C6B72]">Viðskiptamaður</p>
               <p className="font-semibold text-[#21323A]">{customer ? customer.name : "Staðgreitt"}</p>
@@ -425,25 +425,25 @@ export default function StaffTill() {
             ) : cart.map((l) => (
               <div key={l.uid} className="flex items-center gap-2 py-3 border-b border-gray-100">
                 <button onClick={() => openEdit(l)} className="flex-1 min-w-0 text-left">
-                  <p className="font-medium leading-tight truncate text-[17px]">{l.name}</p>
+                  <p className="font-medium leading-tight truncate text-[15px]">{l.name}</p>
                   <p className="text-xs text-gray-400">
                     {kr(effUnit(l))}
                     {l.priceOverride != null && <span className="ml-1 text-amber-600">· verð breytt</span>}
                     {l.discount ? <span className="ml-1 text-[#DB1A1A]">· −{kr(l.discount)}</span> : null}
                   </p>
                 </button>
-                <button onClick={() => changeQty(l.uid, -1)} className="w-14 h-14 rounded-xl bg-gray-100 text-2xl leading-none hover:bg-gray-200 active:scale-95 transition">−</button>
-                <span className="w-8 text-center font-bold tabular-nums text-lg">{l.quantity}</span>
-                <button onClick={() => changeQty(l.uid, 1)} className="w-14 h-14 rounded-xl bg-gray-100 text-2xl leading-none hover:bg-gray-200 active:scale-95 transition">+</button>
-                <span className="w-20 text-right font-semibold tabular-nums">{kr(lineTotal(l))}</span>
-                <button onClick={() => removeLine(l.uid)} className="text-gray-300 hover:text-[#DB1A1A] text-2xl w-12 h-14" aria-label="Fjarlægja">×</button>
+                <button onClick={() => changeQty(l.uid, -1)} className="w-11 h-11 rounded-lg bg-gray-100 text-xl leading-none hover:bg-gray-200 active:scale-95 transition">−</button>
+                <span className="w-7 text-center font-bold tabular-nums text-base">{l.quantity}</span>
+                <button onClick={() => changeQty(l.uid, 1)} className="w-11 h-11 rounded-lg bg-gray-100 text-xl leading-none hover:bg-gray-200 active:scale-95 transition">+</button>
+                <span className="w-16 text-right font-semibold tabular-nums text-sm">{kr(lineTotal(l))}</span>
+                <button onClick={() => removeLine(l.uid)} className="text-gray-300 hover:text-[#DB1A1A] text-xl w-9 h-11" aria-label="Fjarlægja">×</button>
               </div>
             ))}
           </div>
 
-          <div className="shrink-0 border-t border-gray-200 p-4">
-            <div className="flex justify-between text-sm text-gray-500 mb-1"><span>VSK innifalið</span><span className="tabular-nums">{kr(vat)}</span></div>
-            <div className="flex justify-between items-end mb-3"><span className="text-lg font-semibold">{returnMode ? "Endurgreiðsla" : "Samtals"}</span><span className={`text-4xl font-bold tabular-nums ${returnMode ? "text-[#DB1A1A]" : "text-[#21323A]"}`}>{returnMode ? "−" : ""}{kr(total)}</span></div>
+          <div className="shrink-0 border-t border-gray-200 p-3">
+            <div className="flex justify-between text-xs text-gray-500 mb-1"><span>VSK innifalið</span><span className="tabular-nums">{kr(vat)}</span></div>
+            <div className="flex justify-between items-end mb-2.5"><span className="text-base font-semibold">{returnMode ? "Endurgreiðsla" : "Samtals"}</span><span className={`text-3xl font-bold tabular-nums ${returnMode ? "text-[#DB1A1A]" : "text-[#21323A]"}`}>{returnMode ? "−" : ""}{kr(total)}</span></div>
             {error && <p className="text-sm text-[#DB1A1A] font-medium mb-2">{error}</p>}
             {returnMode ? (
               <div className="grid grid-cols-2 gap-2.5">
@@ -622,6 +622,6 @@ function PayBtn({ label, cls, onClick, disabled }: { label: string; cls: string;
 
 function FnBtn({ label, onClick, disabled, active }: { label: string; onClick: () => void; disabled?: boolean; active?: boolean }) {
   return (
-    <button onClick={onClick} disabled={disabled} className={`py-4 rounded-xl text-base font-semibold active:scale-[0.97] transition disabled:opacity-40 ${active ? "bg-[#DB1A1A] text-white" : "bg-gray-100 text-[#21323A] hover:bg-gray-200"}`}>{label}</button>
+    <button onClick={onClick} disabled={disabled} className={`py-2.5 rounded-lg text-sm font-semibold active:scale-[0.97] transition disabled:opacity-40 ${active ? "bg-[#DB1A1A] text-white" : "bg-gray-100 text-[#21323A] hover:bg-gray-200"}`}>{label}</button>
   );
 }
