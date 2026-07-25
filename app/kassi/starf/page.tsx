@@ -254,8 +254,10 @@ export default function StaffTill() {
       : (receiptKt.length === 10 ? { kennitala: receiptKt } : undefined);
     const doneObj = { invoiceNumber: d.invoiceNumber, total, mode, change, lines: snapshot, buyer };
     setDone(doneObj);
-    if (bridgeRef.current || netPrintRef.current) printReceipt(doneObj, mode === "cash"); // receipt + drawer kick in one go
-    else if (mode === "cash") fetch("/api/kassi/drawer", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reg: regRef.current }) }).catch(() => {}); // auto-open on cash
+    // Auto-print ONLY for account sales — the viðskiptamaður signs (kvittar). Cash/card/transfer
+    // print on demand via "Prenta kvittun" on the done screen. Cash drawer always opens on cash.
+    if (mode === "account" && (bridgeRef.current || netPrintRef.current)) printReceipt(doneObj, false);
+    if (mode === "cash") { if (bridgeRef.current) kbDrawer().catch(() => {}); else fetch("/api/kassi/drawer", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reg: regRef.current }) }).catch(() => {}); }
     setCart([]); setCustomer(null); setCashFor(false); setCashGot("");
   }
   function pay(mode: Mode) {
@@ -443,7 +445,7 @@ export default function StaffTill() {
                 <svg className="w-14 h-14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="20" r="1.4" /><circle cx="17" cy="20" r="1.4" /><path d="M3 4h2l2.4 12.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6" /></svg>
                 <p className="text-sm font-medium">Engar vörur</p>
               </div>
-            ) : cart.map((l) => (
+            ) : [...cart].reverse().map((l) => ( /* newest scanned on top — staff sees it without scrolling */
               <div key={l.uid} className="flex items-center gap-2 py-3 border-b border-gray-100">
                 <button onClick={() => openEdit(l)} className="flex-1 min-w-0 text-left">
                   <p className="font-medium leading-tight truncate text-[15px]">{l.name}</p>
