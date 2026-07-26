@@ -34,7 +34,11 @@ export async function POST(req: NextRequest) {
       source: "till",
       registerId: knownRegisterId(b.reg),
       voucherType: kind === "return" ? "credit_note" : mode === "account" ? "account_sale" : "kassi_sale",
-      description: kind === "return" ? `Skil – endurgreiðsla (${mode})` : tenders ? "Kassasala – skipt greiðsla (afgreiðsla)" : DESC[mode],
+      // Skýring frá kassanum ("vegna vinnu við X") verður lýsing reikningssölunnar — sést í
+      // bókhaldi, á fylgiskjali og á reikningi viðskiptamannsins.
+      description: kind === "return" ? `Skil – endurgreiðsla (${mode})`
+        : (mode === "account" && b.note ? `Reikningssala – ${String(b.note).slice(0, 120)}`
+        : tenders ? "Kassasala – skipt greiðsla (afgreiðsla)" : DESC[mode]),
       tenders,
     });
     return NextResponse.json({ invoiceNumber, voucherId });

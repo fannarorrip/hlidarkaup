@@ -106,6 +106,7 @@ export function formatReceipt(o: {
   buyer?: { name?: string | null; kennitala?: string | null }; // print buyer name+kt (nóta með kennitölu)
   reprint?: boolean; // marks a re-printed receipt of an older sale
   tenders?: { mode: string; amount: number }[]; // split payment breakdown
+  note?: string; // skýring á reikningssölu ("vegna vinnu við X") — printed under the buyer
 }): string {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -127,6 +128,16 @@ export function formatReceipt(o: {
   if (o.buyer?.name || buyerKt.length === 10) {
     if (o.buyer?.name) out.push(`Kaupandi: ${o.buyer.name}`);
     if (buyerKt.length === 10) out.push(`kt. ${buyerKt.slice(0, 6)}-${buyerKt.slice(6)}`);
+  }
+  if (o.note) {
+    // Skýring wraps across lines at the printer width.
+    const words = `Skýring: ${o.note}`.split(" ");
+    let line = "";
+    for (const w of words) {
+      if ((line + " " + w).trim().length > COLS) { out.push(line.trim()); line = "  " + w; }
+      else line = line ? line + " " + w : w;
+    }
+    if (line.trim()) out.push(line.trim());
   }
   out.push(div);
 

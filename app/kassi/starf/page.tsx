@@ -43,6 +43,9 @@ export default function StaffTill() {
   const [recentOpen, setRecentOpen] = useState(false);
   const [recent, setRecent] = useState<RecentSale[]>([]);
   const [recentBusy, setRecentBusy] = useState(false);
+  // Skýring á reikningssölu (valfrjáls): "vegna vinnu við X" — prentast á nótuna og fylgir sölunni.
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [saleNote, setSaleNote] = useState("");
   const [custOpen, setCustOpen] = useState(false);
   const [custQ, setCustQ] = useState("");
   const [custResults, setCustResults] = useState<Customer[]>([]);
@@ -50,7 +53,7 @@ export default function StaffTill() {
   const [error, setError] = useState("");
   const [cashFor, setCashFor] = useState(false);
   const [cashGot, setCashGot] = useState("");
-  const [done, setDone] = useState<{ invoiceNumber: string; total: number; mode: Mode; change?: number; lines: Line[]; isReturn?: boolean; buyer?: { name?: string | null; kennitala?: string | null }; tenders?: { mode: Mode; amount: number }[] } | null>(null);
+  const [done, setDone] = useState<{ invoiceNumber: string; total: number; mode: Mode; change?: number; lines: Line[]; isReturn?: boolean; buyer?: { name?: string | null; kennitala?: string | null }; tenders?: { mode: Mode; amount: number }[]; note?: string } | null>(null);
   const [splitOpen, setSplitOpen] = useState(false);
   const [splitTenders, setSplitTenders] = useState<{ mode: Mode; amount: number }[]>([]);
   const [splitAmt, setSplitAmt] = useState("");
@@ -211,7 +214,7 @@ export default function StaffTill() {
   // Hard overlays that block a stray scan (mid-payment / modal). NOTE: `done` is deliberately
   // NOT here — scanning on the "Sala skráð" screen should auto-start the next sale (see addByCode).
   const overlayRef = useRef(false);
-  useEffect(() => { overlayRef.current = !!(cashFor || edit || custOpen || waiting || ktOpen || recentOpen || splitOpen || locked); });
+  useEffect(() => { overlayRef.current = !!(cashFor || edit || custOpen || waiting || ktOpen || recentOpen || splitOpen || locked || noteOpen); });
   const doneRef = useRef(false);
   useEffect(() => { doneRef.current = !!done; });
   useEffect(() => {
@@ -266,7 +269,7 @@ export default function StaffTill() {
     const text = formatReceipt({
       invoiceNumber: d.invoiceNumber, total: d.total, mode: d.mode, change: d.change, isReturn: d.isReturn,
       lines: d.lines.map((l) => ({ name: l.name, quantity: l.quantity, price: effUnit(l), vatPct: l.vatPct, discount: l.discount })),
-      buyer: d.buyer, tenders: d.tenders,
+      buyer: d.buyer, tenders: d.tenders, note: d.note,
     });
     const serverPrint = async (): Promise<boolean> => {
       const r = await fetch("/api/kassi/print", {
@@ -304,18 +307,19 @@ export default function StaffTill() {
     else fetch("/api/kassi/print", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reg: regRef.current, text }) }).catch(() => {});
   }
 
-  async function checkout(mode: Mode, change?: number, tenders?: { mode: Mode; amount: number }[]) {
+  async function checkout(mode: Mode, change?: number, tenders?: { mode: Mode; amount: number }[], noteOverride?: string) {
     if (!cart.length) return;
     if (mode === "account" && (!customer || !customer.is_account)) { setError("Veldu reikningsviðskiptamann"); return; }
     setBusy(true); setError("");
     const snapshot = cart.map((l) => ({ ...l, discount: lineDisc(l) })); // bake customer discount into each line
-    const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: snapshot.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, tenders, customerId: customer?.id, reg: regRef.current, payment: { approved: true, processor: "STAFF" } }) });
+    const note = mode === "account" ? (noteOverride ?? saleNote).trim().slice(0, 120) : "";
+    const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: snapshot.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, tenders, note: note || undefined, customerId: customer?.id, reg: regRef.current, payment: { approved: true, processor: "STAFF" } }) });
     const d = await r.json(); setBusy(false);
     if (!r.ok) { setError(d.error ?? "Villa við að skrá söluna"); return; }
     const buyer = customer
       ? { name: customer.name, kennitala: customer.kennitala }
       : (receiptKt.length === 10 ? { kennitala: receiptKt } : undefined);
-    const doneObj = { invoiceNumber: d.invoiceNumber, total, mode, change, lines: snapshot, buyer, tenders };
+    const doneObj = { invoiceNumber: d.invoiceNumber, total, mode, change, lines: snapshot, buyer, tenders, note: note || undefined };
     setDone(doneObj);
     // Auto-print ONLY for account sales — the viðskiptamaður signs (kvittar). Cash/card/transfer
     // print on demand via "Prenta kvittun" on the done screen. Cash drawer opens if any cash is taken.
@@ -343,6 +347,8 @@ export default function StaffTill() {
     if (!cart.length) { setError("Karfan er tóm"); return; }
     if (mode === "cash") { setCashGot(""); setCashFor(true); return; }
     if (mode === "card" && terminalEnabled) { cardViaTerminal(); return; }
+    // Á reikning: bjóða skýringu ("vegna vinnu við X") fyrst — stóru fyrirtækin vilja hana á nótuna.
+    if (mode === "account") { if (!customer?.is_account) { setError("Veldu reikningsviðskiptamann"); return; } setSaleNote(""); setNoteOpen(true); return; }
     checkout(mode);
   }
   const terminalAbort = useRef<AbortController | null>(null);
@@ -375,7 +381,7 @@ export default function StaffTill() {
     terminalAbort.current?.abort();
     setWaiting("");
   }
-  function newSale() { setDone(null); setError(""); setCart([]); setCustomer(null); setReceiptKt(""); setSearch(""); setResults([]); setReturnMode(false); setTimeout(() => scanRef.current?.focus(), 50); }
+  function newSale() { setDone(null); setError(""); setCart([]); setCustomer(null); setReceiptKt(""); setSaleNote(""); setSearch(""); setResults([]); setReturnMode(false); setTimeout(() => scanRef.current?.focus(), 50); }
 
   async function openDrawer() {
     if (bridgeRef.current) {
@@ -694,6 +700,25 @@ export default function StaffTill() {
             </div>
             {error && <p className="text-sm text-[#DB1A1A] mb-2">{error}</p>}
             <button onClick={() => setSplitOpen(false)} className="w-full py-2 rounded-xl border-2 border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50">Loka</button>
+          </div>
+        </div>
+      )}
+
+      {noteOpen && (
+        <div className="fixed inset-0 z-40 bg-black/40 flex items-start justify-center p-4 pt-10" onClick={() => setNoteOpen(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-bold text-lg mb-1">Skýring á reikning</h2>
+            <p className="text-sm text-gray-500 mb-3">Valfrjálst — t.d. „vegna vinnu við Aðalgötu 5". Prentast á nótuna og fylgir reikningnum.</p>
+            <input value={saleNote} onChange={(e) => setSaleNote(e.target.value)} autoFocus
+              placeholder="Skýring…" className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-lg outline-none focus:border-[#8CC7C4] mb-3" />
+            <div className="mb-3">
+              <TouchKeyboard onKey={(k) => setSaleNote((v) => v + k)} onBackspace={() => setSaleNote((v) => v.slice(0, -1))} onClear={() => setSaleNote("")} onClose={() => {}} variant="pane" />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setNoteOpen(false)} className="px-4 py-3 rounded-xl border-2 border-gray-200 font-semibold hover:bg-gray-50">Hætta við</button>
+              <button onClick={() => { setSaleNote(""); setNoteOpen(false); checkout("account", undefined, undefined, ""); }} className="flex-1 py-3 rounded-xl border-2 border-gray-200 font-semibold hover:bg-gray-50">Sleppa skýringu</button>
+              <button onClick={() => { setNoteOpen(false); checkout("account"); }} className={`flex-1 py-3 rounded-xl ${INK} text-white font-semibold`}>Áfram</button>
+            </div>
           </div>
         </div>
       )}
