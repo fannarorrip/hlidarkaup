@@ -184,7 +184,8 @@ export function formatReceipt(o: {
   // acknowledges the charge on their reikningur.
   if (o.mode === "account") {
     out.push("");
-    out.push("!C!Móttekið – greiðist skv. reikningi");
+    // A return on account is a CREDIT to the reikningur (innlegg), not a charge — word it correctly.
+    out.push(o.isReturn ? "!C!Innlegg fært á reikning" : "!C!Móttekið – greiðist skv. reikningi");
     out.push("");
     out.push("");
     out.push(div);

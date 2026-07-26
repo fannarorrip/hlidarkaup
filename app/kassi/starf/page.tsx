@@ -594,6 +594,10 @@ export default function StaffTill() {
               <div className="grid grid-cols-2 gap-2.5">
                 <PayBtn label="Endurgr. reiðufé" cls={`${INK} text-white`} onClick={() => doReturn("cash")} disabled={busy || !cart.length} />
                 <PayBtn label="Endurgr. á kort" cls={`${RED} text-white`} onClick={() => doReturn("card")} disabled={busy || !cart.length} />
+                <button onClick={() => doReturn("account")} disabled={busy || !cart.length || !customer?.is_account}
+                  className="col-span-2 h-14 rounded-xl font-bold text-base bg-white border-2 border-[#21323A] text-[#21323A] hover:bg-gray-50 active:scale-[0.97] transition disabled:opacity-40 disabled:active:scale-100">
+                  {customer?.is_account ? `Innlegg á reikning — ${customer.name}` : "Innlegg á reikning (veldu viðskiptamann)"}
+                </button>
               </div>
             ) : (
               <>
