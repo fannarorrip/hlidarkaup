@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -15,12 +15,19 @@ export default function NyVara() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Prefill the next free product number (6-digit running sequence) — editable if needed.
+  useEffect(() => {
+    fetch("/api/products/next-number").then((r) => r.json())
+      .then((d) => { if (d.next) setF((p) => (p.product_number ? p : { ...p, product_number: d.next })); })
+      .catch(() => {});
+  }, []);
+
   const gross = Number(f.price_gross) || 0;
   const vat = Number(f.vat_rate);
   const net = gross / (1 + vat / 100);
 
   async function create() {
-    if (!f.product_number.trim() || !f.name.trim()) { setError("Vörunúmer og heiti eru skylda."); return; }
+    if (!f.name.trim()) { setError("Heiti er skylda."); return; } // vörunúmer úthlutast sjálfkrafa ef tómt
     setSaving(true); setError("");
     const r = await fetch("/api/products", {
       method: "POST", headers: { "content-type": "application/json" },
@@ -38,8 +45,8 @@ export default function NyVara() {
       <p className="text-sm text-gray-500 mb-5">Grunnupplýsingar — eftir stofnun opnast fulli ritillinn (mynd, innihald, fleiri strikamerki).</p>
 
       <div className="bg-white border border-gray-200 rounded-xl p-5 grid md:grid-cols-2 gap-4">
-        <label className="block"><span className="block text-sm text-gray-500 mb-1">Vörunúmer *</span>
-          <input value={f.product_number} onChange={(e) => set("product_number", e.target.value)} placeholder="t.d. 140001" className={inp} /></label>
+        <label className="block"><span className="block text-sm text-gray-500 mb-1">Vörunúmer (sjálfvirkt næsta)</span>
+          <input value={f.product_number} onChange={(e) => set("product_number", e.target.value)} placeholder="úthlutast sjálfkrafa…" className={inp} /></label>
         <label className="block"><span className="block text-sm text-gray-500 mb-1">Heiti *</span>
           <input value={f.name} onChange={(e) => set("name", e.target.value)} className={inp} /></label>
         <label className="block"><span className="block text-sm text-gray-500 mb-1">Strikamerki (valfrjálst)</span>

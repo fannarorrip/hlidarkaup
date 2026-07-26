@@ -3,11 +3,21 @@ import { query } from "@/lib/db";
 
 // Create a new product ("Búa til nýja vöru"). price_gross is a generated column, so we store
 // unit_price_net + vat_rate/vat_key. Optionally attaches one barcode. Gated stjornandi/bokari.
+// Next free product number: the catalog runs on 6-digit ascending numbers (135941, 135942…),
+// so "next" = max(6-digit) + 1. Prefilled on the create page; also assigned server-side when
+// POST gets an empty product_number (double-safety against races via the unique constraint).
+async function nextProductNumber(): Promise<string> {
+  const r = await query<{ mx: number | null }>(
+    `select max(product_number::int) mx from shop.products where product_number ~ '^[0-9]{6}$'`);
+  return String((r[0]?.mx ?? 100000) + 1).padStart(6, "0");
+}
+
 export async function POST(req: NextRequest) {
   const b = await req.json().catch(() => ({}));
-  const productNumber = String(b.product_number || "").trim();
+  let productNumber = String(b.product_number || "").trim();
   const name = String(b.name || "").trim();
-  if (!productNumber || !name) return NextResponse.json({ error: "Vörunúmer og heiti eru skylda." }, { status: 400 });
+  if (!name) return NextResponse.json({ error: "Heiti er skylda." }, { status: 400 });
+  if (!productNumber) productNumber = await nextProductNumber();
   const vat = [24, 11, 0].includes(Number(b.vat_rate)) ? Number(b.vat_rate) : 24;
   const gross = Math.max(0, Number(b.price_gross) || 0);
   const net = gross / (1 + vat / 100);
