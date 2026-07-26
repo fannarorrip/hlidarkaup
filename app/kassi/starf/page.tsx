@@ -372,6 +372,25 @@ export default function StaffTill() {
     }
   }
   async function cardViaTerminal() { if (await chargeCard(total)) await checkout("card"); }
+  // Refund a card ON the posi (skil). Standalone refund — the customer taps their card and gets the
+  // money back. Same waiting screen + "Hætta við" (Abort) as a charge; returns approval only.
+  async function refundCard(amount: number): Promise<boolean> {
+    setWaiting("Réttu viðskiptavini posann — endurgreiðsla…"); setError("");
+    const ac = new AbortController(); terminalAbort.current = ac;
+    const svc = String(Date.now()).slice(-10); terminalSvcId.current = svc; // so "Hætta við" can Abort THIS refund
+    try {
+      const r = await fetch("/api/kassi/terminal/refund", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount, ref: `skil-${Date.now()}`, reg: regRef.current, serviceId: svc }), signal: ac.signal });
+      const d = await r.json().catch(() => ({}));
+      setWaiting("");
+      if (!d.approved) { setError(d.error ? `Posi: ${d.error}` : "Endurgreiðslu hafnað"); return false; }
+      return true;
+    } catch (e) {
+      setWaiting("");
+      if (ac.signal.aborted) { setError("Hætt við — endurgreiðslan var afturkölluð á posanum."); return false; }
+      setError(e instanceof Error ? e.message : "Villa við posa");
+      return false;
+    }
+  }
   // "Hætta við" on the posi-waiting screen: tell the terminal to cancel (Nexo Abort) so it clears
   // itself — no need to press the red X on the posi — then abort our waiting request.
   async function cancelTerminal() {
@@ -401,6 +420,9 @@ export default function StaffTill() {
 
   async function doReturn(mode: Mode) {
     if (!cart.length) return;
+    // Card refund: push it to the posi FIRST — only book the credit note if the terminal approves,
+    // so the books can never say "refunded" when the card was never actually credited.
+    if (mode === "card" && terminalEnabled) { if (!await refundCard(total)) return; }
     setBusy(true); setError("");
     const snapshot = cart.map((l) => ({ ...l, discount: lineDisc(l) })); // bake customer discount into each line
     const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: snapshot.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, kind: "return", customerId: customer?.id, reg: regRef.current, payment: { approved: true, processor: "STAFF" } }) });

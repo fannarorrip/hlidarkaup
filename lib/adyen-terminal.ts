@@ -54,8 +54,11 @@ function requestedAmount(amountKr: number, currency: string): number {
 export interface TerminalResult { approved: boolean; error?: string; poiTxId?: string }
 
 /** Run a card payment on the terminal. Blocks until the customer completes (or it times out).
- *  `opts` lets a specific register override the terminal (POIID) and SaleID it charges. */
-export async function sendPaymentToTerminal(amountKr: number, ref: string, opts?: { poiid?: string; saleId?: string; serviceId?: string }): Promise<TerminalResult> {
+ *  `opts` lets a specific register override the terminal (POIID) and SaleID it charges.
+ *  `opts.refund` makes it a standalone REFUND (money OUT to the card the shopper presents) — used
+ *  for skil/endurgreiðsla. It is a Payment-category message with PaymentData.PaymentType = "Refund",
+ *  so the customer taps their card and the amount is credited back; abort works the same way. */
+export async function sendPaymentToTerminal(amountKr: number, ref: string, opts?: { poiid?: string; saleId?: string; serviceId?: string; refund?: boolean }): Promise<TerminalResult> {
   const c = adyenConfig();
   if (!adyenEnabled()) return { approved: false, error: "Posa-tenging er ekki uppsett." };
   const poiId = opts?.poiid || c.poiId;
@@ -67,6 +70,7 @@ export async function sendPaymentToTerminal(amountKr: number, ref: string, opts?
       PaymentRequest: {
         SaleData: { SaleTransactionID: { TransactionID: ref, TimeStamp: new Date().toISOString() } },
         PaymentTransaction: { AmountsReq: { Currency: c.currency, RequestedAmount: requestedAmount(amountKr, c.currency) } },
+        ...(opts?.refund ? { PaymentData: { PaymentType: "Refund" } } : {}),
       },
     },
   };
@@ -102,6 +106,13 @@ export async function sendPaymentToTerminal(amountKr: number, ref: string, opts?
   let msg = String(resp.ErrorCondition || resp.AdditionalResponse || "Greiðslu hafnað");
   try { msg = decodeURIComponent(msg); } catch { /* leave raw */ }
   return { approved: false, error: msg, poiTxId };
+}
+
+/** Refund a card on the terminal (skil/endurgreiðsla). Standalone: the shopper presents a card and
+ *  the amount is credited to it — no reference to the original sale needed, matching the till's
+ *  scan-fresh return flow. Same blocking/abort behaviour as a payment. */
+export function sendRefundToTerminal(amountKr: number, ref: string, opts?: { poiid?: string; saleId?: string; serviceId?: string }): Promise<TerminalResult> {
+  return sendPaymentToTerminal(amountKr, ref, { ...opts, refund: true });
 }
 
 /** Cancel an in-flight payment ON the terminal (Nexo Abort) — cashier pressed "Hætta við" so the
