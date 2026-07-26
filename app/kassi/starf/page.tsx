@@ -76,7 +76,8 @@ export default function StaffTill() {
   const total = cart.reduce((s, l) => s + lineTot(l), 0);
   const vat = Math.round(cart.reduce((s, l) => { const r = l.vatPct ?? 24; return s + (lineTot(l) * r) / (100 + r); }, 0));
 
-  useEffect(() => { const f = () => setClock(new Date().toLocaleTimeString("is-IS", { hour: "2-digit", minute: "2-digit" })); f(); const t = setInterval(f, 20000); return () => clearInterval(t); }, []);
+  // Manual formatting (no locale): the till PCs' browser locale rendered AM/PM. Always 24h + date.
+  useEffect(() => { const f = () => { const n = new Date(); const p = (x: number) => String(x).padStart(2, "0"); setClock(`${p(n.getDate())}.${p(n.getMonth() + 1)}.${n.getFullYear()} · ${p(n.getHours())}:${p(n.getMinutes())}`); }; f(); const t = setInterval(f, 20000); return () => clearInterval(t); }, []);
 
   // Idle lock: reset a timer on any activity; after LOCK_MS idle → lock. Not while a card payment
   // is waiting (never lock mid-terminal). Unlocking (correct PIN) reschedules via the deps.
