@@ -1,0 +1,14 @@
+[Unit]
+Description=Run the Hlíðarkaup database backup nightly at 02:00
+Documentation=file:/opt/hlidarkaup/deploy/DEPLOYMENT.md
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+# If the server was off/asleep at 02:00, run the backup as soon as it is back — a missed
+# night must never mean a missing day of records.
+Persistent=true
+# Small jitter so the dump doesn't start on the exact second every night.
+RandomizedDelaySec=180
+
+[Install]
+WantedBy=timers.target

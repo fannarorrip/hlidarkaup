@@ -1,0 +1,16 @@
+[Unit]
+Description=Hlíðarkaup nightly database backup (pg_dump + encrypted offsite)
+Documentation=file:/opt/hlidarkaup/deploy/DEPLOYMENT.md
+# Do not run a dump while a deploy/migration is mid-flight.
+After=network-online.target
+
+[Service]
+Type=oneshot
+# Runs as root: reads .env.local + /etc/hlidarkaup/backup.pass, writes /var/backups (0700).
+# pg_dump takes an MVCC snapshot — it never locks the tills, so this is safe at any hour.
+ExecStart=/usr/bin/env bash /opt/hlidarkaup/deploy/backup.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+# OFFSITE_DIR is read from the environment file if present (optional; set once the USB is mounted).
+EnvironmentFile=-/etc/hlidarkaup/backup.env

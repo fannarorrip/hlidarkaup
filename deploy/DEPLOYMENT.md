@@ -184,19 +184,35 @@ directly (outbound mesh), unaffected by VLANs.
 
 ## 6. Backups (legally required — 7-year retention)
 No hypervisor snapshots on bare metal — the backup surface is exactly two things:
-1. **The database** — nightly dump: cron `0 2 * * * /opt/hlidarkaup/deploy/backup.sh` with
-   `OFFSITE_DIR` set to a mounted external disk or an rclone-synced cloud path. The dump
-   includes the bókhald AND the stored fylgiskjöl/PDF documents (they live in the DB as bytea).
-2. **`/etc/hlidarkaup` + `/opt/hlidarkaup/.env.local`** — secrets + cert; copy ENCRYPTED
-   (e.g. `tar czf - /etc/hlidarkaup | gpg -c > secrets-$(date +%F).tgz.gpg`) whenever they change,
-   stored separately from the DB dumps.
+1. **The database** — nightly dump via a **systemd timer** (`hlidarkaup-backup.timer`, 02:00,
+   `Persistent=true` so a powered-off night is caught up). The dump includes the bókhald AND the
+   stored fylgiskjöl/PDF documents (they live in the DB as bytea). Local dumps sit in
+   `/var/backups/hlidarkaup` (root-only 0700, cleartext for easy restore); a monthly archive in
+   `monthly/` is kept long-term for the 7-year window.
+2. **`/etc/hlidarkaup` + `/opt/hlidarkaup/.env.local`** — secrets + cert; `backup.sh` snapshots
+   `.env.local` beside the dumps and (offsite) encrypts it.
+
+**Setup is one command** — run once, safe during trading (it never restarts the web service; pg_dump
+does not lock the tills):
+```
+sudo bash /opt/hlidarkaup/deploy/install-backup.sh
+```
+It installs gpg, generates the offsite passphrase (`/etc/hlidarkaup/backup.pass`, **save it in the
+password manager** — the encrypted offsite copies are unrecoverable without it), installs+enables the
+timer, takes the first backup immediately, and validates it.
+
+**Offsite (survives fire/theft) — do once a USB disk is available:** mount it (fstab, `nofail`), then
+`echo 'OFFSITE_DIR=/mnt/backup-usb/hlidarkaup' >> /etc/hlidarkaup/backup.env`. Offsite copies are
+**GPG-AES256 encrypted automatically** — customer kennitölur must never sit in cleartext on a portable
+disk (persónuvernd/GDPR). Without a passphrase the offsite step refuses rather than write PII in the clear.
 
 Everything else is rebuildable: code from GitHub, packages from this runbook.
-**Test a restore at least once**: `gunzip -c backup.sql.gz | psql hlidarkaup_restore_test`.
+**Test a restore at least once**: `gunzip -c /var/backups/hlidarkaup/hlidarkaup_*.sql.gz | psql hlidarkaup_restore_test`
+(offsite: `gpg -d --passphrase-file /etc/hlidarkaup/backup.pass file.sql.gz.gpg | gunzip | psql …`).
+Check the schedule with `systemctl list-timers hlidarkaup-backup.timer`; logs in `journalctl -u hlidarkaup-backup`.
 
-Also add the app crons (same crontab):
+The app crons stay in cron (the DB backup moved to the systemd timer above — do NOT also add it here):
 ```
-0 2 * * *    /opt/hlidarkaup/deploy/backup.sh
 */15 * * * * curl -s -H "x-cron-secret: $EMAIL_POLL_SECRET" http://127.0.0.1:3000/api/cron/email-poll
 */15 * * * * curl -s -H "x-cron-secret: $EMAIL_POLL_SECRET" http://127.0.0.1:3000/api/cron/inexchange-poll
 0 */3 * * *  curl -s -H "x-cron-secret: $CLAIMS_CRON_SECRET" http://127.0.0.1:3000/api/cron/bank-bills
@@ -215,7 +231,7 @@ The bank-bills line refreshes "ógreiddar kröfur á okkur" from Arion B2B every
 - [ ] `ADMIN_LAN_ONLY=true` + cloudflared ingress 404 rules — verify `/bokhald` 404s via the public URL but works on LAN/VPN.
 - [ ] VPN (Tailscale/WireGuard) tested with the accountant's account (bokari role).
 - [ ] `dnf-automatic` security updates on.
-- [ ] Nightly DB backup verified, offsite copy confirmed, **one restore tested**, secrets archive stored.
+- [ ] `install-backup.sh` run, timer active (`systemctl list-timers hlidarkaup-backup`), first backup validated, offsite USB set (`OFFSITE_DIR`), **one restore tested**, passphrase saved in password manager.
 - [ ] Rgl. 505/2013 self-declaration reviewed with your accountant/endurskoðandi.
 
 ## 9. Updates & maintenance — what actually needs attention
