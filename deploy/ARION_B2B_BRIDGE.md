@@ -1,5 +1,39 @@
 # Arion / RB B2B — Ógreiddar kröfur Á OKKUR (BillService) um B2B Bridge
 
+## 🆕 2026-07-27: HK-BRÚIN SMÍÐUÐ (deploy/hk-bridge/) — bíður aðgangs hjá Arion
+
+**Eigin brú fyrir 20131015-fjölskylduna** (yfirlit + kröfuþjónusta + greiðslur) sem leysir
+"Body was not encrypted"-vandann í gamla 2017-Bridge: `deploy/hk-bridge/hk-bridge.cs` +
+`HKProtectionLevel.cs` (request sign+encrypt / response sign-only), samningsóháður SOAP-áframsendari —
+tekur við SÖMU einföldu SOAP 1.1 UsernameToken-köllunum frá Rocky og gamli Bridge (engin breyting á
+Rocky-libbunum), talar rétt dulmál upp. Byggist með `build.cmd` (innbyggður csc, eins og kassabrú).
+Endapunktar: `/B2BBridge/{StatementService|ClaimService|PaymentService}` á porti 8035
+(`netsh http add urlacl url=http://+:8035/B2BBridge/ user=<notandi>` einu sinni sem admin).
+Skilríki sjálfvalin úr CurrentUser\My (NTRIS-búnaðarskilríkið + Arion public), pinna má með
+`HKBRIDGE_CLIENT_THUMB`/`HKBRIDGE_BANK_THUMB`; `hk-bridge.exe certs` sýnir búðina. Keyra á sömu vél
+og gamli Bridge (sem heldur BillService/20130201) — tvö forrit, tvö port.
+
+**Prófað 2026-07-27 á dev-vél gegn LIFANDI banka:** rásin er tæknilega rétt — TLS 1.2, dulmál
+samþykkt, skeyti afhent. En bankinn svarar núna `GeneralErrorCode 1000 / BanksErrorCode 14000`
+("Object reference not set") á BÆÐI StatementService og ClaimService — og **GAMLI Bridge-inn fær
+NÁKVÆMLEGA sömu villu** á sömu fyrirspurn sem virkaði 10. júlí. ⇒ Vandinn er BANKAMEGIN, ekki í
+brúnum: aðgangur B2B-notandans/skilríkisins að 20131015-þjónustunum hefur breyst eftir 10. júlí
+(eða lykilorð útrunnið). **BillService (ógreiddar kröfur á okkur) virkar ÁFRAM** — svo notandinn og
+skilríkið eru í lagi sem slík; það vantar þjónustu-heimildirnar.
+
+**BIÐJA ARION (fyrirtækjaþjónusta / corporate@arionbanki.is):**
+1. Virkja/laga aðgang B2B-vefþjónustunotandans að **StatementService (hreyfingaryfirlit),
+   ClaimService (kröfuþjónusta — stofna/fella niður/spyrja) og PaymentService (greiðslur)**
+   á 20131015-þjónustunum (ws.b2b.is). Notandinn fær núna villu 1000/14000; virkaði 10. júlí
+   á yfirlitið. BillService virkar enn.
+2. STP-merkja notandann (beinvinnsla — annars stoppa greiðslur/niðurfellingar sem NotConfirmed).
+3. (Enn gott að fá nýjustu B2B-brúna þeirra, en HK-brúin gerir hana valfrjálsa.)
+
+Sannprófun þegar Arion hefur opnað: `node _test-claims.mjs` og `_test-statement.mjs` í
+deploy/hk-bridge/ (les .env.local, prenta aldrei leyndarmál) — eiga að skila QueryClaimsResponse /
+GetAccountStatementResponse. Svo `ARION_B2B_ACCOUNTS_URL=http://<brúarvél>:8035/B2BBridge/StatementService`
+á Rocky og yfirlitið birtist í bókhaldinu.
+
 Sýnir kröfur og greiðsluseðla sem **aðrir stofna á Hlíðarkaup í bankanum** (við sem **greiðandi**) —
 þ.e. „það sem við eigum eftir að borga". Birtist í **Bókhald → Bankatengingar → 💸 Ógreiddir reikningar →
 „Kröfur á okkur (frá banka)"**. Sótt beint úr Arion/RB með `GetBills`.
