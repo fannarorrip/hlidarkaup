@@ -347,6 +347,8 @@ export default function StaffTill() {
     if (!cart.length) { setError("Karfan er tóm"); return; }
     if (mode === "cash") { setCashGot(""); setCashFor(true); return; }
     if (mode === "card" && terminalEnabled) { cardViaTerminal(); return; }
+    // Símgreiðsla (MOTO): must go through the posi — no manual/standalone path. Needs the terminal.
+    if (mode === "transfer") { if (!terminalEnabled) { setError("Posi ekki tengdur — símgreiðsla fer í gegnum posann."); return; } simgreidslaViaTerminal(); return; }
     // Á reikning: bjóða skýringu ("vegna vinnu við X") fyrst — stóru fyrirtækin vilja hana á nótuna.
     if (mode === "account") { if (!customer?.is_account) { setError("Veldu reikningsviðskiptamann"); return; } setSaleNote(""); setNoteOpen(true); return; }
     checkout(mode);
@@ -354,24 +356,28 @@ export default function StaffTill() {
   const terminalAbort = useRef<AbortController | null>(null);
   const terminalSvcId = useRef<string>("");
   // Charge a (partial) amount on the posi. Returns approval only — no sale posting.
-  async function chargeCard(amount: number): Promise<boolean> {
-    setWaiting("Fylgdu leiðbeiningum á posanum…"); setError("");
+  async function chargeCard(amount: number, opts?: { moto?: boolean }): Promise<boolean> {
+    const moto = !!opts?.moto;
+    setWaiting(moto ? "Símgreiðsla — sláðu kortanúmerið inn á posanum…" : "Fylgdu leiðbeiningum á posanum…"); setError("");
     const ac = new AbortController(); terminalAbort.current = ac;
     const svc = String(Date.now()).slice(-10); terminalSvcId.current = svc; // so "Hætta við" can Abort THIS payment
     try {
-      const r = await fetch("/api/kassi/terminal/pay", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount, ref: `till-${Date.now()}`, reg: regRef.current, serviceId: svc }), signal: ac.signal });
+      const r = await fetch("/api/kassi/terminal/pay", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount, ref: `${moto ? "sim" : "till"}-${Date.now()}`, reg: regRef.current, serviceId: svc, ...(moto ? { moto: true } : {}) }), signal: ac.signal });
       const d = await r.json().catch(() => ({}));
       setWaiting("");
-      if (!d.approved) { setError(d.error ? `Posi: ${d.error}` : "Greiðslu hafnað"); return false; }
+      if (!d.approved) { setError(d.error ? `Posi: ${d.error}` : (moto ? "Símgreiðslu hafnað" : "Greiðslu hafnað")); return false; }
       return true;
     } catch (e) {
       setWaiting("");
-      if (ac.signal.aborted) { setError("Hætt við — greiðslan var afturkölluð á posanum."); return false; }
+      if (ac.signal.aborted) { setError(`Hætt við — ${moto ? "símgreiðslan" : "greiðslan"} var afturkölluð á posanum.`); return false; }
       setError(e instanceof Error ? e.message : "Villa við posa");
       return false;
     }
   }
   async function cardViaTerminal() { if (await chargeCard(total)) await checkout("card"); }
+  // Símgreiðsla = MOTO (phone-order card payment). Goes entirely through the posi: the cashier keys the
+  // card number on the terminal (PCI-safe), books to the card account on approval. No standalone/handvirkt.
+  async function simgreidslaViaTerminal() { if (await chargeCard(total, { moto: true })) await checkout("transfer"); }
   // Refund a card ON the posi (skil). Standalone refund — the customer taps their card and gets the
   // money back. Same waiting screen + "Hætta við" (Abort) as a charge; returns approval only.
   async function refundCard(amount: number): Promise<boolean> {

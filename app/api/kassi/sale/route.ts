@@ -7,7 +7,7 @@ const MODES: PayMode[] = ["card", "account", "cash", "transfer"];
 const DESC: Record<PayMode, string> = {
   card: "Kassasala – kort (afgreiðsla)",
   cash: "Kassasala – reiðufé (afgreiðsla)",
-  transfer: "Kassasala – símgreiðsla (afgreiðsla)",
+  transfer: "Kassasala – símgreiðsla / MOTO (afgreiðsla)",
   account: "Reikningssala (afgreiðsla)",
 };
 

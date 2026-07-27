@@ -14,7 +14,8 @@ export async function POST(req: NextRequest) {
   if (amount <= 0) return NextResponse.json({ approved: false, error: "Ógild upphæð" }, { status: 400 });
   const ref = String(b.ref || `till-${Date.now()}`).slice(0, 40);
   const serviceId = b.serviceId ? String(b.serviceId).slice(0, 10) : undefined; // lets the till Abort this exact payment
+  const moto = b.moto === true; // símgreiðsla: MOTO / manual key entry on the posi (card-not-present)
   const term = registerTerminal(resolveRegister(b.reg, "sjalfsafgreidsla").id);
-  const r = await sendPaymentToTerminal(amount, ref, { poiid: term.poiid, saleId: term.saleId, serviceId });
+  const r = await sendPaymentToTerminal(amount, ref, { poiid: term.poiid, saleId: term.saleId, serviceId, moto });
   return NextResponse.json(r, { status: r.approved ? 200 : 402 });
 }

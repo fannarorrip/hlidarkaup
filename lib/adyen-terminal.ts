@@ -58,7 +58,7 @@ export interface TerminalResult { approved: boolean; error?: string; poiTxId?: s
  *  `opts.refund` makes it a standalone REFUND (money OUT to the card the shopper presents) — used
  *  for skil/endurgreiðsla. It is a Payment-category message with PaymentData.PaymentType = "Refund",
  *  so the customer taps their card and the amount is credited back; abort works the same way. */
-export async function sendPaymentToTerminal(amountKr: number, ref: string, opts?: { poiid?: string; saleId?: string; serviceId?: string; refund?: boolean }): Promise<TerminalResult> {
+export async function sendPaymentToTerminal(amountKr: number, ref: string, opts?: { poiid?: string; saleId?: string; serviceId?: string; refund?: boolean; moto?: boolean }): Promise<TerminalResult> {
   const c = adyenConfig();
   if (!adyenEnabled()) return { approved: false, error: "Posa-tenging er ekki uppsett." };
   const poiId = opts?.poiid || c.poiId;
@@ -68,7 +68,10 @@ export async function sendPaymentToTerminal(amountKr: number, ref: string, opts?
     SaleToPOIRequest: {
       MessageHeader: { ProtocolVersion: "3.0", MessageClass: "Service", MessageCategory: "Payment", MessageType: "Request", SaleID: saleId, ServiceID: opts?.serviceId || String(Date.now()).slice(-10), POIID: poiId },
       PaymentRequest: {
-        SaleData: { SaleTransactionID: { TransactionID: ref, TimeStamp: new Date().toISOString() } },
+        // MOTO (símgreiðsla / phone order): tenderOption=MOTO makes the terminal prompt the cashier to
+        // KEY the card number on the posi itself (PCI-safe — the PAN never touches our system). Requires
+        // "Allow MOTO payments" enabled on the terminal in the Adyen/Straumur Customer Area.
+        SaleData: { SaleTransactionID: { TransactionID: ref, TimeStamp: new Date().toISOString() }, ...(opts?.moto ? { SaleToAcquirerData: "tenderOption=MOTO" } : {}) },
         PaymentTransaction: { AmountsReq: { Currency: c.currency, RequestedAmount: requestedAmount(amountKr, c.currency) } },
         ...(opts?.refund ? { PaymentData: { PaymentType: "Refund" } } : {}),
       },

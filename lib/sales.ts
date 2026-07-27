@@ -6,7 +6,6 @@ import { SERIES_PREFIX } from "@/lib/format";
 
 const CARD_ACCOUNT = process.env.KASSI_CARD_ACCOUNT ?? "7716";       // Óskilgreind kreditkort
 const CASH_ACCOUNT = process.env.KASSI_CASH_ACCOUNT ?? "7850";       // Sjóður (reiðufé)
-const TRANSFER_ACCOUNT = process.env.KASSI_TRANSFER_ACCOUNT ?? "7830"; // bankareikningur (símgreiðsla/millifærsla)
 const DEFAULT_AR_ACCOUNT = "7600";                                   // Viðskiptakröfur
 
 // VAT rate → (sales account, output-VAT account, vat code)
@@ -66,10 +65,12 @@ export async function postSale(items: SaleItem[], opts: PostSaleOpts): Promise<{
   try {
     await client.query("begin");
 
-    // Resolve the debit (money-in) account by payment mode
+    // Resolve the debit (money-in) account by payment mode. "transfer" is símgreiðsla (MOTO / phone
+    // card order) — it settles through Straumur exactly like a card-present sale, so it books to the
+    // CARD account (7716) and reconciles in the same acquirer payout. (There is no bank-transfer/
+    // millifærsla method at the till.)
     let debitAccount = CARD_ACCOUNT;
     if (opts.mode === "cash") debitAccount = CASH_ACCOUNT;
-    else if (opts.mode === "transfer") debitAccount = TRANSFER_ACCOUNT;
     else if (opts.mode === "account") {
       if (!opts.customerId) throw new SaleError("Veldu viðskiptamann fyrir reikningssölu", 400);
       const cust = (await client.query<{ ar_account: string | null; is_account: boolean; name: string }>(
@@ -120,8 +121,8 @@ export async function postSale(items: SaleItem[], opts: PostSaleOpts): Promise<{
       totalGross += gross;
     }
 
-    const acctFor = (m: PayMode) => m === "cash" ? CASH_ACCOUNT : m === "transfer" ? TRANSFER_ACCOUNT : m === "account" ? debitAccount : CARD_ACCOUNT;
-    const descFor = (m: PayMode) => m === "account" ? "Á reikning" : m === "cash" ? "Reiðufé" : m === "transfer" ? "Símgreiðsla / millifærsla" : "Kortagreiðsla";
+    const acctFor = (m: PayMode) => m === "cash" ? CASH_ACCOUNT : m === "account" ? debitAccount : CARD_ACCOUNT; // transfer=símgreiðsla→card
+    const descFor = (m: PayMode) => m === "account" ? "Á reikning" : m === "cash" ? "Reiðufé" : m === "transfer" ? "Símgreiðsla (MOTO)" : "Kortagreiðsla";
     // Split payment: one money-in line per tender (cash + card + …); else a single line for the mode.
     let debitLines: { account: string; debit: number; credit: number; vat_code: null; description: string }[];
     if (opts.tenders && opts.tenders.length) {

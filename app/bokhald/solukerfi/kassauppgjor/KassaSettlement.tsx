@@ -68,8 +68,8 @@ export default function KassaSettlement({ date, s, z }: { date: string; s: Daily
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <p className="px-4 py-2 bg-gray-50 text-sm font-semibold text-gray-600">Greiðslumáti</p>
           <Row label="Reiðufé" value={cash} />
-          <Row label="Kort" value={card} />
-          <Row label="Símgreiðsla" value={transfer} />
+          <Row label="Kort og símgreiðsla" value={card} />
+          {transfer !== 0 && <Row label="Millifærsla (eldra)" value={transfer} />}
           <Row label="Á reikning" value={account} />
           <div className="flex justify-between px-4 py-2.5 border-t-2 border-gray-200 font-semibold"><span>Samtals</span><span className="tabular-nums">{kr(totalMoney)}</span></div>
         </div>
