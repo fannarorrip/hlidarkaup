@@ -20,6 +20,7 @@ const RULES: { prefix: string; roles: string[] }[] = [
   { prefix: "/api/inexchange/poll", roles: ["stjornandi", "bokari"] },
   { prefix: "/api/einvoice", roles: ["stjornandi", "bokari"] },
   { prefix: "/api/reikningur", roles: ["stjornandi", "bokari"] },
+  { prefix: "/api/reikningar", roles: ["stjornandi", "bokari"] },
   { prefix: "/api/profjofnudur", roles: ["stjornandi", "bokari"] },
   { prefix: "/api/rekstur", roles: ["stjornandi", "bokari"] },
   { prefix: "/api/yfirlit", roles: ["stjornandi", "bokari"] },

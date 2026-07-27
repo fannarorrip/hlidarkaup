@@ -9,6 +9,7 @@ interface ProductRow {
   stock_quantity: string;
   is_stock_controlled: boolean;
   use_scale: boolean;
+  allow_discount: boolean;
 }
 
 /** Look up a product by barcode (primary) or product number (fallback). */
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
     if (value > 0) {
       const emb = await query<ProductRow>(
         `select p.product_number, p.name, p.price_gross, p.vat_rate,
-                p.stock_quantity, p.is_stock_controlled, p.use_scale
+                p.stock_quantity, p.is_stock_controlled, p.use_scale, p.allow_discount
            from shop.products p
            join shop.product_barcodes b on b.product_number = p.product_number
           where p.is_active and b.barcode = $1
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
       );
       if (emb.length) {
         const p = emb[0];
-        const base = { id: p.product_number, name: p.name, price: p.price_gross, vatPct: Number(p.vat_rate) };
+        const base = { id: p.product_number, name: p.name, price: p.price_gross, vatPct: Number(p.vat_rate), allowDiscount: p.allow_discount };
         if (isWeight) {
           // grams on the label → kg; the till charges kg × catalog price-per-kg
           return NextResponse.json({ ...base, embeddedWeightKg: value / 1000 });
@@ -57,7 +58,7 @@ export async function GET(req: NextRequest) {
 
   const rows = await query<ProductRow>(
     `select p.product_number, p.name, p.price_gross, p.vat_rate,
-            p.stock_quantity, p.is_stock_controlled, p.use_scale
+            p.stock_quantity, p.is_stock_controlled, p.use_scale, p.allow_discount
        from shop.products p
        left join shop.product_barcodes b on b.product_number = p.product_number
       where p.is_active and (b.barcode = any($1::text[]) or p.product_number = $2)
@@ -84,5 +85,6 @@ export async function GET(req: NextRequest) {
     stock,
     // vigtarvara: price is per kg — the till weighs it on the scanner scale
     useScale: p.use_scale || undefined,
+    allowDiscount: p.allow_discount,
   });
 }

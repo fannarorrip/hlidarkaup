@@ -62,43 +62,47 @@ export const getVouchers = (limit = 200) =>
 // (tilvísun/external_reference) visible — what the accountant reconciles against.
 export interface VoucherListRow extends VoucherRow {
   supplier_name: string | null;
+  customer_name: string | null;
   external_reference: string | null;
   register_id: string | null;
 }
 const VOUCHER_LIST_SELECT = `
   select v.id, v.series_code, v.voucher_number, v.voucher_date::text, v.voucher_type,
-         v.status, v.description, v.source, v.register_id, v.external_reference, s.name as supplier_name,
+         v.status, v.description, v.source, v.register_id, v.external_reference,
+         s.name as supplier_name, c.name as customer_name,
          coalesce(sum(le.debit),0) as amount
   from acc.vouchers v
   join acc.ledger_entries le on le.voucher_id=v.id
-  left join acc.suppliers s on s.id = v.supplier_id`;
+  left join acc.suppliers s on s.id = v.supplier_id
+  left join shop.customers c on c.id = v.customer_id`;
 
 export const getVoucherList = (limit = 200) =>
-  query<VoucherListRow>(`${VOUCHER_LIST_SELECT} group by v.id, s.name order by v.voucher_date desc, v.voucher_number desc limit $1`, [limit]);
+  query<VoucherListRow>(`${VOUCHER_LIST_SELECT} group by v.id, s.name, c.name order by v.voucher_date desc, v.voucher_number desc limit $1`, [limit]);
 
-/** Accent-insensitive voucher search: number (HK-000123 / 123), description, supplier name, tilvísun. */
+/** Accent-insensitive voucher search: number (HK-000123 / 123), description, viðskiptamaður, lánadrottinn, tilvísun. */
 export const searchVouchers = (q: string, limit = 300) =>
   query<VoucherListRow>(`${VOUCHER_LIST_SELECT}
   where unaccent(coalesce(v.description,'')) ilike unaccent('%'||$1||'%')
      or unaccent(coalesce(s.name,'')) ilike unaccent('%'||$1||'%')
+     or unaccent(coalesce(c.name,'')) ilike unaccent('%'||$1||'%')
      or coalesce(v.external_reference,'') ilike '%'||$1||'%'
      or v.series_code || '-' || v.voucher_number::text ilike '%'||$1||'%'
      -- receipts print HK-000123 while the series is KASSI — match on the DIGITS regardless of prefix
      or (nullif(regexp_replace($1, '\\D', '', 'g'), '') is not null
          and v.voucher_number::text = ltrim(regexp_replace($1, '\\D', '', 'g'), '0'))
-  group by v.id, s.name order by v.voucher_date desc, v.voucher_number desc limit $2`, [q, limit]);
+  group by v.id, s.name, c.name order by v.voucher_date desc, v.voucher_number desc limit $2`, [q, limit]);
 
 export interface SalesInvoiceRow extends VoucherRow {
   customer_id: string | null;
+  customer_name: string | null;
   customer_flagged: boolean;       // customer marked rafræn viðskipti
   customer_kt: string | null;
   einvoice_status: string | null;  // acc.einvoice_outbox.status (null = never queued)
 }
-export const getSalesInvoices = (limit = 200) =>
-  query<SalesInvoiceRow>(`
+const SALES_INVOICE_SELECT = `
     select v.id, v.series_code, v.voucher_number, v.voucher_date::text, v.voucher_type,
            v.status, v.description, v.source, coalesce(sum(le.debit),0) as amount,
-           v.customer_id,
+           v.customer_id, c.name as customer_name,
            coalesce(c.rafraen_vidskipti, false) as customer_flagged,
            c.kennitala as customer_kt,
            eo.status as einvoice_status
@@ -106,9 +110,24 @@ export const getSalesInvoices = (limit = 200) =>
     join acc.ledger_entries le on le.voucher_id = v.id
     left join shop.customers c on c.id = v.customer_id
     left join acc.einvoice_outbox eo on eo.voucher_id = v.id
-    where v.voucher_type in ('kassi_sale','sales_invoice','credit_note','web_sale','account_sale','eldhus_sale')
-    group by v.id, c.rafraen_vidskipti, c.kennitala, eo.status
-    order by v.voucher_date desc, v.voucher_number desc limit $1`, [limit]);
+    where v.voucher_type in ('kassi_sale','sales_invoice','credit_note','web_sale','account_sale','eldhus_sale')`;
+const SALES_INVOICE_GROUP = `group by v.id, c.name, c.rafraen_vidskipti, c.kennitala, eo.status
+    order by v.voucher_date desc, v.voucher_number desc`;
+
+export const getSalesInvoices = (limit = 200) =>
+  query<SalesInvoiceRow>(`${SALES_INVOICE_SELECT} ${SALES_INVOICE_GROUP} limit $1`, [limit]);
+
+/** Accent-insensitive invoice search: viðskiptamaður (name/kt), number (HK/SR-000123 / 123), lýsing. */
+export const searchSalesInvoices = (q: string, limit = 300) =>
+  query<SalesInvoiceRow>(`${SALES_INVOICE_SELECT}
+      and (unaccent(coalesce(c.name,'')) ilike unaccent('%'||$1||'%')
+        or (nullif(regexp_replace($1,'\\D','','g'),'') is not null
+            and replace(coalesce(c.kennitala,''),'-','') ilike '%'||regexp_replace($1,'\\D','','g')||'%')
+        or unaccent(coalesce(v.description,'')) ilike unaccent('%'||$1||'%')
+        or v.series_code || '-' || v.voucher_number::text ilike '%'||$1||'%'
+        or (nullif(regexp_replace($1, '\\D', '', 'g'), '') is not null
+            and v.voucher_number::text = ltrim(regexp_replace($1, '\\D', '', 'g'), '0')))
+    ${SALES_INVOICE_GROUP} limit $2`, [q, limit]);
 
 export async function getVoucher(id: string) {
   const v = (await query<VoucherRow & {

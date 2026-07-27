@@ -5,11 +5,11 @@ import { kbHealth, kbScanEvents, kbPrint, kbDrawer, kbWeigh, formatReceipt, vatC
 
 // uid = the LINE's identity (edit/remove/merge); id = the product number (what the sale posts).
 // They differ for price-embedded (verðmerkt) packs, where every scan must stay its own line.
-interface Line { uid: string; id: string; name: string; price: number; vatPct?: number; quantity: number; priceOverride?: number; discount?: number; }
+interface Line { uid: string; id: string; name: string; price: number; vatPct?: number; quantity: number; priceOverride?: number; discount?: number; allowDiscount?: boolean; }
 interface Customer { id: string; name: string; kennitala: string | null; is_account: boolean; discount_pct?: number; }
 interface RecentSale { id: string; invoiceNumber: string; time: string; total: number; mode: string; buyer?: { name?: string | null; kennitala?: string | null }; lines: { name: string; quantity: number; price: number; vatPct: number; discount: number }[]; }
 interface UnpaidSimgr { id: string; invoiceNumber: string; date: string; description: string | null; total: number; }
-interface SItem { id: string; name: string; price: number; vatPct?: number; image?: string; useScale?: boolean; embeddedPrice?: number; embeddedKg?: number | null; embeddedWeightKg?: number; }
+interface SItem { id: string; name: string; price: number; vatPct?: number; image?: string; useScale?: boolean; embeddedPrice?: number; embeddedKg?: number | null; embeddedWeightKg?: number; allowDiscount?: boolean; }
 interface Category { group: string; name: string; count: number; }
 type Mode = "card" | "cash" | "account" | "transfer";
 
@@ -79,7 +79,10 @@ export default function StaffTill() {
 
   // Customer fixed discount (%): applied live on top of any manual AFSL, per line (VAT-correct).
   const custPct = customer?.discount_pct ?? 0;
-  const lineDisc = (l: Line) => Math.min(effUnit(l) * l.quantity, (l.discount ?? 0) + (custPct > 0 ? Math.round((effUnit(l) * l.quantity - (l.discount ?? 0)) * custPct / 100) : 0));
+  // Verðlagsvörur (mjólkurvörur o.fl.) mega ekki fá viðskiptamanna-afslátt — vörur með allowDiscount=false
+  // sleppa custPct (handvirkur línu-afsláttur helst þó, sé hann sleginn inn sérstaklega).
+  const custPctFor = (l: Line) => (custPct > 0 && l.allowDiscount !== false) ? custPct : 0;
+  const lineDisc = (l: Line) => Math.min(effUnit(l) * l.quantity, (l.discount ?? 0) + (custPctFor(l) > 0 ? Math.round((effUnit(l) * l.quantity - (l.discount ?? 0)) * custPctFor(l) / 100) : 0));
   const lineTot = (l: Line) => Math.max(0, effUnit(l) * l.quantity - lineDisc(l));
 
   const total = cart.reduce((s, l) => s + lineTot(l), 0);
@@ -131,12 +134,12 @@ export default function StaffTill() {
     // Open-price items ("Ýmsar vörur", verð 0): each tap is its OWN line with its own price —
     // never merged into a quantity — and the price editor opens so staff types the price.
     if (d.price <= 0) {
-      const line = { uid: `${d.id}~${++uidSeq.current}`, id: d.id, name: d.name, price: d.price, vatPct: d.vatPct, quantity: qty };
+      const line = { uid: `${d.id}~${++uidSeq.current}`, id: d.id, name: d.name, price: d.price, vatPct: d.vatPct, quantity: qty, allowDiscount: d.allowDiscount };
       setCart((p) => [...p, line]);
       openEdit(line, "unit"); // open-price: land straight on einingaverð so staff types the price
       return;
     }
-    setCart((p) => { const e = p.find((l) => l.uid === d.id); return e ? p.map((l) => l.uid === d.id ? { ...l, quantity: l.quantity + qty } : l) : [...p, { uid: d.id, id: d.id, name: d.name, price: d.price, vatPct: d.vatPct, quantity: qty }]; });
+    setCart((p) => { const e = p.find((l) => l.uid === d.id); return e ? p.map((l) => l.uid === d.id ? { ...l, quantity: l.quantity + qty } : l) : [...p, { uid: d.id, id: d.id, name: d.name, price: d.price, vatPct: d.vatPct, quantity: qty, allowDiscount: d.allowDiscount }]; });
   };
   // ±1 makes no sense for weighed (fractional-kg) lines — those adjust via the line editor.
   const changeQty = (uid: string, d: number) => setCart((p) => p.map((l) => l.uid === uid && Number.isInteger(l.quantity) ? { ...l, quantity: l.quantity + d } : l).filter((l) => l.quantity > 0));
@@ -170,7 +173,7 @@ export default function StaffTill() {
       setError("");
       setCart((p) => [...p, {
         uid: `${d.id}~${++uidSeq.current}`, id: d.id, name: d.name + kgTxt,
-        price: d.price, priceOverride: d.embeddedPrice, vatPct: d.vatPct, quantity: 1,
+        price: d.price, priceOverride: d.embeddedPrice, vatPct: d.vatPct, quantity: 1, allowDiscount: d.allowDiscount,
       }]);
       return;
     }
@@ -182,7 +185,7 @@ export default function StaffTill() {
       setCart((p) => [...p, {
         uid: `${d.id}~${++uidSeq.current}`, id: d.id,
         name: `${d.name} (${kg.toFixed(3).replace(".", ",")} kg)`,
-        price: d.price, vatPct: d.vatPct, quantity: kg,
+        price: d.price, vatPct: d.vatPct, quantity: kg, allowDiscount: d.allowDiscount,
       }]);
       return;
     }
@@ -549,7 +552,7 @@ export default function StaffTill() {
 
           <div className={`flex-1 overflow-y-auto p-3 ${kb === "search" ? "pb-[320px]" : ""}`}>
             {/* 5 columns only on the full 1920px till (100% scaling) — 4 at 125%-scaled 1536px */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 min-[1500px]:grid-cols-4 min-[1800px]:grid-cols-5 gap-2">
+            <div className="grid [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))] gap-2">
               {gridItems.map((p) => (
                 <button key={p.id} onClick={() => addProduct(p)}
                   className="relative text-left rounded-xl overflow-hidden min-h-[88px] bg-white border border-gray-200 active:scale-[0.97] transition hover:border-[#8CC7C4] hover:shadow-sm">
@@ -565,7 +568,7 @@ export default function StaffTill() {
                     </>
                   ) : (
                     <div className="min-h-[88px] flex flex-col justify-between p-3">
-                      <p className="text-[15px] font-semibold leading-snug line-clamp-3 text-[#21323A]">{p.name}</p>
+                      <p className="text-[13px] font-semibold leading-snug line-clamp-3 break-words hyphens-auto text-[#21323A]">{p.name}</p>
                       <p className="text-lg font-bold text-[#2C687B]">{kr(p.price)}</p>
                     </div>
                   )}
@@ -615,7 +618,7 @@ export default function StaffTill() {
                   <p className="text-xs text-gray-400">
                     {kr(effUnit(l))}
                     {l.priceOverride != null && <span className="ml-1 text-amber-600">· verð breytt</span>}
-                    {lineDisc(l) > 0 ? <span className="ml-1 text-[#DB1A1A]">· −{kr(lineDisc(l))}{custPct > 0 && !l.discount ? ` (${custPct}%)` : ""}</span> : null}
+                    {lineDisc(l) > 0 ? <span className="ml-1 text-[#DB1A1A]">· −{kr(lineDisc(l))}{custPctFor(l) > 0 && !l.discount ? ` (${custPct}%)` : ""}</span> : null}
                   </p>
                 </button>
                 <button onClick={() => changeQty(l.uid, -1)} className="w-11 h-11 rounded-lg bg-gray-100 text-xl leading-none hover:bg-gray-200 active:scale-95 transition">−</button>
