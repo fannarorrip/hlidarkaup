@@ -61,8 +61,15 @@ export default async function PostholfPage() {
         </div>
       )}
 
-      {/* Pending drafts */}
-      <h2 className="mt-6 mb-2 text-sm font-semibold text-gray-700">Bíða samþykktar ({pending.length})</h2>
+      {/* Pending drafts — heildarsamtala þess sem á eftir að bóka (kredit dregst frá) */}
+      <h2 className="mt-6 mb-2 text-sm font-semibold text-gray-700">
+        Bíða samþykktar ({pending.length})
+        {pending.length > 0 && (
+          <span className="ml-2 font-normal text-gray-500">
+            = <b className="font-semibold text-gray-800 tabular-nums">{kr(pending.reduce((s, r) => s + (r.is_credit ? -Number(r.total) : Number(r.total)), 0))}</b> óbókað
+          </span>
+        )}
+      </h2>
       {pending.length === 0 ? (
         <p className="text-sm text-gray-400 border border-dashed border-gray-200 rounded-lg px-4 py-8 text-center">Engin drög bíða.</p>
       ) : (
@@ -101,6 +108,15 @@ export default async function PostholfPage() {
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-gray-200 bg-gray-50 font-semibold">
+                <td className="px-4 py-2" colSpan={4}>Samtals óbókað</td>
+                <td className="px-4 py-2 text-right whitespace-nowrap tabular-nums">
+                  {kr(pending.reduce((s, r) => s + (r.is_credit ? -Number(r.total) : Number(r.total)), 0))}
+                </td>
+                <td />
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}
