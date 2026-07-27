@@ -50,7 +50,15 @@ export async function collectSimgreidslur(
   const client = await db.connect();
   try {
     await client.query("begin");
-    // Lock the originals; compute each one's 7830 money-in; flag any already collected.
+    // Lock the target sale rows FIRST — a plain row lock, because Postgres forbids FOR UPDATE together
+    // with GROUP BY (that combination is what silently broke every collect: card charged, booking rolled back).
+    const locked = (await client.query<{ id: string }>(
+      `select id from acc.vouchers
+        where id = any($1::uuid[]) and status = 'posted' and voucher_type = 'kassi_sale'
+        for update`, [ids])).rows;
+    if (locked.length !== ids.length) throw new CollectError("Kvittun fannst ekki (eða er ekki kassasala)", 404);
+
+    // Now aggregate each one's 7830 money-in + flag any already collected (no FOR UPDATE here).
     const rows = (await client.query<{ id: string; voucher_number: string; total: string; collected: boolean }>(`
       select v.id, v.voucher_number,
              coalesce(sum(le.debit) filter (where le.account_number = $2), 0) as total,
@@ -58,8 +66,7 @@ export async function collectSimgreidslur(
       from acc.vouchers v
       join acc.ledger_entries le on le.voucher_id = v.id
       where v.id = any($1::uuid[]) and v.status = 'posted' and v.voucher_type = 'kassi_sale'
-      group by v.id
-      for update of v`, [ids, OLD_TRANSFER_ACCOUNT])).rows;
+      group by v.id`, [ids, OLD_TRANSFER_ACCOUNT])).rows;
 
     if (rows.length !== ids.length) throw new CollectError("Kvittun fannst ekki (eða er ekki kassasala)", 404);
     for (const r of rows) {
