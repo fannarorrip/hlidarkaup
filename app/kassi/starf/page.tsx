@@ -8,6 +8,7 @@ import { kbHealth, kbScanEvents, kbPrint, kbDrawer, kbWeigh, formatReceipt, vatC
 interface Line { uid: string; id: string; name: string; price: number; vatPct?: number; quantity: number; priceOverride?: number; discount?: number; }
 interface Customer { id: string; name: string; kennitala: string | null; is_account: boolean; discount_pct?: number; }
 interface RecentSale { id: string; invoiceNumber: string; time: string; total: number; mode: string; buyer?: { name?: string | null; kennitala?: string | null }; lines: { name: string; quantity: number; price: number; vatPct: number; discount: number }[]; }
+interface UnpaidSimgr { id: string; invoiceNumber: string; date: string; description: string | null; total: number; }
 interface SItem { id: string; name: string; price: number; vatPct?: number; image?: string; useScale?: boolean; embeddedPrice?: number; embeddedKg?: number | null; embeddedWeightKg?: number; }
 interface Category { group: string; name: string; count: number; }
 type Mode = "card" | "cash" | "account" | "transfer";
@@ -43,6 +44,11 @@ export default function StaffTill() {
   const [recentOpen, setRecentOpen] = useState(false);
   const [recent, setRecent] = useState<RecentSale[]>([]);
   const [recentBusy, setRecentBusy] = useState(false);
+  // Ógreiddar símgreiðslur: old phone orders posted to 7830 with no card charged — collect now via MOTO.
+  const [simgrOpen, setSimgrOpen] = useState(false);
+  const [simgrList, setSimgrList] = useState<UnpaidSimgr[]>([]);
+  const [simgrSel, setSimgrSel] = useState<Set<string>>(new Set());
+  const [simgrBusy, setSimgrBusy] = useState(false);
   // Skýring á reikningssölu (valfrjáls): "vegna vinnu við X" — prentast á nótuna og fylgir sölunni.
   const [noteOpen, setNoteOpen] = useState(false);
   const [saleNote, setSaleNote] = useState("");
@@ -214,7 +220,7 @@ export default function StaffTill() {
   // Hard overlays that block a stray scan (mid-payment / modal). NOTE: `done` is deliberately
   // NOT here — scanning on the "Sala skráð" screen should auto-start the next sale (see addByCode).
   const overlayRef = useRef(false);
-  useEffect(() => { overlayRef.current = !!(cashFor || edit || custOpen || waiting || ktOpen || recentOpen || splitOpen || locked || noteOpen); });
+  useEffect(() => { overlayRef.current = !!(cashFor || edit || custOpen || waiting || ktOpen || recentOpen || splitOpen || locked || noteOpen || simgrOpen); });
   const doneRef = useRef(false);
   useEffect(() => { doneRef.current = !!done; });
   useEffect(() => {
@@ -305,6 +311,34 @@ export default function StaffTill() {
     const text = formatReceipt({ invoiceNumber: s.invoiceNumber, total: s.total, mode: s.mode, lines: s.lines, buyer: s.buyer, reprint: true });
     if (bridgeRef.current) kbPrint(text);
     else fetch("/api/kassi/print", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reg: regRef.current, text }) }).catch(() => {});
+  }
+
+  // Ógreiddar símgreiðslur: list old phone orders still owed (booked to 7830, no card charged).
+  async function openSimgr() {
+    setSimgrOpen(true); setSimgrBusy(true); setSimgrSel(new Set()); setError("");
+    try { const r = await fetch("/api/kassi/simgreidsla/unpaid"); const d = await r.json(); setSimgrList(d.items ?? []); }
+    catch { setSimgrList([]); }
+    setSimgrBusy(false);
+  }
+  const simgrSelTotal = simgrList.filter((s) => simgrSel.has(s.id)).reduce((a, s) => a + s.total, 0);
+  // Charge the selected orders' total on the posi (MOTO) FIRST; only if it approves post the
+  // Dr 7716 / Cr 7830 reconciliation. A charge with no booking (or vice-versa) must never happen silently.
+  async function collectSimgr() {
+    const sel = simgrList.filter((s) => simgrSel.has(s.id));
+    if (!sel.length) return;
+    if (!terminalEnabled) { setError("Posi ekki tengdur — símgreiðsla fer í gegnum posann."); return; }
+    const total = sel.reduce((a, s) => a + s.total, 0);
+    setSimgrOpen(false);
+    const ok = await chargeCard(total, { moto: true });
+    if (!ok) { setSimgrOpen(true); return; }               // decline/abort — nothing booked, let them retry
+    setSimgrBusy(true);
+    try {
+      const r = await fetch("/api/kassi/simgreidsla/collect", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ voucherIds: sel.map((s) => s.id), reg: regRef.current }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { setError(`Kortið var RUKKAÐ en bókun mistókst: ${d.error ?? "villa"} — leiðréttu handvirkt.`); setSimgrOpen(true); }
+      else { setToast(`Innheimt: ${d.count} símgr. · ${kr(d.total)} · ${d.journalNumber}`); setTimeout(() => setToast(""), 6000); await openSimgr(); }
+    } catch { setError("Kortið var RUKKAÐ en bókun mistókst (nettengsl?) — leiðréttu handvirkt."); setSimgrOpen(true); }
+    setSimgrBusy(false);
   }
 
   async function checkout(mode: Mode, change?: number, tenders?: { mode: Mode; amount: number }[], noteOverride?: string) {
@@ -482,6 +516,7 @@ export default function StaffTill() {
         <div className="flex items-center gap-2">
           <span className="tabular-nums text-base text-[#E4F1F0] mr-1">{clock}</span>
           <button onClick={openRecent} className="px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-sm transition">Fyrri sölur</button>
+          <button onClick={openSimgr} className="px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-sm transition">Ógreiddar símgr.</button>
           <button onClick={openDrawer} className="px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-sm transition">Opna skúffu</button>
           {/* Locked kiosk (auto-login afgreidsla) hides back-office links: uppgjör/staff are manager tasks. */}
           {!kiosk && <a href="/bokhald/solukerfi/kassauppgjor" className="px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-sm transition">Uppgjör</a>}
@@ -705,6 +740,37 @@ export default function StaffTill() {
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {simgrOpen && (
+        <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={() => setSimgrOpen(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-1"><h2 className="font-bold text-lg">Ógreiddar símgreiðslur</h2><button onClick={() => setSimgrOpen(false)} className="text-gray-400 text-3xl leading-none w-10 h-10" aria-label="Loka">×</button></div>
+            <p className="text-sm text-gray-500 mb-3">Merktu þær sem á að rukka (fleiri saman = ein greiðsla). Kortið er rukkað á posanum og fært á kortareikning — engin ný sala.</p>
+            {simgrBusy ? <p className="text-gray-400 py-8 text-center">Sæki…</p> : simgrList.length === 0 ? <p className="text-gray-400 py-8 text-center">Engar ógreiddar símgreiðslur 🎉</p> : (
+              <>
+                <div className="overflow-y-auto -mx-2 px-2 divide-y divide-gray-100 flex-1">
+                  {simgrList.map((s) => {
+                    const on = simgrSel.has(s.id);
+                    return (
+                      <button key={s.id} onClick={() => setSimgrSel((p) => { const n = new Set(p); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n; })} className="w-full flex items-center gap-3 py-2.5 text-left">
+                        <span className={`w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 text-sm ${on ? "bg-[#21323A] border-[#21323A] text-white" : "border-gray-300"}`}>{on ? "✓" : ""}</span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block font-mono text-sm text-[#21323A]">{s.invoiceNumber} · <span className="tabular-nums font-semibold">{kr(s.total)}</span></span>
+                          <span className="block text-xs text-gray-400 truncate">{new Date(s.date).toLocaleDateString("is-IS")}{s.description ? ` · ${s.description}` : ""}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="border-t border-gray-200 pt-3 mt-2">
+                  <div className="flex justify-between items-center mb-2"><span className="text-sm text-gray-500">Valið: {simgrSel.size}</span><span className="text-xl font-bold tabular-nums">{kr(simgrSelTotal)}</span></div>
+                  <button onClick={collectSimgr} disabled={busy || simgrSel.size === 0} className={`w-full py-3 rounded-xl ${RED} text-white font-bold disabled:opacity-40`}>Rukka valið á posa</button>
+                </div>
+              </>
             )}
           </div>
         </div>

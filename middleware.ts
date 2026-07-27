@@ -42,6 +42,7 @@ const RULES: { prefix: string; roles: string[] }[] = [
   { prefix: "/api/assistant", roles: ["stjornandi", "bokari", "afgreidsla", "eldhus"] },
   { prefix: "/kassi/starf", roles: ["stjornandi", "afgreidsla"] },
   { prefix: "/api/kassi/sale", roles: ["stjornandi", "afgreidsla"] },
+  { prefix: "/api/kassi/simgreidsla", roles: ["stjornandi", "afgreidsla"] },
   { prefix: "/api/customers", roles: ["stjornandi", "bokari", "afgreidsla"] },
   { prefix: "/eldhus/admin", roles: ["stjornandi", "eldhus"] },
   { prefix: "/api/eldhus/admin", roles: ["stjornandi", "eldhus"] },
