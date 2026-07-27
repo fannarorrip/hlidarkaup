@@ -76,6 +76,7 @@ export async function runEmailPoll(): Promise<PollSummary> {
     };
     watermark = Math.max(watermark, new Date(m.receivedDateTime).getTime());
 
+    let att: { name: string; mime: string; size: number; bytes: Buffer } | null = null;
     try {
       const attachments = (await getMessageAttachments(m.id)).filter(isCandidate);
       if (!attachments.length) { await insertRow({ ...meta, status: "skipped", extracted: null, error: "Engin nothæf viðhengi" }); out.skipped++; continue; }
@@ -88,7 +89,7 @@ export async function runEmailPoll(): Promise<PollSummary> {
         /pdf/i.test(a.contentType || "") || /\.pdf$/i.test(a.name || "") ? 0 :
         /sheet|excel|csv/i.test(a.contentType || "") || /\.(xlsx?|csv)$/i.test(a.name || "") ? 1 : 2;
       const first = attachments.slice().sort((a, b) => docRank(a) - docRank(b) || b.size - a.size)[0];
-      const att = { name: first.name, mime: first.contentType || "application/octet-stream", size: first.size, bytes: Buffer.from(first.contentBytes, "base64") };
+      att = { name: first.name, mime: first.contentType || "application/octet-stream", size: first.size, bytes: Buffer.from(first.contentBytes, "base64") };
       const data = await extractInvoice({
         classify: true,
         instructions: `Tölvupóstur — efni: "${m.subject ?? ""}", frá: ${meta.from_name ?? meta.from_address ?? "óþekkt"}.`,
@@ -105,7 +106,9 @@ export async function runEmailPoll(): Promise<PollSummary> {
       await insertRow({ ...meta, status: "pending", extracted: data, error: null, attachment: att });
       out.pending++;
     } catch (e) {
-      await insertRow({ ...meta, status: "error", extracted: null, error: e instanceof Error ? e.message.slice(0, 500) : String(e) });
+      // Store the attachment too (when we got that far) — the frumrit must survive an extraction
+      // failure so the invoice can be re-read/booked manually instead of being lost from the inbox.
+      await insertRow({ ...meta, status: "error", extracted: null, error: e instanceof Error ? e.message.slice(0, 500) : String(e), ...(att ? { attachment: att } : {}) });
       out.errors++;
     }
   }

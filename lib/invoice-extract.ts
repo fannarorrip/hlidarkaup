@@ -29,6 +29,34 @@ export function hasAnthropicKey(): boolean {
 
 const stripDataUrl = (d: string) => String(d).replace(/^data:.*?base64,/, "");
 
+/** Parse the model's reply as JSON — strict first, then salvage the first balanced {...} block
+ *  (the model sometimes wraps the JSON in prose despite "skilaðu AÐEINS JSON"). When no JSON exists
+ *  at all, throw the model's actual words (e.g. "Skjalið er ekki reikningur …") so the pósthólf
+ *  error column shows a real reason instead of "Unexpected token". Truncated output (max_tokens)
+ *  gets its own message — that's a size problem, not a content problem. */
+function parseModelJson(msg: Anthropic.Message): Record<string, unknown> {
+  const raw = (msg.content.find((c) => c.type === "text") as { text: string } | undefined)?.text ?? "";
+  const cleaned = raw.replace(/```json|```/g, "").trim();
+  if (msg.stop_reason === "max_tokens")
+    throw new Error("Úrlestur: svar módelsins skarst í sundur (of langt) — skjalið er líklega of stórt eða línumargt.");
+  try { return JSON.parse(cleaned); } catch { /* salvage below */ }
+  const start = cleaned.indexOf("{");
+  if (start >= 0) {
+    let depth = 0, inStr = false, esc = false;
+    for (let i = start; i < cleaned.length; i++) {
+      const ch = cleaned[i];
+      if (esc) { esc = false; continue; }
+      if (inStr) { if (ch === "\\") esc = true; else if (ch === '"') inStr = false; continue; }
+      if (ch === '"') inStr = true;
+      else if (ch === "{") depth++;
+      else if (ch === "}" && --depth === 0) {
+        try { return JSON.parse(cleaned.slice(start, i + 1)); } catch { break; }
+      }
+    }
+  }
+  throw new Error(`Úrlestur mistókst — svar módelsins: „${cleaned.slice(0, 180)}${cleaned.length > 180 ? "…" : ""}“`);
+}
+
 /** Build Anthropic content blocks from the supplied documents. */
 function toContentBlocks(files: ExtractFile[]): Record<string, unknown>[] {
   const content: Record<string, unknown>[] = [];
@@ -96,14 +124,13 @@ export async function extractInvoice(opts: { instructions?: string; files: Extra
   const model = process.env.SKRANING_MODEL || "claude-haiku-4-5-20251001";
   const msg = await client.messages.create({
     model,
-    max_tokens: 4096,
+    max_tokens: 8192, // línumargir reikningar skila löngu JSON — 4096 skar þá í sundur
     system:
       "Þú ert íslenskur bókari sem bókar fylgiskjöl í tvíhliða bókhald. Bókhaldslyklaskrá fyrirtækisins (lykilnúmer og heiti):\n" +
       chart + "\n\nNotaðu EINGÖNGU lykilnúmer úr þessari skrá.",
     messages: [{ role: "user", content: content as unknown as Anthropic.MessageParam["content"] }],
   });
-  const block = msg.content.find((c) => c.type === "text") as { text: string } | undefined;
-  const data = JSON.parse((block?.text || "").replace(/```json|```/g, "").trim());
+  const data = parseModelJson(msg);
 
   return {
     supplier: String(data.supplier ?? ""),
@@ -137,12 +164,11 @@ export async function extractReceiptLines(opts: { files: ExtractFile[] }): Promi
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const model = process.env.SKRANING_MODEL || "claude-haiku-4-5-20251001";
   const msg = await client.messages.create({
-    model, max_tokens: 4096,
+    model, max_tokens: 8192, // vörulínulisti getur orðið langur
     system: "Þú lest innkaupareikninga og skilar vörulínum nákvæmlega sem JSON.",
     messages: [{ role: "user", content: content as unknown as Anthropic.MessageParam["content"] }],
   });
-  const block = msg.content.find((c) => c.type === "text") as { text: string } | undefined;
-  const d = JSON.parse((block?.text || "").replace(/```json|```/g, "").trim());
+  const d = parseModelJson(msg);
   return {
     format: "pdf",
     isCredit: false,
@@ -181,12 +207,11 @@ export async function extractStatement(opts: { files: ExtractFile[] }): Promise<
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const model = process.env.SKRANING_MODEL || "claude-haiku-4-5-20251001";
   const msg = await client.messages.create({
-    model, max_tokens: 4096,
+    model, max_tokens: 8192, // afstemmingalisti getur talið hundruð reikninga
     system: "Þú lest afstemmingalista frá birgjum og skilar reikningalínum nákvæmlega sem JSON.",
     messages: [{ role: "user", content: content as unknown as Anthropic.MessageParam["content"] }],
   });
-  const block = msg.content.find((c) => c.type === "text") as { text: string } | undefined;
-  const d = JSON.parse((block?.text || "").replace(/```json|```/g, "").trim());
+  const d = parseModelJson(msg);
   return {
     supplier: String(d.supplier ?? ""),
     supplierKennitala: String(d.supplierKennitala ?? "").replace(/\D/g, ""),
