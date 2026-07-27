@@ -146,7 +146,7 @@ export function formatReceipt(o: {
   const vatTotals = new Map<number, { gross: number; vat: number }>();
   for (const l of o.lines) {
     const rate = l.vatPct ?? 24;
-    const discount = Math.min(l.discount ?? 0, l.price * l.quantity); // never exceed line gross (matches page + server)
+    const discount = Math.min(l.discount ?? 0, Math.max(0, l.price * l.quantity)); // never exceed line gross; minus-lines (skilagjald) take no discount
     const lineTotal = l.price * l.quantity - discount;
     const cls = vatTotals.get(rate) ?? { gross: 0, vat: 0 };
     cls.gross += lineTotal;

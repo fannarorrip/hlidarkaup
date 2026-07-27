@@ -96,8 +96,11 @@ export async function postSale(items: SaleItem[], opts: PostSaleOpts): Promise<{
     }
 
     // Effective unit price (catalog or VERÐ override) and discounted line gross (AFSL).
+    // Negative-price products (skilagjald, e.g. Sódastream hylki skilað) keep their negative
+    // gross — discounts never apply to them.
     const lineGrossOf = (it: SaleItem, p: ProductRow) => {
       const unit = it.unitPrice != null ? Number(it.unitPrice) : Number(p.price_gross);
+      if (unit < 0) return { unit, gross: Math.round(unit * it.quantity) };
       return { unit, gross: Math.max(0, Math.round(unit * it.quantity - (Number(it.discount) || 0))) };
     };
 
@@ -110,16 +113,26 @@ export async function postSale(items: SaleItem[], opts: PostSaleOpts): Promise<{
       grossByRate.set(Number(ex.vat_rate), (grossByRate.get(Number(ex.vat_rate)) ?? 0) + Math.round(ex.gross));
     }
 
+    // A rate bucket can net NEGATIVE (skilagjald exceeds sales at that rate) — the ledger line
+    // then flips to the opposite side, since post_voucher requires non-negative debit XOR credit.
+    // Normal sale: + → credit, − → debit. Return: mirrored.
+    const saleSideSigned = (amt: number) => {
+      const a = Math.abs(amt);
+      const credit = (amt >= 0) !== isReturn;
+      return credit ? { debit: 0, credit: a } : { debit: a, credit: 0 };
+    };
+
     const creditLines: { account: string; debit: number; credit: number; vat_code: string; description: string }[] = [];
     let totalGross = 0;
     for (const [rate, gross] of grossByRate) {
       const cfg = rateConfig(rate);
       const vat = cfg.vat ? Math.round((gross * rate) / (100 + rate)) : 0;
       const net = gross - vat;
-      creditLines.push({ account: cfg.sales, ...saleSide(net), vat_code: cfg.code, description: `Sala ${rate}%` });
-      if (cfg.vat && vat > 0) creditLines.push({ account: cfg.vat, ...saleSide(vat), vat_code: cfg.code, description: `Útskattur ${rate}%` });
+      if (net !== 0) creditLines.push({ account: cfg.sales, ...saleSideSigned(net), vat_code: cfg.code, description: `Sala ${rate}%` });
+      if (cfg.vat && vat !== 0) creditLines.push({ account: cfg.vat, ...saleSideSigned(vat), vat_code: cfg.code, description: `Útskattur ${rate}%` });
       totalGross += gross;
     }
+    if (totalGross <= 0) throw new SaleError("Samtala sölu verður að vera yfir 0 kr. — notaðu Skil fyrir hreinar endurgreiðslur.", 400);
 
     const acctFor = (m: PayMode) => m === "cash" ? CASH_ACCOUNT : m === "account" ? debitAccount : CARD_ACCOUNT; // transfer=símgreiðsla→card
     const descFor = (m: PayMode) => m === "account" ? "Á reikning" : m === "cash" ? "Reiðufé" : m === "transfer" ? "Símgreiðsla (MOTO)" : "Kortagreiðsla";

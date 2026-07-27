@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const rows = await query<ProductRow>(
     `select product_number, name, price_gross, vat_rate, stock_quantity, is_stock_controlled, image_url, use_scale, allow_discount
        from shop.products p
-      where is_active and price_gross > 0
+      where is_active and price_gross <> 0
         and ( name ilike '%' || $1 || '%'
               or product_number ilike $1 || '%'
               or exists (select 1 from shop.product_barcodes b

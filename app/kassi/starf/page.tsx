@@ -16,7 +16,8 @@ type Mode = "card" | "cash" | "account" | "transfer";
 // Always use a dot as the thousands separator (don't rely on the browser locale).
 const kr = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " kr.";
 const effUnit = (l: Line) => l.priceOverride ?? l.price;                              // VERÐ override
-const lineTotal = (l: Line) => Math.max(0, effUnit(l) * l.quantity - (l.discount ?? 0)); // AFSL applied
+// Negative-unit lines (skilagjald) keep their negative total and never take discounts.
+const lineTotal = (l: Line) => effUnit(l) < 0 ? effUnit(l) * l.quantity : Math.max(0, effUnit(l) * l.quantity - (l.discount ?? 0)); // AFSL applied
 
 // Brand palette — deep/ink/teal neutrals, red ONLY for the primary action.
 const RED = "bg-[#DB1A1A] hover:bg-[#c01414]";
@@ -81,9 +82,10 @@ export default function StaffTill() {
   const custPct = customer?.discount_pct ?? 0;
   // Verðlagsvörur (mjólkurvörur o.fl.) mega ekki fá viðskiptamanna-afslátt — vörur með allowDiscount=false
   // sleppa custPct (handvirkur línu-afsláttur helst þó, sé hann sleginn inn sérstaklega).
-  const custPctFor = (l: Line) => (custPct > 0 && l.allowDiscount !== false) ? custPct : 0;
-  const lineDisc = (l: Line) => Math.min(effUnit(l) * l.quantity, (l.discount ?? 0) + (custPctFor(l) > 0 ? Math.round((effUnit(l) * l.quantity - (l.discount ?? 0)) * custPctFor(l) / 100) : 0));
-  const lineTot = (l: Line) => Math.max(0, effUnit(l) * l.quantity - lineDisc(l));
+  // Mínuslínur (skilagjald) fá aldrei afslátt og halda neikvæðri samtölu.
+  const custPctFor = (l: Line) => (custPct > 0 && l.allowDiscount !== false && effUnit(l) >= 0) ? custPct : 0;
+  const lineDisc = (l: Line) => effUnit(l) < 0 ? 0 : Math.min(effUnit(l) * l.quantity, (l.discount ?? 0) + (custPctFor(l) > 0 ? Math.round((effUnit(l) * l.quantity - (l.discount ?? 0)) * custPctFor(l) / 100) : 0));
+  const lineTot = (l: Line) => effUnit(l) < 0 ? effUnit(l) * l.quantity : Math.max(0, effUnit(l) * l.quantity - lineDisc(l));
 
   const total = cart.reduce((s, l) => s + lineTot(l), 0);
   const vat = Math.round(cart.reduce((s, l) => { const r = l.vatPct ?? 24; return s + (lineTot(l) * r) / (100 + r); }, 0));
@@ -133,7 +135,9 @@ export default function StaffTill() {
     setError("");
     // Open-price items ("Ýmsar vörur", verð 0): each tap is its OWN line with its own price —
     // never merged into a quantity — and the price editor opens so staff types the price.
-    if (d.price <= 0) {
+    // NEGATIVE price (skilagjald, t.d. Sódastream hylki skilað) is a FIXED minus-line — falls
+    // through to the normal add below, merged by quantity like any product.
+    if (d.price === 0) {
       const line = { uid: `${d.id}~${++uidSeq.current}`, id: d.id, name: d.name, price: d.price, vatPct: d.vatPct, quantity: qty, allowDiscount: d.allowDiscount };
       setCart((p) => [...p, line]);
       openEdit(line, "unit"); // open-price: land straight on einingaverð so staff types the price
@@ -346,6 +350,7 @@ export default function StaffTill() {
 
   async function checkout(mode: Mode, change?: number, tenders?: { mode: Mode; amount: number }[], noteOverride?: string) {
     if (!cart.length) return;
+    if (total <= 0) { setError("Samtala verður að vera yfir 0 kr. — notaðu Skila vörum fyrir hreina endurgreiðslu."); return; }
     if (mode === "account" && (!customer || !customer.is_account)) { setError("Veldu reikningsviðskiptamann"); return; }
     setBusy(true); setError("");
     const snapshot = cart.map((l) => ({ ...l, discount: lineDisc(l) })); // bake customer discount into each line
