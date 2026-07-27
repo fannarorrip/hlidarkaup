@@ -552,7 +552,7 @@ export default function StaffTill() {
 
           <div className={`flex-1 overflow-y-auto p-3 ${kb === "search" ? "pb-[320px]" : ""}`}>
             {/* 5 columns only on the full 1920px till (100% scaling) — 4 at 125%-scaled 1536px */}
-            <div className="grid [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))] gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 min-[1500px]:grid-cols-4 min-[1800px]:grid-cols-5 gap-2">
               {gridItems.map((p) => (
                 <button key={p.id} onClick={() => addProduct(p)}
                   className="relative text-left rounded-xl overflow-hidden min-h-[88px] bg-white border border-gray-200 active:scale-[0.97] transition hover:border-[#8CC7C4] hover:shadow-sm">
@@ -568,7 +568,7 @@ export default function StaffTill() {
                     </>
                   ) : (
                     <div className="min-h-[88px] flex flex-col justify-between p-3">
-                      <p className="text-[13px] font-semibold leading-snug line-clamp-3 break-words hyphens-auto text-[#21323A]">{p.name}</p>
+                      <p className="text-[15px] font-semibold leading-snug line-clamp-3 text-[#21323A]">{p.name}</p>
                       <p className="text-lg font-bold text-[#2C687B]">{kr(p.price)}</p>
                     </div>
                   )}
@@ -585,7 +585,7 @@ export default function StaffTill() {
         </div>
 
         {/* SALE (right) */}
-        <div className="w-[21rem] shrink-0 flex flex-col bg-white border-l border-gray-200">
+        <div className="w-[42%] min-w-[21rem] max-w-[60rem] shrink-0 flex flex-col bg-white border-l border-gray-200">
           <button onClick={() => { setCustOpen(true); setCustQ(""); }} className="shrink-0 m-2.5 mb-0 flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-[#F0F7F6] hover:bg-[#E4F1F0] text-left transition">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-[#5C6B72]">Viðskiptamaður</p>
