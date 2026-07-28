@@ -734,9 +734,10 @@ export interface GoodsReceiptLineRow {
   id: string; line_no: number; supplier_item_id: string | null; gtin: string | null; description: string | null;
   invoiced_qty: string; unit_code: string | null; unit_price: string | null; line_net: string | null; vat_rate: string;
   matched_product_number: string | null; matched_name: string | null; received_qty: string | null;
+  matched_markup: string | null;
 }
 export const getReceiptLines = (receiptId: string) =>
-  query<GoodsReceiptLineRow>(`select l.*, p.name as matched_name
+  query<GoodsReceiptLineRow>(`select l.*, p.name as matched_name, p.markup::text as matched_markup
     from acc.goods_receipt_lines l left join shop.products p on p.product_number = l.matched_product_number
     where l.receipt_id = $1 order by l.line_no`, [receiptId]);
 

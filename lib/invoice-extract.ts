@@ -158,6 +158,9 @@ export async function extractReceiptLines(opts: { files: ExtractFile[] }): Promi
       "Lestu þennan innkaupareikning og skilaðu VÖRULÍNUM hans (ekki bókhaldslyklum). Skilaðu AÐEINS gildu JSON og engri skýringu:\n" +
       '{"supplier": string, "supplierKennitala": string, "invoiceNumber": string, "date": "YYYY-MM-DD", "currency": string, "lines": [{"description": string, "supplierItemId": string, "gtin": string, "qty": number, "unitCode": string, "unitPrice": number, "lineNet": number, "vatRate": 24|11|0}], "totalNet": number, "totalVat": number, "totalGross": number}\n' +
       '- EIN lína fyrir hverja vöru á reikningnum: heiti vöru, vörunúmer seljanda, strikamerki (GTIN/EAN) ef sýnilegt, MAGN (fjöldi eininga), einingaverð án vsk, línuupphæð án vsk, vsk-þrep (24/11/0).\n' +
+      '- AFSLÁTTUR: "lineNet" = RAUNVERULEG upphæð línunnar EFTIR afslátt (dálkurinn "Upphæð"), EKKI magn × prentað einingaverð — prentað einingaverð er oft listaverð án afsláttar. Ef afsláttur birtist AÐEINS í samtölum (ekki á línum), dreifðu honum hlutfallslega á lineNet allra lína.\n' +
+      '- VSK: ef verð reikningsins eru MEÐ vsk (t.d. "Samtals m/vsk" á línum), umreiknaðu lineNet og unitPrice í ÁN vsk (deila með 1+þrep/100). Sannreyndu: summa lineNet ≈ totalNet.\n' +
+      '- "unitPrice" = lineNet ÷ qty (raunverð á einingu eftir afslátt), án vsk.\n' +
       '- "supplier" = nafn SELJANDA; "supplierKennitala" = kennitala seljanda (10 tölustafir, án bandstriks).\n' +
       ICELANDIC_NUMBER_RULE,
   });

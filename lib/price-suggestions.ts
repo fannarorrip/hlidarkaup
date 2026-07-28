@@ -63,15 +63,22 @@ export async function recordCostChanges(changes: CostChange[], meta: { receiptId
     let queued = 0;
 
     for (const c of real) {
-      const p = (await query<{ name: string; price_gross: number | null; vat_rate: string | null }>(
-        `select name, price_gross, vat_rate::text from shop.products where product_number = $1`, [c.product_number]))[0];
+      const p = (await query<{ name: string; price_gross: number | null; vat_rate: string | null; markup: string | null }>(
+        `select name, price_gross, vat_rate::text, markup::text from shop.products where product_number = $1`, [c.product_number]))[0];
       if (!p) continue;
       const price = Number(p.price_gross) || 0;
 
       let suggested = 0, method = "", multiplier: number | null = null;
 
+      // 0) álagning VÖRUNNAR — fixed per-product markup set in móttaka; strongest rule
+      const prodMarkup = p.markup ? Number(p.markup) : 0;
+      if (prodMarkup > 1) {
+        suggested = Math.round(c.new_cost * prodMarkup);
+        multiplier = prodMarkup;
+        method = `álagning vöru (×${prodMarkup.toLocaleString("is-IS")})`;
+      }
       // 1) álagning birgis — the supplier's contracted markup applies to everything they deliver
-      if (supMarkup > 1) {
+      if (!suggested && supMarkup > 1) {
         suggested = Math.round(c.new_cost * supMarkup);
         multiplier = supMarkup;
         method = `álagning birgis (×${supMarkup.toLocaleString("is-IS")})`;

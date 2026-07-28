@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 // When a line gets matched, the supplier-item → product mapping is learned for next time.
 export const runtime = "nodejs";
 
-interface LinePatch { id: string; matched_product_number?: string | null; received_qty?: number | null }
+interface LinePatch { id: string; matched_product_number?: string | null; received_qty?: number | null; markup?: number | null }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -29,6 +29,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
          where id = $1 and receipt_id = $6`,
         [l.id, l.matched_product_number !== undefined, l.matched_product_number ?? null,
          l.received_qty !== undefined, l.received_qty ?? null, id]);
+      // Álagning á VÖRUNA (festist): skráð í móttökunni, notuð sem sterkasta verðreglan framvegis.
+      // Empty/null clears it; values outside (1,10) are ignored (check constraint would reject).
+      if (l.markup !== undefined && l.matched_product_number) {
+        const m = l.markup == null ? null : Number(l.markup);
+        if (m == null || (m > 1 && m < 10)) {
+          await client.query(`update shop.products set markup = $1 where product_number = $2`, [m, l.matched_product_number]);
+        }
+      }
     }
 
     // Learn supplier-item → product mappings for matched lines that carry a key.

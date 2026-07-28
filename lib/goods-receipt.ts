@@ -39,7 +39,41 @@ export async function matchLine(client: Queryable, supplierId: string | null, li
 
 /** Create a draft goods_receipt + lines from a parsed invoice. `inexchangeUuid` (when
  *  the invoice came from inExchange) dedupes re-fetches: an existing receipt is returned. */
-export async function createReceiptFromParsed(parsed: ParsedInvoice, doc?: { name: string; mime: string; bytes: Buffer }, inexchangeUuid?: string, opts?: { bookInvoice?: boolean }): Promise<string> {
+/** Normalize parsed invoice lines so line_net is ALWAYS: eftir afslátt, án vsk.
+ *  Suppliers print this three ways — detected against the invoice's own totals (2% tolerance):
+ *   (a) lines already ex-VAT after discount (Σlínur ≈ totalNet)          → unchanged
+ *   (b) lines INCLUDE VAT (Σlínur ≈ totalGross)                          → divide each by (1+rate)
+ *   (c) invoice-level afsláttur only in totals (Σlínur > totalNet)       → scale lines proportionally
+ *  unitPrice follows the same correction so the editor shows real cost per unit. */
+export function normalizeParsedInvoice(parsed: ParsedInvoice): ParsedInvoice {
+  const lines = parsed.lines ?? [];
+  const sum = lines.reduce((a, l) => a + (Number(l.lineNet) || 0), 0);
+  const totalNet = Number(parsed.totalNet) || 0;
+  const totalGross = Number(parsed.totalGross) || 0;
+  const totalVat = Number(parsed.totalVat) || 0;
+  const close = (a: number, b: number) => b > 0 && Math.abs(a - b) / b <= 0.02;
+  if (sum <= 0 || close(sum, totalNet)) return parsed;                       // (a) or nothing to check
+
+  if (totalVat > 0 && close(sum, totalGross)) {                              // (b) lines carry VAT
+    return {
+      ...parsed,
+      lines: lines.map((l) => {
+        const f = 1 + (Number(l.vatRate) || 0) / 100;
+        return { ...l, lineNet: (Number(l.lineNet) || 0) / f, unitPrice: (Number(l.unitPrice) || 0) / f };
+      }),
+    };
+  }
+  if (totalNet > 0 && sum > totalNet) {                                      // (c) afsláttur only in totals
+    const f = totalNet / sum;
+    if (f >= 0.5 && f < 1) {
+      return { ...parsed, lines: lines.map((l) => ({ ...l, lineNet: (Number(l.lineNet) || 0) * f, unitPrice: (Number(l.unitPrice) || 0) * f })) };
+    }
+  }
+  return parsed;
+}
+
+export async function createReceiptFromParsed(parsedRaw: ParsedInvoice, doc?: { name: string; mime: string; bytes: Buffer }, inexchangeUuid?: string, opts?: { bookInvoice?: boolean }): Promise<string> {
+  const parsed = normalizeParsedInvoice(parsedRaw);
   if (inexchangeUuid) {
     const existing = (await db.query<{ id: string }>(`select id from acc.goods_receipts where inexchange_uuid = $1`, [inexchangeUuid])).rows[0];
     if (existing) return existing.id;
@@ -111,7 +145,14 @@ export async function confirmReceipt(receiptId: string): Promise<{ voucherId: st
     for (const l of lines) {
       const qty = l.received_qty == null ? 0 : Number(l.received_qty);
       if (!l.matched_product_number || qty === 0) continue;
-      const cost = l.unit_price == null ? null : Number(l.unit_price);
+      // Raunkostnaður á einingu = línuupphæð (eftir afslátt, án vsk) ÷ magn á reikningi.
+      // Prentaða einingaverðið er oft LISTAVERÐ án afsláttar (t.d. 506 kr þegar upphæðin
+      // segir 445,25/stk) — það má aldrei verða kostnaðargrunnur álagningar.
+      const invQty = Number(l.invoiced_qty) || 0;
+      const lineNet = l.line_net == null ? null : Number(l.line_net);
+      const cost = lineNet != null && lineNet > 0 && invQty > 0
+        ? Math.round((lineNet / invQty) * 100) / 100
+        : l.unit_price == null ? null : Number(l.unit_price);
       if (cost != null && cost > 0) {
         const prev = (await client.query<{ cost_price: string | null }>(
           `select cost_price::text from shop.products where product_number = $1`, [l.matched_product_number])).rows[0];

@@ -7,7 +7,7 @@ import { dags, kr } from "@/lib/format";
 import SupplierPicker from "../../../../SupplierPicker";
 import ProductPicker from "../../../../ProductPicker";
 
-interface LineState { id: string; matched: string | null; matchedName: string | null; received: string }
+interface LineState { id: string; matched: string | null; matchedName: string | null; received: string; markup: string }
 
 export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceiptRow & { has_doc?: boolean }; lines: GoodsReceiptLineRow[] }) {
   const router = useRouter();
@@ -19,6 +19,7 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
   const [rows, setRows] = useState<LineState[]>(lines.map((l) => ({
     id: l.id, matched: l.matched_product_number, matchedName: l.matched_name,
     received: l.received_qty != null ? qty(l.received_qty) : qty(l.invoiced_qty),
+    markup: l.matched_markup != null ? String(Number(l.matched_markup)).replace(".", ",") : "",
   })));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -30,7 +31,11 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
     setBusy(true); setErr(""); setOk("");
     const body = {
       supplier_id: supplierId ?? undefined,
-      lines: rows.map((r) => ({ id: r.id, matched_product_number: r.matched, received_qty: r.received === "" ? null : Number(r.received.replace(",", ".")) })),
+      lines: rows.map((r) => ({
+        id: r.id, matched_product_number: r.matched,
+        received_qty: r.received === "" ? null : Number(r.received.replace(",", ".")),
+        markup: r.markup.trim() === "" ? null : Number(r.markup.replace(",", ".")),
+      })),
     };
     const r = await fetch(`/api/innkaup/receipt/${receipt.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error ?? "Villa við vistun"); setBusy(false); return; }
@@ -79,6 +84,7 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
               <th className="px-3 py-2 font-semibold text-right w-24">Móttekið</th>
               <th className="px-3 py-2 font-semibold text-right w-24">Frávik</th>
               <th className="px-3 py-2 font-semibold text-right w-24">Ein.verð</th>
+              <th className="px-3 py-2 font-semibold text-right w-20" title="Föst álagning vörunnar — festist á vörunni og reiknar söluverð = kostnaður × álagning við hverja móttöku">Álagning</th>
             </tr>
           </thead>
           <tbody>
@@ -104,7 +110,17 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
                   <td className={`px-3 py-2 text-right font-medium ${variance == null || variance === 0 ? "text-gray-300" : variance < 0 ? "text-red-600" : "text-amber-600"}`}>
                     {variance == null || variance === 0 ? "—" : (variance > 0 ? `+${variance}` : variance)}
                   </td>
-                  <td className="px-3 py-2 text-right text-gray-500">{l.unit_price ? kr(l.unit_price) : "—"}</td>
+                  <td className="px-3 py-2 text-right text-gray-500" title="Raunverð á einingu = upphæð línu (eftir afslátt) ÷ magn — getur verið lægra en prentaða einingaverðið">
+                    {Number(l.line_net) > 0 && inv > 0 ? kr(Math.round((Number(l.line_net) / inv) * 100) / 100) : l.unit_price ? kr(l.unit_price) : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    {booked
+                      ? <span className="text-gray-500">{rows[i]?.markup || "—"}</span>
+                      : <input value={rows[i]?.markup ?? ""} placeholder="×"
+                          onChange={(e) => setRow(i, { markup: e.target.value.replace(/[^\d.,]/g, "") })}
+                          disabled={!rows[i]?.matched}
+                          className="w-16 border border-gray-300 rounded px-2 py-1 text-sm text-right outline-none focus:border-red-400 disabled:bg-gray-50 disabled:text-gray-300" />}
+                  </td>
                 </tr>
               );
             })}
