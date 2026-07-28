@@ -45,6 +45,17 @@ export async function kbPrint(text: string, opts?: { drawer?: boolean }): Promis
   }
 }
 
+/** Hrá prentun (t.d. EPL2 á Zebra-hillumiðaprentara) — bætin fara óbreytt á prentara brúarinnar. */
+export async function kbRawPrint(data: Uint8Array): Promise<boolean> {
+  try {
+    const r = await fetch(`${BASE}/rawprint`, { method: "POST", body: new Blob([data.buffer as ArrayBuffer]) });
+    const d = await r.json();
+    return !!d.ok;
+  } catch {
+    return false;
+  }
+}
+
 /** Kick the cash drawer via the printer. */
 export async function kbDrawer(): Promise<boolean> {
   try {

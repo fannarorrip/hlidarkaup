@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { ean13Svg } from "@/lib/ean13";
+import { kbHealth, kbRawPrint } from "@/lib/kassabru";
+import { labelsToEpl2 } from "@/lib/epl2";
 
 // Hillumiða-prentun á Zebra GK420d gegnum vafra + ZDesigner driver: hver miði = ein síða
 // í nákvæmri miðastærð (@page). Útlitið speglar gömlu miðana: heiti efst, Verð/KG + vörunúmer,
@@ -34,7 +36,24 @@ export default function LabelPrinter() {
   const [w, setW] = useState(57);   // mm — dæmigert Zebra-hillumiðarúllustærð
   const [h, setH] = useState(32);
   const [busy, setBusy] = useState(false);
+  const [bridge, setBridge] = useState(false);   // kassabrú á þessari vél → beinprentun á Zebra
+  const [zBusy, setZBusy] = useState(false);
+  const [zMsg, setZMsg] = useState("");
   const styleRef = useRef<HTMLStyleElement | null>(null);
+
+  useEffect(() => { kbHealth().then(setBridge).catch(() => setBridge(false)); }, []);
+
+  async function printZebra() {
+    setZBusy(true); setZMsg("");
+    const data = labelsToEpl2(rows.map((r) => ({
+      name: r.name, priceLine: priceLine(r), bigPrice: kr0(r.price_gross),
+      productNo: r.product_number, barcode: r.barcode, copies: r.copies,
+    })), w, h);
+    const ok = await kbRawPrint(data);
+    setZBusy(false);
+    setZMsg(ok ? `✓ ${rows.reduce((a, r) => a + r.copies, 0)} miðar sendir á Zebra` : "Náði ekki sambandi við brúna — er kassabrúin í gangi á þessari vél?");
+    if (ok) setTimeout(() => setZMsg(""), 5000);
+  }
 
   useEffect(() => {
     try {
@@ -115,10 +134,18 @@ export default function LabelPrinter() {
           <input type="number" value={w} onChange={(e) => setW(Number(e.target.value) || 57)} className={`${inp} w-20`} /></div>
         <div><label className="block text-xs text-gray-500 mb-1">Hæð (mm)</label>
           <input type="number" value={h} onChange={(e) => setH(Number(e.target.value) || 32)} className={`${inp} w-20`} /></div>
+        {bridge && (
+          <button onClick={printZebra} disabled={rows.length === 0 || zBusy}
+            className="px-5 py-2 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-40"
+            title="Beint á Zebra-prentarann gegnum brúna — enginn prentgluggi">
+            {zBusy ? "Prenta…" : `🖨 Prenta ${rows.reduce((a, r) => a + r.copies, 0) || ""} miða á Zebra`}
+          </button>
+        )}
         <button onClick={() => window.print()} disabled={rows.length === 0}
-          className="px-5 py-2 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-40">
-          🖨 Prenta {rows.reduce((a, r) => a + r.copies, 0) || ""} miða
+          className={`px-5 py-2 rounded-lg text-sm font-bold disabled:opacity-40 ${bridge ? "border border-gray-300 text-gray-600 hover:bg-gray-50" : "bg-red-600 text-white hover:bg-red-700"}`}>
+          🖨 {bridge ? "Prentgluggi…" : `Prenta ${rows.reduce((a, r) => a + r.copies, 0) || ""} miða`}
         </button>
+        {zMsg && <span className={`text-sm ${zMsg.startsWith("✓") ? "text-green-700" : "text-red-600"}`}>{zMsg}</span>}
         {rows.length > 0 && <button onClick={() => setRows([])} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-500">Hreinsa</button>}
       </div>
 

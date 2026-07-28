@@ -185,6 +185,7 @@ namespace Kassabru
                 if (path == "/health" && req.HttpMethod == "GET") { HandleHealth(resp); return; }
                 if (path == "/events" && req.HttpMethod == "GET") { HandleEvents(resp); return; }
                 if (path == "/print" && req.HttpMethod == "POST") { HandlePrint(req, resp); return; }
+                if (path == "/rawprint" && req.HttpMethod == "POST") { HandleRawPrint(req, resp); return; }
                 if (path == "/drawer" && req.HttpMethod == "POST") { HandleDrawer(resp); return; }
                 if (path == "/weigh" && req.HttpMethod == "POST") { HandleWeigh(resp); return; }
                 WriteJson(resp, 404, "{\"error\":\"not found\"}");
@@ -322,6 +323,22 @@ namespace Kassabru
                 Log("prentun: {0}", ex.Message);
                 WriteJson(resp, 500, "{\"ok\":false,\"error\":\"prentun mistókst\"}");
             }
+        }
+
+        /** Hrá prentun: body-bætin fara ÓBREYTT á prentarann (t.d. EPL2 á Zebra-hillumiðaprentara).
+         *  Engin ESC/POS-formun, enginn skurður — brúin er þá bara pípan. */
+        static void HandleRawPrint(HttpListenerRequest req, HttpListenerResponse resp)
+        {
+            byte[] data;
+            using (var ms = new MemoryStream())
+            {
+                req.InputStream.CopyTo(ms);
+                data = ms.ToArray();
+            }
+            if (data.Length == 0) { WriteJson(resp, 400, "{\"ok\":false,\"error\":\"tómt skeyti\"}"); return; }
+            if (!TryOpenPrinter()) { WriteJson(resp, 503, "{\"ok\":false,\"error\":\"prentari ekki tengdur\"}"); return; }
+            if (!WritePrinterData(data)) { WriteJson(resp, 500, "{\"ok\":false,\"error\":\"prentun mistókst\"}"); return; }
+            WriteJson(resp, 200, "{\"ok\":true}");
         }
 
         static void HandleDrawer(HttpListenerResponse resp)
