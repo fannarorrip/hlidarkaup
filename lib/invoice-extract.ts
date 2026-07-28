@@ -34,12 +34,14 @@ const stripDataUrl = (d: string) => String(d).replace(/^data:.*?base64,/, "");
  *  svarið samt (stop_reason max_tokens) er reynt EINU SINNI með stærra modeli sem ræður við
  *  hátt út-tak (SKRANING_MODEL_LARGE, sjálfgefið claude-opus-4-8). */
 async function createWithBudget(client: Anthropic, params: Omit<Anthropic.MessageCreateParamsNonStreaming, "max_tokens">, maxTokens: number): Promise<Anthropic.Message> {
+  // Streymi (ekki create): SDK-ið KREFST streymis þegar max_tokens er svo hátt að kallið gæti
+  // tekið >10 mín — finalMessage() safnar öllu svarinu saman í venjulegt Message.
   const attempt = async (p: typeof params, mt: number): Promise<Anthropic.Message> => {
     try {
-      return await client.messages.create({ ...p, max_tokens: mt });
+      return await client.messages.stream({ ...p, max_tokens: mt }).finalMessage();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
-      if (mt > 8192 && /max_tokens/i.test(msg)) return await client.messages.create({ ...p, max_tokens: 8192 });
+      if (mt > 8192 && /max_tokens/i.test(msg)) return await client.messages.stream({ ...p, max_tokens: 8192 }).finalMessage();
       throw e;
     }
   };
