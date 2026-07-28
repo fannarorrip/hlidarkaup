@@ -47,12 +47,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // Pakkastærðin lærist með: næsti reikningur frá birginum fyllir hana sjálfkrafa á línuna.
     const sid = (await client.query<{ supplier_id: string | null }>(`select supplier_id from acc.goods_receipts where id = $1`, [id])).rows[0]?.supplier_id;
     if (sid) {
+      // DISTINCT ON: sama varan getur verið á FLEIRI en einni línu reiknings (Innnes o.fl.) —
+      // án dedup springur upsertið á "ON CONFLICT DO UPDATE cannot affect row a second time".
+      // Síðasta línan (hæsta line_no) vinnur.
       await client.query(
         `insert into acc.supplier_items (supplier_id, match_key, product_number, pack_qty)
-         select $1, coalesce(nullif(l.gtin,''), l.supplier_item_id), l.matched_product_number, l.pack_qty
-         from acc.goods_receipt_lines l
-         where l.receipt_id = $2 and l.matched_product_number is not null
-           and coalesce(nullif(l.gtin,''), l.supplier_item_id) is not null
+         select distinct on (key) $1, key, matched_product_number, pack_qty
+         from (
+           select coalesce(nullif(l.gtin,''), l.supplier_item_id) as key,
+                  l.matched_product_number, l.pack_qty, l.line_no
+           from acc.goods_receipt_lines l
+           where l.receipt_id = $2 and l.matched_product_number is not null
+             and coalesce(nullif(l.gtin,''), l.supplier_item_id) is not null
+         ) x
+         order by key, line_no desc
          on conflict (supplier_id, match_key) do update
            set product_number = excluded.product_number,
                pack_qty = coalesce(excluded.pack_qty, acc.supplier_items.pack_qty)`,
