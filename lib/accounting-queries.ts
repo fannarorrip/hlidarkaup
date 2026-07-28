@@ -685,6 +685,7 @@ export interface SupplierRow {
   id: string; supplier_number: string | null; kennitala: string | null; name: string;
   address: string | null; postal_code: string | null; city: string | null; phone: string | null; email: string | null;
   payment_terms_days: number; ap_account: string | null; is_generic: boolean; is_active: boolean; balance: number;
+  default_markup: string | null; auto_apply_prices: boolean;
 }
 // Per-supplier payable balance = Σ(credit − debit) on the supplier's payable account
 // for vouchers tagged with this supplier (credit-normal liability = what we owe).

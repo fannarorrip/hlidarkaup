@@ -5,7 +5,7 @@ import { searchSuppliers } from "@/lib/accounting-queries";
 // Birgjar (suppliers) register. Gated by middleware (/api/suppliers → stjornandi/bokari).
 export const runtime = "nodejs";
 
-const FIELDS = ["supplier_number", "kennitala", "name", "address", "postal_code", "city", "phone", "email", "payment_terms_days", "ap_account", "is_active"];
+const FIELDS = ["supplier_number", "kennitala", "name", "address", "postal_code", "city", "phone", "email", "payment_terms_days", "ap_account", "is_active", "default_markup", "auto_apply_prices"];
 
 export async function GET(req: NextRequest) {
   const q = (new URL(req.url).searchParams.get("q") ?? "").trim();

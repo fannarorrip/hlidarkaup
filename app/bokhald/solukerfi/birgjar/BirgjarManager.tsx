@@ -8,6 +8,7 @@ type Draft = Record<string, string | boolean>;
 const NEW: Draft = {
   name: "", kennitala: "", supplier_number: "", address: "", postal_code: "", city: "",
   phone: "", email: "", payment_terms_days: "0", ap_account: "9300", is_active: true,
+  default_markup: "", auto_apply_prices: false,
 };
 function toDraft(s: SupplierRow): Draft {
   const d: Draft = { ...NEW };
@@ -34,7 +35,9 @@ export default function BirgjarManager({ suppliers }: { suppliers: SupplierRow[]
     if (!editing) return;
     setBusy(true); setErr("");
     const url = editing.id ? `/api/suppliers/${editing.id}` : "/api/suppliers";
-    const r = await fetch(url, { method: editing.id ? "PATCH" : "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(editing.d) });
+    // Álagning: accept Icelandic comma ("1,20") — numeric column needs a dot.
+    const payload = { ...editing.d, default_markup: String(editing.d.default_markup ?? "").replace(",", ".").trim() };
+    const r = await fetch(url, { method: editing.id ? "PATCH" : "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
     const j = await r.json(); setBusy(false);
     if (!r.ok) { setErr(j.error ?? "Villa"); return; }
     setEditing(null); router.refresh();
@@ -94,6 +97,10 @@ export default function BirgjarManager({ suppliers }: { suppliers: SupplierRow[]
               {field("city", "Staður")}
               {field("payment_terms_days", "Greiðslufrestur (dagar)", "number")}
               {field("ap_account", "Lánadrottnalykill")}
+              {field("default_markup", "Álagning (t.d. 1,20 = +20%)")}
+              <label className="flex items-center gap-2 text-sm mt-5" title="Verð uppfærast sjálfkrafa við móttöku reiknings (annars tillaga til samþykktar)">
+                <input type="checkbox" checked={!!editing.d.auto_apply_prices} onChange={(e) => set("auto_apply_prices", e.target.checked)} /> Sjálfvirk verðuppfærsla
+              </label>
               <label className="flex items-center gap-2 text-sm mt-5"><input type="checkbox" checked={!!editing.d.is_active} onChange={(e) => set("is_active", e.target.checked)} /> Virkur</label>
             </div>
             {err && <p className="text-sm text-red-600 mt-3">{err}</p>}

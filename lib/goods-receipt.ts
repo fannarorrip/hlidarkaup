@@ -174,7 +174,7 @@ export async function confirmReceipt(receiptId: string): Promise<{ voucherId: st
     await client.query("commit");
     // Verðbreytingatillögur: react to changed costs AFTER the booking is safely committed
     // (best-effort — a suggestion failure must never affect the receipt).
-    await recordCostChanges(costChanges, { receiptId, supplierName: rec.supplier_name });
+    await recordCostChanges(costChanges, { receiptId, supplierId: rec.supplier_id, supplierName: rec.supplier_name });
     return { voucherId: v.id, voucherNumber: String(v.voucher_number) };
   } catch (e) {
     await client.query("rollback");

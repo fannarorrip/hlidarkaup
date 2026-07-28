@@ -1,9 +1,10 @@
 // Verðbreytingatillögur — the margin-protection loop:
 // móttaka confirms a receipt → unit cost differs from before → suggest a new retail price.
-// Method priority: (1) SAMA ÁLAGNING — preserve the product's own current multiplier
-// (price/old_cost), the most faithful to per-product reality; (2) REGLA — fuzzy-match the
-// supplier + product name against acc.pricing_rules (the old store's álagning table).
-// Suggestions are queued for HUMAN approval — prices never change silently.
+// Method priority: (1) ÁLAGNING BIRGIS — the supplier's contracted default_markup (t.d. Bananar
+// ×1,20 á allt); (2) SAMA ÁLAGNING — preserve the product's own current multiplier
+// (price/old_cost); (3) REGLA — fuzzy-match against acc.pricing_rules (old store's table).
+// Suggestions queue for HUMAN approval — except suppliers with auto_apply_prices, whose
+// changes apply IMMEDIATELY (recorded as 'applied' suggestions for a full audit trail).
 import { query } from "@/lib/db";
 
 export interface CostChange { product_number: string; old_cost: number | null; new_cost: number }
@@ -43,13 +44,22 @@ function applyRounding(price: number, rounding: string | null): number {
   return Math.round(p);
 }
 
-/** Compute + queue suggestions for cost changes from a confirmed receipt. Best-effort — never throws. */
-export async function recordCostChanges(changes: CostChange[], meta: { receiptId: string; supplierName: string | null }): Promise<number> {
+/** Compute + queue suggestions for cost changes from a confirmed receipt. Suppliers with
+ *  auto_apply_prices get their prices updated IMMEDIATELY (audit-trailed as 'applied').
+ *  Best-effort — never throws. */
+export async function recordCostChanges(changes: CostChange[], meta: { receiptId: string; supplierId?: string | null; supplierName: string | null }): Promise<number> {
   try {
     const real = changes.filter((c) => c.new_cost > 0 && (c.old_cost == null || Math.abs(c.new_cost - c.old_cost) / c.old_cost > 0.001));
     if (!real.length) return 0;
     const rules = await query<Rule>(
       `select id, category, multiplier_min::text, multiplier_max::text, rounding from acc.pricing_rules where is_active`);
+    // Supplier contract terms: fixed markup + optional auto-apply (t.d. Bananar ×1,20 sjálfkrafa).
+    const sup = meta.supplierId
+      ? (await query<{ default_markup: string | null; auto_apply_prices: boolean }>(
+          `select default_markup::text, auto_apply_prices from acc.suppliers where id = $1`, [meta.supplierId]))[0]
+      : undefined;
+    const supMarkup = sup?.default_markup ? Number(sup.default_markup) : 0;
+    const autoApply = !!sup?.auto_apply_prices;
     let queued = 0;
 
     for (const c of real) {
@@ -60,8 +70,14 @@ export async function recordCostChanges(changes: CostChange[], meta: { receiptId
 
       let suggested = 0, method = "", multiplier: number | null = null;
 
-      // 1) sama álagning — keep the product's own multiplier
-      if (c.old_cost && c.old_cost > 0 && price > 0) {
+      // 1) álagning birgis — the supplier's contracted markup applies to everything they deliver
+      if (supMarkup > 1) {
+        suggested = Math.round(c.new_cost * supMarkup);
+        multiplier = supMarkup;
+        method = `álagning birgis (×${supMarkup.toLocaleString("is-IS")})`;
+      }
+      // 2) sama álagning — keep the product's own multiplier
+      if (!suggested && c.old_cost && c.old_cost > 0 && price > 0) {
         const m = price / c.old_cost;
         if (m > 1.0 && m < 3.0) {
           suggested = Math.round(c.new_cost * m);
@@ -69,7 +85,7 @@ export async function recordCostChanges(changes: CostChange[], meta: { receiptId
           method = `sama álagning (×${multiplier.toLocaleString("is-IS")})`;
         }
       }
-      // 2) regla — the old store's álagning table
+      // 3) regla — the old store's álagning table
       if (!suggested) {
         const rule = matchRule(rules, meta.supplierName, p.name);
         if (rule) {
@@ -86,11 +102,27 @@ export async function recordCostChanges(changes: CostChange[], meta: { receiptId
       if (price > 0 && Math.abs(suggested - price) / price <= 0.01) continue;
 
       await query(`delete from acc.price_suggestions where product_number = $1 and status = 'pending'`, [c.product_number]);
-      await query(
-        `insert into acc.price_suggestions
-           (product_number, product_name, supplier_name, receipt_id, old_cost, new_cost, current_price, suggested_price, method, multiplier)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [c.product_number, p.name, meta.supplierName, meta.receiptId, c.old_cost, c.new_cost, price, suggested, method, multiplier]);
+      if (autoApply) {
+        // Sjálfvirk uppfærsla: change the price NOW (net derived from gross; generated column
+        // regenerates), and record the change as an already-applied suggestion (rekjanleiki).
+        await query(
+          `update shop.products
+              set unit_price_net = round($1::numeric / (1 + coalesce(vat_rate, 0) / 100.0), 4),
+                  updated_at = now()
+            where product_number = $2`,
+          [suggested, c.product_number]);
+        await query(
+          `insert into acc.price_suggestions
+             (product_number, product_name, supplier_name, receipt_id, old_cost, new_cost, current_price, suggested_price, method, multiplier, status, decided_at)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'applied',now())`,
+          [c.product_number, p.name, meta.supplierName, meta.receiptId, c.old_cost, c.new_cost, price, suggested, method + " — sjálfvirkt", multiplier]);
+      } else {
+        await query(
+          `insert into acc.price_suggestions
+             (product_number, product_name, supplier_name, receipt_id, old_cost, new_cost, current_price, suggested_price, method, multiplier)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+          [c.product_number, p.name, meta.supplierName, meta.receiptId, c.old_cost, c.new_cost, price, suggested, method, multiplier]);
+      }
       queued++;
     }
     return queued;
