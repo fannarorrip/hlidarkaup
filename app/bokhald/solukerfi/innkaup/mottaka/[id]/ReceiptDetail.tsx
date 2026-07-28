@@ -26,6 +26,32 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [ok, setOk] = useState("");
+  // "Stofna nýja vöru" beint úr ópöruðum reikningslínum — forfyllt úr línunni.
+  const [newProd, setNewProd] = useState<{ i: number; name: string; barcode: string; price: string; vat: string } | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  async function createProduct() {
+    if (!newProd) return;
+    setCreating(true); setErr("");
+    const r = await fetch("/api/products", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
+      name: newProd.name.trim(), barcode: newProd.barcode.trim() || undefined,
+      price_gross: Number(newProd.price.replace(",", ".")) || 0, vat_rate: Number(newProd.vat) || 24,
+    }) });
+    const d = await r.json().catch(() => ({})); setCreating(false);
+    if (!r.ok) { setErr(d.error ?? "Stofnun mistókst"); return; }
+    setRow(newProd.i, { matched: d.product_number, matchedName: newProd.name.trim() });
+    setNewProd(null);
+  }
+
+  async function renameProduct(i: number) {
+    const r = rows[i];
+    if (!r?.matched) return;
+    const name = prompt("Nýtt heiti vörunnar:", r.matchedName ?? "");
+    if (name == null || !name.trim() || name.trim() === r.matchedName) return;
+    const res = await fetch(`/api/products/${encodeURIComponent(r.matched)}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: name.trim() }) });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.error ?? "Tókst ekki að breyta heiti"); return; }
+    setRow(i, { matchedName: name.trim() });
+  }
 
   const setRow = (i: number, patch: Partial<LineState>) => setRows((p) => p.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
 
@@ -106,7 +132,26 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
                   </td>
                   <td className="px-3 py-2">
                     {booked ? <span className="text-xs">{l.matched_name || <span className="text-gray-300">óparað</span>}</span>
-                      : <ProductPicker value={rows[i]?.matched ?? null} valueName={rows[i]?.matchedName} onChange={(pn, name) => setRow(i, { matched: pn, matchedName: name })} />}
+                      : (
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex-1 min-w-0">
+                            <ProductPicker value={rows[i]?.matched ?? null} valueName={rows[i]?.matchedName} onChange={(pn, name) => setRow(i, { matched: pn, matchedName: name })} />
+                          </div>
+                          {rows[i]?.matched
+                            ? <button onClick={() => renameProduct(i)} title="Breyta heiti vörunnar" className="shrink-0 text-gray-300 hover:text-red-600 text-sm">✎</button>
+                            : <button onClick={() => {
+                                const packN = Number((rows[i]?.pack ?? "").replace(",", ".")) || 1;
+                                const cost = Number(l.line_net) > 0 && inv > 0 ? Number(l.line_net) / (inv * packN) : 0;
+                                const mLine = Number((rows[i]?.markup ?? "").replace(",", "."));
+                                const mSup = Number(receipt.supplier_markup) || 0;
+                                const m = mLine > 1 ? mLine : mSup > 1 ? mSup : 0;
+                                const round9 = (n: number) => (n % 10 === 9 ? n : Math.floor(n / 10) * 10 + 9);
+                                setNewProd({ i, name: l.description ?? "", barcode: l.gtin ?? "",
+                                  price: cost > 0 && m > 0 ? String(round9(Math.round(cost * m))) : "",
+                                  vat: String(Math.round(Number(l.vat_rate)) || 24) });
+                              }} title="Varan er ekki til — stofna hana út frá línunni" className="shrink-0 text-xs font-semibold text-red-600 hover:text-red-700 whitespace-nowrap">+ Ný</button>}
+                        </div>
+                      )}
                   </td>
                   <td className="px-3 py-2 text-right text-gray-600">{inv}{l.unit_code ? ` ${l.unit_code}` : ""}</td>
                   <td className="px-3 py-2 text-right">
@@ -181,7 +226,33 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
         <span>Samtals: <b>{receipt.total_gross ? kr(receipt.total_gross) : "—"}</b></span>
       </div>
 
-      {err && <p className="text-sm text-red-600 mt-4">{err}</p>}
+      {newProd && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setNewProd(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-bold text-lg mb-1">Stofna nýja vöru</h2>
+            <p className="text-sm text-gray-500 mb-4">Forfyllt úr reikningslínunni — vörunúmer úthlutast sjálfkrafa.</p>
+            <label className="block text-xs text-gray-500 mb-1">Heiti *</label>
+            <input value={newProd.name} onChange={(e) => setNewProd((p) => p && { ...p, name: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-red-400 mb-3" />
+            <label className="block text-xs text-gray-500 mb-1">Strikamerki</label>
+            <input value={newProd.barcode} onChange={(e) => setNewProd((p) => p && { ...p, barcode: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-red-400 mb-3 font-mono" />
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div><label className="block text-xs text-gray-500 mb-1">Söluverð m/VSK (kr.)</label>
+                <input value={newProd.price} onChange={(e) => setNewProd((p) => p && { ...p, price: e.target.value.replace(/[^\d.,]/g, "") })} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-red-400" /></div>
+              <div><label className="block text-xs text-gray-500 mb-1">VSK-þrep</label>
+                <select value={newProd.vat} onChange={(e) => setNewProd((p) => p && { ...p, vat: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="24">24%</option><option value="11">11%</option><option value="0">0%</option>
+                </select></div>
+            </div>
+            {err && <p className="text-sm text-red-600 mb-3">{err}</p>}
+            <div className="flex gap-3">
+              <button onClick={createProduct} disabled={creating || !newProd.name.trim()} className="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-50">{creating ? "Stofna…" : "Stofna og tengja við línu"}</button>
+              <button onClick={() => setNewProd(null)} className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm">Hætta við</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {err && !newProd && <p className="text-sm text-red-600 mt-4">{err}</p>}
       {ok && <p className="text-sm text-green-700 mt-4">{ok}</p>}
 
       {!booked && (
