@@ -50,3 +50,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: e instanceof Error ? e.message : "Villa" }, { status: 400 });
   } finally { client.release(); }
 }
+
+// "Henda móttöku": delete a DRAFT receipt (booked ones are immutable history). The linked
+// pósthólf row stays hidden from the móttaka queue so it doesn't bounce straight back.
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const client = await db.connect();
+  try {
+    await client.query("begin");
+    const rec = (await client.query<{ status: string }>(`select status from acc.goods_receipts where id = $1 for update`, [id])).rows[0];
+    if (!rec) return NextResponse.json({ error: "Móttaka fannst ekki" }, { status: 404 });
+    if (rec.status === "booked") return NextResponse.json({ error: "Bókaðri móttöku verður ekki hent" }, { status: 409 });
+    await client.query(`update acc.email_invoices set receipt_id = null, mottaka_hidden = true where receipt_id = $1`, [id]);
+    await client.query(`delete from acc.goods_receipt_lines where receipt_id = $1`, [id]);
+    await client.query(`delete from acc.goods_receipts where id = $1`, [id]);
+    await client.query("commit");
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    await client.query("rollback");
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Villa" }, { status: 400 });
+  } finally { client.release(); }
+}

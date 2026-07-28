@@ -13,9 +13,12 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
   const router = useRouter();
   const booked = receipt.status === "booked";
   const [supplierId, setSupplierId] = useState<string | null>(receipt.supplier_id);
+  // Magntölur koma úr numeric(18,3) sem strengur ("10.000" = TÍU með þremur aukastöfum, EKKI
+  // tíu þúsund!) — Number() hreinsar aukastafina svo birtingin verði ótvíræð ("10").
+  const qty = (v: string | number | null | undefined) => (v == null ? "" : String(Number(v)));
   const [rows, setRows] = useState<LineState[]>(lines.map((l) => ({
     id: l.id, matched: l.matched_product_number, matchedName: l.matched_name,
-    received: l.received_qty != null ? String(l.received_qty) : String(l.invoiced_qty),
+    received: l.received_qty != null ? qty(l.received_qty) : qty(l.invoiced_qty),
   })));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -27,7 +30,7 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
     setBusy(true); setErr(""); setOk("");
     const body = {
       supplier_id: supplierId ?? undefined,
-      lines: rows.map((r) => ({ id: r.id, matched_product_number: r.matched, received_qty: r.received === "" ? null : Number(r.received) })),
+      lines: rows.map((r) => ({ id: r.id, matched_product_number: r.matched, received_qty: r.received === "" ? null : Number(r.received.replace(",", ".")) })),
     };
     const r = await fetch(`/api/innkaup/receipt/${receipt.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error ?? "Villa við vistun"); setBusy(false); return; }
@@ -37,6 +40,14 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
       if (!c.ok) { setErr(d.error ?? "Villa við bókun"); return; }
       router.refresh();
     } else { setBusy(false); setOk("Vistað"); router.refresh(); }
+  }
+
+  async function discard() {
+    if (!confirm("Henda þessari móttöku? Reikningurinn í pósthólfinu helst óbreyttur.")) return;
+    setBusy(true); setErr("");
+    const r = await fetch(`/api/innkaup/receipt/${receipt.id}`, { method: "DELETE" });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error ?? "Tókst ekki að henda"); setBusy(false); return; }
+    router.push("/bokhald/solukerfi/innkaup/mottaka");
   }
 
   return (
@@ -73,7 +84,7 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
           <tbody>
             {lines.map((l, i) => {
               const inv = Number(l.invoiced_qty);
-              const rec = rows[i]?.received === "" ? null : Number(rows[i]?.received);
+              const rec = rows[i]?.received === "" ? null : Number((rows[i]?.received ?? "").replace(",", "."));
               const variance = rec == null ? null : rec - inv;
               return (
                 <tr key={l.id} className="border-t border-gray-100">
@@ -87,8 +98,8 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
                   </td>
                   <td className="px-3 py-2 text-right text-gray-600">{inv}{l.unit_code ? ` ${l.unit_code}` : ""}</td>
                   <td className="px-3 py-2 text-right">
-                    {booked ? <span>{l.received_qty ?? "—"}</span>
-                      : <input value={rows[i]?.received ?? ""} onChange={(e) => setRow(i, { received: e.target.value.replace(/[^\d.]/g, "") })} className="w-20 border border-gray-300 rounded px-2 py-1 text-sm text-right outline-none focus:border-red-400" />}
+                    {booked ? <span>{l.received_qty != null ? Number(l.received_qty) : "—"}</span>
+                      : <input value={rows[i]?.received ?? ""} onChange={(e) => setRow(i, { received: e.target.value.replace(/[^\d.,]/g, "") })} className="w-20 border border-gray-300 rounded px-2 py-1 text-sm text-right outline-none focus:border-red-400" />}
                   </td>
                   <td className={`px-3 py-2 text-right font-medium ${variance == null || variance === 0 ? "text-gray-300" : variance < 0 ? "text-red-600" : "text-amber-600"}`}>
                     {variance == null || variance === 0 ? "—" : (variance > 0 ? `+${variance}` : variance)}
@@ -112,12 +123,19 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
 
       {!booked && (
         <div className="mt-5 flex items-center gap-3">
-          <button onClick={() => save(true)} disabled={busy} className="px-5 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50">{busy ? "Vinn…" : "Staðfesta móttöku og bóka"}</button>
+          <button onClick={() => save(true)} disabled={busy} className="px-5 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50">
+            {busy ? "Vinn…" : receipt.book_invoice === false ? "Staðfesta móttöku (birgðir + verð)" : "Staðfesta móttöku og bóka"}
+          </button>
           <button onClick={() => save(false)} disabled={busy} className="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-50">Vista drög</button>
+          <button onClick={discard} disabled={busy} className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-400 hover:text-red-600 hover:border-red-200 disabled:opacity-50">Henda móttöku</button>
           <Link href="/bokhald/solukerfi/innkaup/mottaka" className="text-sm text-gray-500 hover:text-gray-800">← Til baka</Link>
         </div>
       )}
-      <p className="text-xs text-gray-400 mt-4">Birgðir uppfærast eftir MÓTTEKNU magni; bókhaldið bókast skv. reikningnum. Frávik (vantar/umfram) má gera kröfu á birgi um.</p>
+      <p className="text-xs text-gray-400 mt-4">
+        {receipt.book_invoice === false
+          ? "Reikningurinn er ÞEGAR bókaður (pósthólfið) — staðfesting uppfærir aðeins birgðir eftir mótteknu magni og verð eftir álagningu."
+          : "Birgðir uppfærast eftir MÓTTEKNU magni; bókhaldið bókast skv. reikningnum. Frávik (vantar/umfram) má gera kröfu á birgi um."}
+      </p>
     </div>
   );
 }

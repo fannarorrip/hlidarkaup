@@ -39,7 +39,7 @@ export async function matchLine(client: Queryable, supplierId: string | null, li
 
 /** Create a draft goods_receipt + lines from a parsed invoice. `inexchangeUuid` (when
  *  the invoice came from inExchange) dedupes re-fetches: an existing receipt is returned. */
-export async function createReceiptFromParsed(parsed: ParsedInvoice, doc?: { name: string; mime: string; bytes: Buffer }, inexchangeUuid?: string): Promise<string> {
+export async function createReceiptFromParsed(parsed: ParsedInvoice, doc?: { name: string; mime: string; bytes: Buffer }, inexchangeUuid?: string, opts?: { bookInvoice?: boolean }): Promise<string> {
   if (inexchangeUuid) {
     const existing = (await db.query<{ id: string }>(`select id from acc.goods_receipts where inexchange_uuid = $1`, [inexchangeUuid])).rows[0];
     if (existing) return existing.id;
@@ -51,12 +51,13 @@ export async function createReceiptFromParsed(parsed: ParsedInvoice, doc?: { nam
     const rec = (await client.query<{ id: string }>(
       `insert into acc.goods_receipts
         (supplier_id, supplier_name, invoice_number, invoice_date, due_date, source, currency,
-         total_net, total_vat, total_gross, doc_name, doc_mime, doc_bytes, inexchange_uuid, created_by)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'bokhald') returning id`,
+         total_net, total_vat, total_gross, doc_name, doc_mime, doc_bytes, inexchange_uuid, book_invoice, created_by)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'bokhald') returning id`,
       [supplier?.id ?? null, parsed.supplierName || null, parsed.invoiceNumber || null,
        parsed.issueDate || null, parsed.dueDate || null, parsed.format, parsed.currency || "ISK",
        parsed.totalNet || null, parsed.totalVat || null, parsed.totalGross || null,
-       doc?.name ?? null, doc?.mime ?? null, doc?.bytes ?? null, inexchangeUuid ?? null])).rows[0];
+       doc?.name ?? null, doc?.mime ?? null, doc?.bytes ?? null, inexchangeUuid ?? null,
+       opts?.bookInvoice !== false])).rows[0];
 
     for (const l of parsed.lines) {
       const matched = await matchLine(client, supplier?.id ?? null, l);
@@ -84,17 +85,18 @@ export async function confirmReceipt(receiptId: string): Promise<{ voucherId: st
   const client = await db.connect();
   try {
     await client.query("begin");
-    const rec = (await client.query<{ id: string; supplier_id: string | null; supplier_name: string | null; invoice_number: string | null; invoice_date: string | null; due_date: string | null; status: string; doc_name: string | null; doc_mime: string | null; doc_bytes: Buffer | null }>(
-      `select id, supplier_id, supplier_name, invoice_number, invoice_date, due_date::text as due_date, status, doc_name, doc_mime, doc_bytes
+    const rec = (await client.query<{ id: string; supplier_id: string | null; supplier_name: string | null; invoice_number: string | null; invoice_date: string | null; due_date: string | null; status: string; book_invoice: boolean; doc_name: string | null; doc_mime: string | null; doc_bytes: Buffer | null }>(
+      `select id, supplier_id, supplier_name, invoice_number, invoice_date, due_date::text as due_date, status, book_invoice, doc_name, doc_mime, doc_bytes
          from acc.goods_receipts where id = $1 for update`, [receiptId])).rows[0];
     if (!rec) throw new ReceiptError("Móttaka fannst ekki", 404);
     if (rec.status === "booked") throw new ReceiptError("Þegar bókað", 409);
 
-    // Duplicate-invoice hard block (supplier kennitala + invoice number).
+    // Duplicate-invoice hard block (supplier kennitala + invoice number). Skipped for
+    // book_invoice=false receipts — the invoice IS booked elsewhere by design (pósthólfið).
     const kt = rec.supplier_id
       ? (await client.query<{ kennitala: string | null }>(`select kennitala from acc.suppliers where id = $1`, [rec.supplier_id])).rows[0]?.kennitala ?? ""
       : "";
-    if (rec.invoice_number && (await findBookedInvoice(dedupKey(kt, rec.supplier_id, rec.supplier_name), rec.invoice_number, client))) {
+    if (rec.book_invoice && rec.invoice_number && (await findBookedInvoice(dedupKey(kt, rec.supplier_id, rec.supplier_name), rec.invoice_number, client))) {
       throw new ReceiptError(`Reikningur nr. ${rec.invoice_number} frá þessum birgi er þegar bókaður (tvíbókun varin).`, 409);
     }
 
@@ -142,6 +144,16 @@ export async function confirmReceipt(receiptId: string): Promise<{ voucherId: st
       totalGross = r2(totalGross + net + vat);
     }
     if (totalGross <= 0) throw new ReceiptError("Engin upphæð til að bóka");
+
+    // book_invoice=false: reikningurinn er ÞEGAR bókaður (t.d. um pósthólfið) — staðfestingin
+    // uppfærir aðeins birgðir (þegar gert að ofan) + verð (á eftir). Engin bókun, ekkert fylgiskjal.
+    if (!rec.book_invoice) {
+      await client.query(`update acc.goods_receipts set status='booked', total_gross=$1 where id=$2`, [totalGross, receiptId]);
+      await client.query("commit");
+      await recordCostChanges(costChanges, { receiptId, supplierId: rec.supplier_id, supplierName: rec.supplier_name });
+      return { voucherId: "", voucherNumber: "" };
+    }
+
     vlines.push({ account: "9300", debit: 0, credit: totalGross, vat_code: null, description: `Lánadrottnar – ${rec.supplier_name ?? ""}` });
 
     const v = (await client.query<{ id: string; voucher_number: string }>(

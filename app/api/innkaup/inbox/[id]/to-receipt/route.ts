@@ -34,11 +34,13 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     }
     if (!parsed.lines.length) return NextResponse.json({ error: "Engar vörulínur fundust á reikningnum" }, { status: 422 });
 
+    // Þegar bókaður reikningur (approved í pósthólfinu): móttakan er birgðatalning + verð —
+    // book_invoice=false svo staðfestingin bóki hann EKKI aftur.
     const receiptId = await createReceiptFromParsed(parsed, {
       name: e.attachment_name || (isXml ? "reikningur.xml" : "reikningur.pdf"),
       mime: e.attachment_mime || (isXml ? "application/xml" : "application/pdf"),
       bytes: buf,
-    });
+    }, undefined, { bookInvoice: e.status !== "approved" });
     // Link + guard against double booking: a pending pósthólf row moves to 'skipped' — the
     // móttaka confirm books the invoice (with stock + price updates); the pósthólf must not too.
     await db.query(

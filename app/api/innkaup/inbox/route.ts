@@ -25,7 +25,8 @@ export async function GET() {
     from acc.email_invoices e
     where e.attachment_bytes is not null
       and e.receipt_id is null
-      and e.status in ('pending', 'error')
+      and e.mottaka_hidden = false
+      and e.status in ('pending', 'error', 'approved')
     order by e.received_at desc
     limit 50`);
   return NextResponse.json({ rows });
