@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { postSale, SaleError, type SaleItem, type PaymentInfo, type PayMode } from "@/lib/sales";
 import { knownRegisterId } from "@/lib/registers";
+import { query } from "@/lib/db";
 
 // Staffed till: card / cash / transfer / account ("á reikning") sale.
 const MODES: PayMode[] = ["card", "account", "cash", "transfer"];
@@ -41,6 +42,12 @@ export async function POST(req: NextRequest) {
         : tenders ? "Kassasala – skipt greiðsla (afgreiðsla)" : DESC[mode]),
       tenders,
     });
+    // Afgreiðslumaður sölunnar (PIN-opnun kassans) — best-effort merking, aldrei brotin sala.
+    if (b.employeeId) {
+      try {
+        await query(`insert into acc.voucher_employee (voucher_id, employee_id) values ($1, $2) on conflict do nothing`, [voucherId, String(b.employeeId)]);
+      } catch (e) { console.error("[sale] voucher_employee merking mistókst:", e); }
+    }
     return NextResponse.json({ invoiceNumber, voucherId });
   } catch (err) {
     if (err instanceof SaleError) return NextResponse.json({ error: err.message }, { status: err.status });

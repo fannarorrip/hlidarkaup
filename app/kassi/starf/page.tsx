@@ -25,7 +25,8 @@ const INK = "bg-[#21323A] hover:bg-[#2d434e]";
 
 // Idle lock: after LOCK_MS with no activity the till locks; the PIN unlocks it (deterrent when the
 // cashier steps away). Change the PIN via NEXT_PUBLIC_TILL_LOCK_PIN without touching code.
-const LOCK_PIN = process.env.NEXT_PUBLIC_TILL_LOCK_PIN || "2026";
+// Persónulegir starfsmanna-PINar opna kassann (sjá /api/kassi/pin-unlock); gamli sameiginlegi
+// kóðinn (NEXT_PUBLIC_TILL_LOCK_PIN) gildir aðeins server-megin meðan enginn PIN er skráður.
 const LOCK_MS = 10 * 60_000;
 
 export default function StaffTill() {
@@ -75,7 +76,17 @@ export default function StaffTill() {
   const [waiting, setWaiting] = useState("");
   const [clock, setClock] = useState("");
   const [kb, setKb] = useState<"search" | "customer" | null>(null); // on-screen keyboard target
-  const [locked, setLocked] = useState(false); // idle lock — needs PIN to reopen
+  const [locked, setLocked] = useState(true); // starts LOCKED — starfsmaður opnar með SÍNUM PIN
+  const [pinBusy, setPinBusy] = useState(false);
+  const [pinErr, setPinErr] = useState("");
+  // Hver er við kassann (PIN-opnun) — sölur merkjast viðkomandi (voucher_employee).
+  const [activeEmp, setActiveEmp] = useState<{ id: string | null; name: string } | null>(null);
+  const activeEmpRef = useRef<{ id: string | null; name: string } | null>(null);
+  useEffect(() => { activeEmpRef.current = activeEmp; }, [activeEmp]);
+  // Stimpilklukka
+  const [stimpOpen, setStimpOpen] = useState(false);
+  const [stimpPin, setStimpPin] = useState("");
+  const [stimpMsg, setStimpMsg] = useState("");
   const [pin, setPin] = useState("");
 
   // Customer fixed discount (%): applied live on top of any manual AFSL, per line (VAT-correct).
@@ -98,16 +109,47 @@ export default function StaffTill() {
   useEffect(() => {
     if (locked) return;
     let t: ReturnType<typeof setTimeout>;
-    const reset = () => { clearTimeout(t); if (!waiting) t = setTimeout(() => { setPin(""); setLocked(true); }, LOCK_MS); };
+    const reset = () => { clearTimeout(t); if (!waiting) t = setTimeout(() => { setPin(""); setActiveEmp(null); setLocked(true); }, LOCK_MS); };
     reset();
     const evs = ["mousedown", "keydown", "touchstart", "wheel"] as const;
     evs.forEach((e) => window.addEventListener(e, reset, { passive: true }));
     return () => { clearTimeout(t); evs.forEach((e) => window.removeEventListener(e, reset)); };
   }, [locked, waiting]);
+  // Persónulegur PIN opnar kassann og segir HVER er að afgreiða (2026 gildir aðeins sem
+  // ræsivörn meðan enginn starfsmaður hefur fengið PIN — sjá /api/kassi/pin-unlock).
   const pinDigit = (d: string) => {
-    const next = (pin + d).slice(0, LOCK_PIN.length);
-    setPin(next);
-    if (next.length === LOCK_PIN.length) { if (next === LOCK_PIN) { setLocked(false); setPin(""); } else setTimeout(() => setPin(""), 350); }
+    if (pinBusy) return;
+    const next = (pin + d).slice(0, 4);
+    setPin(next); setPinErr("");
+    if (next.length === 4) {
+      setPinBusy(true);
+      fetch("/api/kassi/pin-unlock", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ pin: next }) })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.ok) { setActiveEmp({ id: d.employeeId ?? null, name: d.name }); setLocked(false); setPin(""); }
+          else { setPinErr(d.error ?? "Rangur kóði"); setTimeout(() => setPin(""), 350); }
+        })
+        .catch(() => { setPinErr("Næ ekki sambandi við server"); setTimeout(() => setPin(""), 350); })
+        .finally(() => setPinBusy(false));
+    }
+  };
+  // Stimpilklukka: sami PIN, sér aðgerð — inn/út víxlast sjálfkrafa.
+  const stimpDigit = (d: string) => {
+    const next = (stimpPin + d).slice(0, 4);
+    setStimpPin(next);
+    if (next.length === 4) {
+      fetch("/api/kassi/stimpil", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ pin: next, reg: regRef.current }) })
+        .then((r) => r.json())
+        .then((d) => {
+          setStimpPin("");
+          if (!d.ok) { setStimpMsg(d.error ?? "Villa"); return; }
+          setStimpMsg(d.action === "in"
+            ? `${d.name} — stimplað INN ✓`
+            : `${d.name} — stimplað ÚT ✓ (${d.hours} klst ${d.minutes} mín)`);
+          setTimeout(() => { setStimpOpen(false); setStimpMsg(""); }, 2800);
+        })
+        .catch(() => { setStimpPin(""); setStimpMsg("Næ ekki sambandi við server"); });
+    }
   };
   useEffect(() => { fetch("/api/kassi/categories").then((r) => r.json()).then((d) => { setCats(d.categories ?? []); if (d.categories?.[0]) selectCat(d.categories[0].group); }).catch(() => {}); }, []);
   useEffect(() => { fetch("/api/kassi/terminal/status").then((r) => r.json()).then((d) => setTerminalEnabled(!!d.enabled)).catch(() => {}); }, []);
@@ -227,7 +269,7 @@ export default function StaffTill() {
   // Hard overlays that block a stray scan (mid-payment / modal). NOTE: `done` is deliberately
   // NOT here — scanning on the "Sala skráð" screen should auto-start the next sale (see addByCode).
   const overlayRef = useRef(false);
-  useEffect(() => { overlayRef.current = !!(cashFor || edit || custOpen || waiting || ktOpen || recentOpen || splitOpen || locked || noteOpen || simgrOpen); });
+  useEffect(() => { overlayRef.current = !!(cashFor || edit || custOpen || waiting || ktOpen || recentOpen || splitOpen || locked || noteOpen || simgrOpen || stimpOpen); });
   const doneRef = useRef(false);
   useEffect(() => { doneRef.current = !!done; });
   useEffect(() => {
@@ -355,7 +397,7 @@ export default function StaffTill() {
     setBusy(true); setError("");
     const snapshot = cart.map((l) => ({ ...l, discount: lineDisc(l) })); // bake customer discount into each line
     const note = mode === "account" ? (noteOverride ?? saleNote).trim().slice(0, 120) : "";
-    const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: snapshot.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, tenders, note: note || undefined, customerId: customer?.id, reg: regRef.current, payment: { approved: true, processor: "STAFF" } }) });
+    const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: snapshot.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, tenders, note: note || undefined, customerId: customer?.id, reg: regRef.current, employeeId: activeEmpRef.current?.id ?? undefined, payment: { approved: true, processor: "STAFF" } }) });
     const d = await r.json(); setBusy(false);
     if (!r.ok) { setError(d.error ?? "Villa við að skrá söluna"); return; }
     const buyer = customer
@@ -473,7 +515,7 @@ export default function StaffTill() {
     if (mode === "card" && terminalEnabled) { if (!await refundCard(total)) return; }
     setBusy(true); setError("");
     const snapshot = cart.map((l) => ({ ...l, discount: lineDisc(l) })); // bake customer discount into each line
-    const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: snapshot.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, kind: "return", customerId: customer?.id, reg: regRef.current, payment: { approved: true, processor: "STAFF" } }) });
+    const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: snapshot.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, kind: "return", customerId: customer?.id, reg: regRef.current, employeeId: activeEmpRef.current?.id ?? undefined, payment: { approved: true, processor: "STAFF" } }) });
     const d = await r.json(); setBusy(false);
     if (!r.ok) { setError(d.error ?? "Villa við skil"); return; }
     const buyer = customer
@@ -523,6 +565,8 @@ export default function StaffTill() {
         </div>
         <div className="flex items-center gap-2">
           <span className="tabular-nums text-base text-[#E4F1F0] mr-1">{clock}</span>
+          {activeEmp && <span className="px-3 py-2 rounded-lg bg-white/15 text-white text-sm font-semibold" title="Afgreiðslumaður við kassann — sölur merkjast honum">👤 {activeEmp.name.split(" ")[0]}</span>}
+          <button onClick={() => { setStimpOpen(true); setStimpPin(""); setStimpMsg(""); }} className="px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-sm transition">Stimpla</button>
           <button onClick={openRecent} className="px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-sm transition">Fyrri sölur</button>
           <button onClick={openSimgr} className="px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-sm transition">Ógreiddar símgr.</button>
           <button onClick={openDrawer} className="px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-sm transition">Opna skúffu</button>
@@ -931,14 +975,42 @@ export default function StaffTill() {
       )}
 
       {/* Idle lock — covers everything (z-50), PIN to reopen. */}
+      {stimpOpen && (
+        <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4" onClick={() => setStimpOpen(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 text-center" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-bold text-lg mb-1">Stimpilklukka</h2>
+            <p className="text-sm text-gray-500 mb-4">Sláðu inn þinn kóða — inn/út víxlast sjálfkrafa</p>
+            {stimpMsg ? (
+              <p className={`py-8 text-lg font-semibold ${stimpMsg.includes("✓") ? "text-green-700" : "text-red-600"}`}>{stimpMsg}</p>
+            ) : (
+              <>
+                <div className="flex gap-3 mb-5 justify-center">
+                  {Array.from({ length: 4 }).map((_, i) => <span key={i} className={`w-4 h-4 rounded-full transition ${i < stimpPin.length ? "bg-[#21323A]" : "bg-gray-200"}`} />)}
+                </div>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                    <button key={n} onClick={() => stimpDigit(String(n))} className="py-4 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-95 text-xl font-semibold transition">{n}</button>
+                  ))}
+                  <button onClick={() => setStimpPin("")} className="py-4 rounded-xl bg-gray-50 text-sm text-gray-500">Hreinsa</button>
+                  <button onClick={() => stimpDigit("0")} className="py-4 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-95 text-xl font-semibold transition">0</button>
+                  <button onClick={() => setStimpOpen(false)} className="py-4 rounded-xl bg-gray-50 text-sm text-gray-500">Loka</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {locked && (
         <div className="fixed inset-0 z-50 bg-[#21323A] flex flex-col items-center justify-center text-white select-none">
+          <button onClick={() => { setStimpOpen(true); setStimpPin(""); setStimpMsg(""); }} className="absolute top-5 right-5 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-semibold">Stimpla inn/út</button>
           <svg className="w-12 h-12 mb-4 text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
           <p className="text-xl font-bold mb-1">Kassinn er læstur</p>
-          <p className="text-sm text-white/50 mb-7">Sláðu inn PIN til að halda áfram</p>
-          <div className="flex gap-3 mb-8">
-            {Array.from({ length: LOCK_PIN.length }).map((_, i) => <span key={i} className={`w-4 h-4 rounded-full transition ${i < pin.length ? "bg-white" : "bg-white/20"}`} />)}
+          <p className="text-sm text-white/50 mb-7">Sláðu inn ÞINN kóða til að afgreiða</p>
+          <div className="flex gap-3 mb-3">
+            {Array.from({ length: 4 }).map((_, i) => <span key={i} className={`w-4 h-4 rounded-full transition ${i < pin.length ? "bg-white" : "bg-white/20"}`} />)}
           </div>
+          <p className={`text-sm mb-5 h-5 ${pinErr ? "text-red-300" : "text-transparent"}`}>{pinErr || "·"}</p>
           <div className="grid grid-cols-3 gap-3 w-72">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
               <button key={n} onClick={() => pinDigit(String(n))} className="py-5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-2xl font-semibold transition">{n}</button>

@@ -79,7 +79,12 @@ export default function BokhaldNav({ role, pendingEmail = 0 }: { role?: string; 
   const [expanded, setExpanded] = useState<Set<string>>(new Set()); // mobile accordion
   const ref = useRef<HTMLElement>(null);
 
-  const sections = [...SECTIONS];
+  // Lagerstjóri sér AÐEINS Sölukerfi + Lagerkerfi; stjórnandi/bókari fá Tímana í Bókhalds-hlutann.
+  const sections = SECTIONS
+    .filter((s) => role !== "lagerstjori" || s.title === "Sölukerfi" || s.title === "Lagerkerfi")
+    .map((s) => s.title === "Bókhald" && (role === "stjornandi" || role === "bokari")
+      ? { ...s, links: [...s.links, { href: "/bokhald/timar", label: "Tímar starfsmanna" }] }
+      : s);
   if (role === "stjornandi") sections.push({ title: "Stjórnun", links: [
     { href: "/bokhald/starfsmenn", label: "Starfsmenn" },
     { href: "/bokhald/bankatenging", label: "Bankatenging" },
