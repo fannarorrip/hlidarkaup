@@ -17,24 +17,29 @@ export class ReceiptError extends Error { constructor(message: string, readonly 
 interface Queryable { query<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<{ rows: T[] }> }
 
 /** Resolve a parsed line to a catalog product_number: GTIN → learned map → fuzzy name. */
-export async function matchLine(client: Queryable, supplierId: string | null, line: ParsedLine): Promise<string | null> {
-  if (line.gtin) {
-    const b = (await client.query<{ product_number: string }>(`select product_number from shop.product_barcodes where barcode = $1 limit 1`, [line.gtin])).rows[0];
-    if (b) return b.product_number;
-  }
+export async function matchLine(client: Queryable, supplierId: string | null, line: ParsedLine): Promise<{ productNumber: string | null; packQty: number | null }> {
+  // Learned pack size rides with the supplier-item mapping (t.d. Lífland: 1 grind = 144 stk).
   if (supplierId) {
     const key = line.gtin || line.supplierItemId;
     if (key) {
-      const m = (await client.query<{ product_number: string }>(`select product_number from acc.supplier_items where supplier_id = $1 and match_key = $2 limit 1`, [supplierId, key])).rows[0];
-      if (m) return m.product_number;
+      const m = (await client.query<{ product_number: string; pack_qty: string | null }>(
+        `select product_number, pack_qty::text from acc.supplier_items where supplier_id = $1 and match_key = $2 limit 1`, [supplierId, key])).rows[0];
+      if (m) return { productNumber: m.product_number, packQty: m.pack_qty ? Number(m.pack_qty) : null };
     }
+  }
+  // Prefill pack size from the description when unlearned: "(144 stk)" / "(36 stk / bakkar)".
+  const packHint = line.description?.match(/\((\d+)\s*stk/i);
+  const packQty = packHint ? Number(packHint[1]) : null;
+  if (line.gtin) {
+    const b = (await client.query<{ product_number: string }>(`select product_number from shop.product_barcodes where barcode = $1 limit 1`, [line.gtin])).rows[0];
+    if (b) return { productNumber: b.product_number, packQty };
   }
   if (line.description && line.description.length >= 3) {
     const n = (await client.query<{ product_number: string }>(
       `select product_number from shop.products where name % $1 order by similarity(name,$1) desc limit 1`, [line.description])).rows[0];
-    if (n) return n.product_number;
+    if (n) return { productNumber: n.product_number, packQty };
   }
-  return null;
+  return { productNumber: null, packQty };
 }
 
 /** Create a draft goods_receipt + lines from a parsed invoice. `inexchangeUuid` (when
@@ -94,21 +99,21 @@ export async function createReceiptFromParsed(parsedRaw: ParsedInvoice, doc?: { 
        opts?.bookInvoice !== false])).rows[0];
 
     for (const l of parsed.lines) {
-      const matched = await matchLine(client, supplier?.id ?? null, l);
+      const { productNumber: matched, packQty } = await matchLine(client, supplier?.id ?? null, l);
       await client.query(
         `insert into acc.goods_receipt_lines
           (receipt_id, line_no, supplier_item_id, gtin, description, invoiced_qty, unit_code,
-           unit_price, line_net, vat_rate, matched_product_number, received_qty)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$6)`,   // received_qty defaults to invoiced_qty
+           unit_price, line_net, vat_rate, matched_product_number, received_qty, pack_qty)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$6,$12)`,   // received_qty defaults to invoiced_qty
         [rec.id, l.lineNo, l.supplierItemId || null, l.gtin || null, l.description || null,
-         l.qty, l.unitCode || null, l.unitPrice || null, l.lineNet || null, l.vatRate || 0, matched]);
+         l.qty, l.unitCode || null, l.unitPrice || null, l.lineNet || null, l.vatRate || 0, matched, packQty]);
     }
     await client.query("commit");
     return rec.id;
   } catch (e) { await client.query("rollback"); throw e; } finally { client.release(); }
 }
 
-interface RecLine { id: string; line_no: number; description: string | null; vat_rate: string; line_net: string; unit_price: string | null; matched_product_number: string | null; received_qty: string | null; invoiced_qty: string }
+interface RecLine { id: string; line_no: number; description: string | null; vat_rate: string; line_net: string; unit_price: string | null; matched_product_number: string | null; received_qty: string | null; invoiced_qty: string; pack_qty: string | null; unit_cost_override: string | null }
 
 /**
  * Confirm a receipt: raise stock for matched lines (+ movement log), book the full
@@ -135,7 +140,7 @@ export async function confirmReceipt(receiptId: string): Promise<{ voucherId: st
     }
 
     const lines = (await client.query<RecLine>(
-      `select id, line_no, description, vat_rate, line_net, unit_price, matched_product_number, received_qty, invoiced_qty
+      `select id, line_no, description, vat_rate, line_net, unit_price, matched_product_number, received_qty, invoiced_qty, pack_qty, unit_cost_override
          from acc.goods_receipt_lines where receipt_id = $1 order by line_no`, [receiptId])).rows;
     if (!lines.length) throw new ReceiptError("Engar línur í móttöku");
 
@@ -145,23 +150,30 @@ export async function confirmReceipt(receiptId: string): Promise<{ voucherId: st
     for (const l of lines) {
       const qty = l.received_qty == null ? 0 : Number(l.received_qty);
       if (!l.matched_product_number || qty === 0) continue;
-      // Raunkostnaður á einingu = línuupphæð (eftir afslátt, án vsk) ÷ magn á reikningi.
-      // Prentaða einingaverðið er oft LISTAVERÐ án afsláttar (t.d. 506 kr þegar upphæðin
-      // segir 445,25/stk) — það má aldrei verða kostnaðargrunnur álagningar.
+      // Raunkostnaður á SÖLUVÖRU. Forgangur:
+      //  1) unit_cost_override — handslegið Ein.verð í móttökunni (einskiptis leiðrétting)
+      //  2) línuupphæð (eftir afslátt, án vsk) ÷ (magn á reikningi × pakkastærð) — pakkastærðin
+      //     dekkar kassa/grindur (Lífland: 1 grind = 144 stk → 84.815/144 = 589 kr/stk)
+      //  3) prentað einingaverð (síðasta hálmstrá — oft listaverð án afsláttar)
       const invQty = Number(l.invoiced_qty) || 0;
+      const pack = Number(l.pack_qty) > 0 ? Number(l.pack_qty) : 1;
+      const override = l.unit_cost_override == null ? null : Number(l.unit_cost_override);
       const lineNet = l.line_net == null ? null : Number(l.line_net);
-      const cost = lineNet != null && lineNet > 0 && invQty > 0
-        ? Math.round((lineNet / invQty) * 100) / 100
-        : l.unit_price == null ? null : Number(l.unit_price);
+      const cost = override != null && override > 0 ? override
+        : lineNet != null && lineNet > 0 && invQty > 0
+          ? Math.round((lineNet / (invQty * pack)) * 100) / 100
+          : l.unit_price == null ? null : Number(l.unit_price);
+      // Birgðir hækka í SÖLUVÖRUM: móttekið magn (reikningseiningar) × pakkastærð.
+      const stockQty = qty * pack;
       if (cost != null && cost > 0) {
         const prev = (await client.query<{ cost_price: string | null }>(
           `select cost_price::text from shop.products where product_number = $1`, [l.matched_product_number])).rows[0];
         costChanges.push({ product_number: l.matched_product_number, old_cost: prev?.cost_price != null ? Number(prev.cost_price) : null, new_cost: cost });
       }
       await client.query(`update shop.products set stock_quantity = stock_quantity + $1, cost_price = coalesce($2, cost_price) where product_number = $3`,
-        [qty, cost, l.matched_product_number]);
+        [stockQty, cost, l.matched_product_number]);
       await client.query(`insert into shop.stock_movements (product_number, qty_delta, type, cost_basis, ref_type, ref_id, created_by) values ($1,$2,'receipt',$3,'receipt',$4,'bokhald')`,
-        [l.matched_product_number, qty, cost, receiptId]);
+        [l.matched_product_number, stockQty, cost, receiptId]);
     }
 
     // 1b) Tie received products to this birgi when they have none yet — so pantanir group by

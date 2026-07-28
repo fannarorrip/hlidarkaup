@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 // When a line gets matched, the supplier-item → product mapping is learned for next time.
 export const runtime = "nodejs";
 
-interface LinePatch { id: string; matched_product_number?: string | null; received_qty?: number | null; markup?: number | null }
+interface LinePatch { id: string; matched_product_number?: string | null; received_qty?: number | null; markup?: number | null; pack_qty?: number | null; unit_cost_override?: number | null }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -25,10 +25,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       await client.query(
         `update acc.goods_receipt_lines set
            matched_product_number = case when $2 then $3 else matched_product_number end,
-           received_qty = case when $4 then $5 else received_qty end
+           received_qty = case when $4 then $5 else received_qty end,
+           pack_qty = case when $7 then $8 else pack_qty end,
+           unit_cost_override = case when $9 then $10 else unit_cost_override end
          where id = $1 and receipt_id = $6`,
         [l.id, l.matched_product_number !== undefined, l.matched_product_number ?? null,
-         l.received_qty !== undefined, l.received_qty ?? null, id]);
+         l.received_qty !== undefined, l.received_qty ?? null, id,
+         l.pack_qty !== undefined, l.pack_qty && l.pack_qty > 0 ? l.pack_qty : null,
+         l.unit_cost_override !== undefined, l.unit_cost_override && l.unit_cost_override > 0 ? l.unit_cost_override : null]);
       // Álagning á VÖRUNA (festist): skráð í móttökunni, notuð sem sterkasta verðreglan framvegis.
       // Empty/null clears it; values outside (1,10) are ignored (check constraint would reject).
       if (l.markup !== undefined && l.matched_product_number) {
@@ -39,16 +43,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
-    // Learn supplier-item → product mappings for matched lines that carry a key.
+    // Learn supplier-item → product mappings (+ pack size) for matched lines that carry a key.
+    // Pakkastærðin lærist með: næsti reikningur frá birginum fyllir hana sjálfkrafa á línuna.
     const sid = (await client.query<{ supplier_id: string | null }>(`select supplier_id from acc.goods_receipts where id = $1`, [id])).rows[0]?.supplier_id;
     if (sid) {
       await client.query(
-        `insert into acc.supplier_items (supplier_id, match_key, product_number)
-         select $1, coalesce(nullif(l.gtin,''), l.supplier_item_id), l.matched_product_number
+        `insert into acc.supplier_items (supplier_id, match_key, product_number, pack_qty)
+         select $1, coalesce(nullif(l.gtin,''), l.supplier_item_id), l.matched_product_number, l.pack_qty
          from acc.goods_receipt_lines l
          where l.receipt_id = $2 and l.matched_product_number is not null
            and coalesce(nullif(l.gtin,''), l.supplier_item_id) is not null
-         on conflict (supplier_id, match_key) do update set product_number = excluded.product_number`,
+         on conflict (supplier_id, match_key) do update
+           set product_number = excluded.product_number,
+               pack_qty = coalesce(excluded.pack_qty, acc.supplier_items.pack_qty)`,
         [sid, id]);
     }
     await client.query("commit");
