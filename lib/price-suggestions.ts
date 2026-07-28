@@ -70,16 +70,19 @@ export async function recordCostChanges(changes: CostChange[], meta: { receiptId
 
       let suggested = 0, method = "", multiplier: number | null = null;
 
+      // Smásöluverð enda á 9: námunda UPP í næstu 9-endingu (193→199, 200→209, 199→199).
+      const round9 = (n: number) => (n % 10 === 9 ? n : Math.floor(n / 10) * 10 + 9);
+
       // 0) álagning VÖRUNNAR — fixed per-product markup set in móttaka; strongest rule
       const prodMarkup = p.markup ? Number(p.markup) : 0;
       if (prodMarkup > 1) {
-        suggested = Math.round(c.new_cost * prodMarkup);
+        suggested = round9(Math.round(c.new_cost * prodMarkup));
         multiplier = prodMarkup;
         method = `álagning vöru (×${prodMarkup.toLocaleString("is-IS")})`;
       }
       // 1) álagning birgis — the supplier's contracted markup applies to everything they deliver
       if (!suggested && supMarkup > 1) {
-        suggested = Math.round(c.new_cost * supMarkup);
+        suggested = round9(Math.round(c.new_cost * supMarkup));
         multiplier = supMarkup;
         method = `álagning birgis (×${supMarkup.toLocaleString("is-IS")})`;
       }
@@ -87,7 +90,7 @@ export async function recordCostChanges(changes: CostChange[], meta: { receiptId
       if (!suggested && c.old_cost && c.old_cost > 0 && price > 0) {
         const m = price / c.old_cost;
         if (m > 1.0 && m < 3.0) {
-          suggested = Math.round(c.new_cost * m);
+          suggested = round9(Math.round(c.new_cost * m));
           multiplier = Math.round(m * 1000) / 1000;
           method = `sama álagning (×${multiplier.toLocaleString("is-IS")})`;
         }
