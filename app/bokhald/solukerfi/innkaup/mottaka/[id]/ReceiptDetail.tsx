@@ -131,9 +131,17 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
                     <div className="text-xs text-gray-400">{l.gtin ? `EAN ${l.gtin}` : l.supplier_item_id ? `nr. ${l.supplier_item_id}` : ""}</div>
                   </td>
                   <td className="px-3 py-2">
-                    {booked ? <span className="text-xs">{l.matched_name || <span className="text-gray-300">óparað</span>}</span>
+                    {booked ? (
+                      <span className="text-xs">
+                        {l.matched_name || <span className="text-gray-300">óparað</span>}
+                        {l.learned_match && <span className="ml-1 text-green-600" title="Staðfest tenging — bókuð áður út frá vörunúmeri birgja">✓</span>}
+                      </span>
+                    )
                       : (
                         <div className="flex items-center gap-1.5">
+                          {/* Grænt ✓ = LÆRÐ pörun (vörunúmer birgja → þessi vara, bókuð áður) — hverfur ef línu er endurparað */}
+                          {l.learned_match && rows[i]?.matched === l.matched_product_number &&
+                            <span className="shrink-0 text-green-600 font-bold" title="Staðfest tenging — bókuð áður út frá vörunúmeri birgja">✓</span>}
                           <div className="flex-1 min-w-0">
                             <ProductPicker value={rows[i]?.matched ?? null} valueName={rows[i]?.matchedName} onChange={(pn, name) => setRow(i, { matched: pn, matchedName: name })} />
                           </div>

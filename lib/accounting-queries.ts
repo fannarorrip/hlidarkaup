@@ -738,10 +738,18 @@ export interface GoodsReceiptLineRow {
   matched_product_number: string | null; matched_name: string | null; received_qty: string | null;
   matched_markup: string | null; pack_qty: string | null; unit_cost_override: string | null;
   matched_price: number | null; matched_cost: string | null;
+  learned_match: boolean; // pörunin er LÆRÐ (supplier_items: vörunúmer birgja → þessi vara) — bókuð áður
 }
 export const getReceiptLines = (receiptId: string) =>
   query<GoodsReceiptLineRow>(`select l.*, p.name as matched_name, p.markup::text as matched_markup,
-      p.price_gross as matched_price, p.cost_price::text as matched_cost
+      p.price_gross as matched_price, p.cost_price::text as matched_cost,
+      exists (
+        select 1 from acc.supplier_items si
+        join acc.goods_receipts r on r.id = l.receipt_id
+        where si.supplier_id = r.supplier_id
+          and si.match_key = coalesce(nullif(l.gtin, ''), l.supplier_item_id)
+          and si.product_number = l.matched_product_number
+      ) as learned_match
     from acc.goods_receipt_lines l left join shop.products p on p.product_number = l.matched_product_number
     where l.receipt_id = $1 order by l.line_no`, [receiptId]);
 
