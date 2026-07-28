@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 
 // Afgreiðslustarfsmenn með PIN — engin innskráning, ekkert netfang/lykilorð. PIN-inn opnar
 // kassana, stimplar inn/út og merkir sölur viðkomandi. Úthlutast sjálfkrafa, má breyta.
-interface Emp { id: string; name: string; kennitala: string | null; pin: string | null; is_active: boolean }
+interface Emp { id: string; name: string; kennitala: string | null; has_pin: boolean; is_active: boolean }
 
 const inp = "border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-red-400";
 
@@ -35,7 +35,7 @@ export default function PinEmployees() {
     load();
   }
   function editPin(e: Emp) {
-    const v = prompt(`Nýr 4-stafa PIN fyrir ${e.name}:`, e.pin ?? "");
+    const v = prompt(`Nýr 4-stafa PIN fyrir ${e.name} (tómt = fjarlægja):`);
     if (v == null) return;
     patch(e.id, { pin: v.trim() === "" ? null : v.trim() });
   }
@@ -72,7 +72,7 @@ export default function PinEmployees() {
                 <tr key={e.id} className={`border-t border-gray-100 ${e.is_active ? "" : "opacity-50"}`}>
                   <td className="px-4 py-2 font-medium">{e.name}</td>
                   <td className="px-4 py-2 text-gray-500 font-mono text-xs">{e.kennitala ?? "—"}</td>
-                  <td className="px-4 py-2 font-mono tracking-widest">{e.pin ?? <span className="text-gray-300">enginn</span>}</td>
+                  <td className="px-4 py-2 font-mono tracking-widest">{e.has_pin ? <span title="PIN er settur — sést hvergi; nota Breyta PIN til að setja nýjan">●●●●</span> : <span className="text-gray-300">enginn</span>}</td>
                   <td className="px-4 py-2">{e.is_active ? <span className="text-xs px-2 py-0.5 rounded bg-green-50 text-green-700">Virkur</span> : <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-500">Óvirkur</span>}</td>
                   <td className="px-4 py-2 text-right whitespace-nowrap">
                     <button onClick={() => editPin(e)} className="text-xs text-gray-500 hover:text-red-700 mr-3">Breyta PIN</button>

@@ -565,7 +565,7 @@ export default function StaffTill() {
         </div>
         <div className="flex items-center gap-2">
           <span className="tabular-nums text-base text-[#E4F1F0] mr-1">{clock}</span>
-          {activeEmp && <span className="px-3 py-2 rounded-lg bg-white/15 text-white text-sm font-semibold" title="Afgreiðslumaður við kassann — sölur merkjast honum">👤 {activeEmp.name.split(" ")[0]}</span>}
+          {/* Nafn afgreiðslumanns birtist EKKI (ákvörðun eiganda) — sölur merkjast samt í bakgrunni. */}
           <button onClick={() => { setStimpOpen(true); setStimpPin(""); setStimpMsg(""); }} className="px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-sm transition">Stimpla</button>
           <button onClick={openRecent} className="px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-sm transition">Fyrri sölur</button>
           <button onClick={openSimgr} className="px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 active:scale-[0.97] text-white font-semibold text-sm transition">Ógreiddar símgr.</button>
@@ -743,6 +743,9 @@ export default function StaffTill() {
                   <button onClick={() => { setEditField("qty"); setEditFresh(false); const q = Number(edit.qty) || 1; const floor = Number.isInteger(q) ? 1 : (q % 1 || 1); setEdit({ ...edit, qty: String(Math.max(floor, +(q - 1).toFixed(3))) }); }} className="w-12 h-12 rounded-xl bg-gray-100 text-2xl active:scale-95 shrink-0">−</button>
                   <input inputMode="none" value={edit.qty} onFocus={() => selectField("qty")} onClick={() => selectField("qty")} onChange={(e) => { setEditFresh(false); setEdit({ ...edit, qty: e.target.value }); }} className={`${numInp(editField === "qty")} text-center`} />
                   <button onClick={() => { setEditField("qty"); setEditFresh(false); const q = Number(edit.qty) || 0; setEdit({ ...edit, qty: String(+(q + 1).toFixed(3)) }); }} className="w-12 h-12 rounded-xl bg-gray-100 text-2xl active:scale-95 shrink-0">+</button>
+                  {/* Hálft magn (t.d. hálft brauð) — eitt tap = 0,5; komman leyfir önnur brot (0,25…) */}
+                  <button onClick={() => { setEditField("qty"); setEditFresh(false); setEdit({ ...edit, qty: "0.5" }); }} className="w-12 h-12 rounded-xl bg-[#F0F7F6] text-lg font-bold text-[#2C687B] active:scale-95 shrink-0" title="Hálft (0,5)">½</button>
+                  <button onClick={() => { setEditField("qty"); setEditFresh(false); if (!String(edit.qty).includes(".")) setEdit({ ...edit, qty: (edit.qty || "0") + "." }); }} className="w-12 h-12 rounded-xl bg-gray-100 text-2xl active:scale-95 shrink-0" title="Aukastafir (komma)">,</button>
                 </div>
                 <label className="block text-sm text-gray-500 mb-1">Einingaverð (kr)</label>
                 <input inputMode="none" value={edit.unit} onFocus={() => selectField("unit")} onClick={() => selectField("unit")} onChange={(e) => { setEditFresh(false); setEdit({ ...edit, unit: e.target.value }); }} className={numInp(editField === "unit")} />

@@ -17,8 +17,9 @@ async function freePin(): Promise<string> {
 }
 
 export async function GET() {
+  // PIN-arnir sjálfir fara ALDREI út úr þjóninum eftir stofnun — aðeins hvort hann sé settur.
   const rows = await query(`
-    select id, name, kennitala, pin, is_active, employment_type, hourly_rate::float8 as hourly_rate
+    select id, name, kennitala, (pin is not null) as has_pin, is_active, employment_type, hourly_rate::float8 as hourly_rate
     from acc.employees where pin is not null or staff_email is null
     order by is_active desc, name`);
   return NextResponse.json({ rows });
