@@ -5,6 +5,7 @@ import LogoutButton from "@/app/bokhald/LogoutButton";
 
 const AREAS: { href: string; label: string; desc: string; icon: string; roles: Role[] }[] = [
   { href: "/bokhald", label: "Bókhald", desc: "Fjárhagur, sala, vörur, VSK", icon: "📚", roles: ["stjornandi", "bokari"] },
+  { href: "/bokhald/solukerfi/vorur", label: "Sölukerfi & lager", desc: "Vörur, innkaup, móttaka, pantanir", icon: "📦", roles: ["stjornandi", "lagerstjori"] },
   { href: "/kassi/starf", label: "Afgreiðslukassi", desc: "Sala — kort og á reikning", icon: "🛒", roles: ["stjornandi", "afgreidsla"] },
   { href: "/admin/sjalfsali", label: "Sjálfsali", desc: "Umsóknir um aðgang", icon: "🚪", roles: ["stjornandi", "afgreidsla", "eldhus"] },
   { href: "/eldhus/admin", label: "Eldhús — SVO GOTT", desc: "Matseðill og pantanir", icon: "🍲", roles: ["stjornandi", "eldhus"] },

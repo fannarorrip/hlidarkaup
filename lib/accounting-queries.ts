@@ -718,6 +718,7 @@ export interface GoodsReceiptRow {
   invoice_date: string | null; source: string; status: string; voucher_id: string | null;
   total_net: string | null; total_vat: string | null; total_gross: string | null; line_count?: number;
   book_invoice?: boolean; // false = reikningur þegar bókaður annars staðar (móttaka = birgðir + verð)
+  supplier_markup?: string | null; // default_markup birgisins — notað í verðforskoðun ritilsins
 }
 export const listGoodsReceipts = () =>
   query<GoodsReceiptRow>(`select r.id, r.supplier_id, r.supplier_name, r.invoice_number, r.invoice_date::text as invoice_date,
@@ -727,17 +728,20 @@ export const listGoodsReceipts = () =>
 export const getGoodsReceipt = (id: string) =>
   query<GoodsReceiptRow & { has_doc: boolean }>(`select r.id, r.supplier_id, r.supplier_name, r.invoice_number,
       r.invoice_date::text as invoice_date, r.source, r.status, r.voucher_id, r.total_net, r.total_vat, r.total_gross,
-      r.book_invoice, (r.doc_bytes is not null) as has_doc
-    from acc.goods_receipts r where r.id = $1`, [id]).then((r) => r[0] ?? null);
+      r.book_invoice, (r.doc_bytes is not null) as has_doc, s.default_markup::text as supplier_markup
+    from acc.goods_receipts r left join acc.suppliers s on s.id = r.supplier_id
+    where r.id = $1`, [id]).then((r) => r[0] ?? null);
 
 export interface GoodsReceiptLineRow {
   id: string; line_no: number; supplier_item_id: string | null; gtin: string | null; description: string | null;
   invoiced_qty: string; unit_code: string | null; unit_price: string | null; line_net: string | null; vat_rate: string;
   matched_product_number: string | null; matched_name: string | null; received_qty: string | null;
   matched_markup: string | null; pack_qty: string | null; unit_cost_override: string | null;
+  matched_price: number | null; matched_cost: string | null;
 }
 export const getReceiptLines = (receiptId: string) =>
-  query<GoodsReceiptLineRow>(`select l.*, p.name as matched_name, p.markup::text as matched_markup
+  query<GoodsReceiptLineRow>(`select l.*, p.name as matched_name, p.markup::text as matched_markup,
+      p.price_gross as matched_price, p.cost_price::text as matched_cost
     from acc.goods_receipt_lines l left join shop.products p on p.product_number = l.matched_product_number
     where l.receipt_id = $1 order by l.line_no`, [receiptId]);
 

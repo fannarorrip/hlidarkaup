@@ -90,6 +90,7 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
               <th className="px-3 py-2 font-semibold text-right w-20" title="Fjöldi söluvara í hverri reikningseiningu (kassi/grind — t.d. 144). Lærist á vörutengingu birgisins og fyllist sjálfkrafa næst.">Í pakka</th>
               <th className="px-3 py-2 font-semibold text-right w-24" title="Kostnaður á söluvöru. Reiknast sjálfkrafa (upphæð ÷ (magn × í pakka)) — skrifaðu tölu til að yfirskrifa.">Ein.verð</th>
               <th className="px-3 py-2 font-semibold text-right w-20" title="Föst álagning vörunnar — festist á vörunni og reiknar söluverð = kostnaður × álagning við hverja móttöku">Álagning</th>
+              <th className="px-3 py-2 font-semibold text-right w-32" title="Núverandi söluverð → verð eftir álagningu (endar á 9). RAUTT = álagningin fer undir ×1,20.">Verð nú → eftir</th>
             </tr>
           </thead>
           <tbody>
@@ -140,6 +141,32 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
                           onChange={(e) => setRow(i, { markup: e.target.value.replace(/[^\d.,]/g, "") })}
                           disabled={!rows[i]?.matched}
                           className="w-16 border border-gray-300 rounded px-2 py-1 text-sm text-right outline-none focus:border-red-400 disabled:bg-gray-50 disabled:text-gray-300" />}
+                  </td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                    {(() => {
+                      // Sama forgangsröð og verðvélin: kostnaður á söluvöru → álagning
+                      // (línu-innsláttur > föst álagning vöru > álagning birgis > sama álagning og var).
+                      if (!rows[i]?.matched || l.matched_price == null) return <span className="text-gray-300">—</span>;
+                      const cur = Number(l.matched_price) || 0;
+                      const packN = Number((rows[i]?.pack ?? "").replace(",", ".")) || 1;
+                      const ovr = Number((rows[i]?.cost ?? "").replace(",", "."));
+                      const cost = ovr > 0 ? ovr : Number(l.line_net) > 0 && inv > 0 ? Number(l.line_net) / (inv * packN) : 0;
+                      const mLine = Number((rows[i]?.markup ?? "").replace(",", "."));
+                      const mProd = Number(l.matched_markup) || 0;
+                      const mSup = Number(receipt.supplier_markup) || 0;
+                      const oldCost = Number(l.matched_cost) || 0;
+                      const mSame = oldCost > 0 && cur > 0 ? cur / oldCost : 0;
+                      const m = mLine > 1 ? mLine : mProd > 1 ? mProd : mSup > 1 ? mSup : mSame > 1 && mSame < 3 ? mSame : 0;
+                      const round9 = (n: number) => (n % 10 === 9 ? n : Math.floor(n / 10) * 10 + 9);
+                      const next = cost > 0 && m > 0 ? round9(Math.round(cost * m)) : null;
+                      const effM = cost > 0 ? (next ?? cur) / cost : 0;
+                      const low = effM > 0 && effM < 1.2; // RAUTT: álagning undir ×1,20
+                      return (
+                        <span className={low ? "text-red-600 font-bold" : "text-gray-600"} title={effM > 0 ? `Virk álagning ×${effM.toFixed(2).replace(".", ",")}${low ? " — UNDIR ×1,20!" : ""}` : ""}>
+                          {kr(cur)} → {next != null ? kr(next) : "—"}{low ? " ⚠" : ""}
+                        </span>
+                      );
+                    })()}
                   </td>
                 </tr>
               );
