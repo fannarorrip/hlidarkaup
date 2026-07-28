@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { GoodsReceiptRow, GoodsReceiptLineRow } from "@/lib/accounting-queries";
@@ -55,20 +55,54 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
 
   const setRow = (i: number, patch: Partial<LineState>) => setRows((p) => p.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
 
+  const buildBody = () => ({
+    supplier_id: supplierId ?? undefined,
+    lines: rows.map((r) => ({
+      id: r.id, matched_product_number: r.matched,
+      received_qty: r.received === "" ? null : Number(r.received.replace(",", ".")),
+      markup: r.markup.trim() === "" ? null : Number(r.markup.replace(",", ".")),
+      pack_qty: r.pack.trim() === "" ? null : Number(r.pack.replace(",", ".")),
+      unit_cost_override: r.cost.trim() === "" ? null : Number(r.cost.replace(",", ".")),
+    })),
+  });
+
+  // SJÁLFVIRK VISTUN: hver breyting vistast sjálfkrafa eftir 2,5 sek kyrrð — margra klukkutíma
+  // pörunarvinna má aldrei týnast. Rennur innskráningin út helst vinnan í vafranum og notandinn
+  // fær skýr fyrirmæli (innskráning í nýjum flipa → sjálfvirka vistunin nær aftur sambandi).
+  const dirtyRef = useRef(false);
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const firstRender = useRef(true);
+  const [autoState, setAutoState] = useState<"" | "saving" | "saved" | "auth" | "fail">("");
+  useEffect(() => {
+    if (booked) return;
+    if (firstRender.current) { firstRender.current = false; return; }
+    dirtyRef.current = true;
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(async () => {
+      setAutoState("saving");
+      try {
+        const r = await fetch(`/api/innkaup/receipt/${receipt.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(buildBody()) });
+        if (r.ok) { dirtyRef.current = false; setAutoState("saved"); }
+        else if (r.status === 401 || r.status === 403 || r.redirected) setAutoState("auth");
+        else setAutoState("fail");
+      } catch { setAutoState("fail"); }
+    }, 2500);
+    return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, supplierId, booked]);
+
+  // Vörn gegn óvart-lokun/endurhleðslu með óvistaða vinnu.
+  useEffect(() => {
+    const onUnload = (e: BeforeUnloadEvent) => { if (dirtyRef.current && !booked) { e.preventDefault(); e.returnValue = ""; } };
+    window.addEventListener("beforeunload", onUnload);
+    return () => window.removeEventListener("beforeunload", onUnload);
+  }, [booked]);
+
   async function save(thenConfirm: boolean) {
     setBusy(true); setErr(""); setOk("");
-    const body = {
-      supplier_id: supplierId ?? undefined,
-      lines: rows.map((r) => ({
-        id: r.id, matched_product_number: r.matched,
-        received_qty: r.received === "" ? null : Number(r.received.replace(",", ".")),
-        markup: r.markup.trim() === "" ? null : Number(r.markup.replace(",", ".")),
-        pack_qty: r.pack.trim() === "" ? null : Number(r.pack.replace(",", ".")),
-        unit_cost_override: r.cost.trim() === "" ? null : Number(r.cost.replace(",", ".")),
-      })),
-    };
-    const r = await fetch(`/api/innkaup/receipt/${receipt.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const r = await fetch(`/api/innkaup/receipt/${receipt.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(buildBody()) });
     if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error ?? "Villa við vistun"); setBusy(false); return; }
+    dirtyRef.current = false;
     if (thenConfirm) {
       const c = await fetch(`/api/innkaup/receipt/${receipt.id}/confirm`, { method: "POST" });
       const d = await c.json(); setBusy(false);
@@ -96,6 +130,19 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
         {receipt.has_doc && <> · <a href={`/api/innkaup/receipt/${receipt.id}/document`} target="_blank" rel="noopener" className="text-red-600 hover:underline">skjal</a></>}
         {booked && receipt.voucher_id && <> · <Link href={`/bokhald/fylgiskjol/${receipt.voucher_id}`} className="text-red-600 hover:underline">fylgiskjal</Link></>}
       </p>
+
+      {!booked && autoState === "auth" && (
+        <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <b>Innskráningin rann út — vinnan þín er ÖRUGG í vafranum.</b> Ekki endurhlaða þessari síðu:
+          opnaðu <a href="/starf" target="_blank" rel="noopener" className="underline font-semibold">/starf í nýjum flipa</a>,
+          skráðu þig inn þar, komdu svo hingað aftur — sjálfvirka vistunin nær þá sambandi við næstu breytingu (eða ýttu á „Vista drög").
+        </div>
+      )}
+      {!booked && autoState === "fail" && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-800">
+          Sjálfvirk vistun mistókst — athugaðu nettengingu og ýttu á „Vista drög". Vinnan er enn í vafranum.
+        </div>
+      )}
 
       {!booked && !receipt.supplier_id && (
         <div className="mb-5 max-w-md">
@@ -269,6 +316,9 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
             {busy ? "Vinn…" : receipt.book_invoice === false ? "Staðfesta móttöku (birgðir + verð)" : "Staðfesta móttöku og bóka"}
           </button>
           <button onClick={() => save(false)} disabled={busy} className="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-50">Vista drög</button>
+          <span className="text-xs text-gray-400">
+            {autoState === "saving" ? "vistast sjálfkrafa…" : autoState === "saved" ? "✓ vistað sjálfkrafa" : ""}
+          </span>
           <button onClick={discard} disabled={busy} className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-400 hover:text-red-600 hover:border-red-200 disabled:opacity-50">Henda móttöku</button>
           <Link href="/bokhald/solukerfi/innkaup/mottaka" className="text-sm text-gray-500 hover:text-gray-800">← Til baka</Link>
         </div>
