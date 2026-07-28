@@ -3,6 +3,7 @@ import { listGoodsReceipts, type GoodsReceiptRow } from "@/lib/accounting-querie
 import { listPendingSuggestions } from "@/lib/price-suggestions";
 import { dags, kr } from "@/lib/format";
 import MottakaUpload from "./MottakaUpload";
+import MottakaInbox from "./MottakaInbox";
 import PriceSuggestions from "./PriceSuggestions";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,8 @@ export default async function MottakaPage() {
         </div>
         <MottakaUpload />
       </div>
+
+      <MottakaInbox />
 
       <PriceSuggestions suggestions={suggestions} />
 
