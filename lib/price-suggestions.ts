@@ -53,13 +53,15 @@ export async function recordCostChanges(changes: CostChange[], meta: { receiptId
     if (!real.length) return 0;
     const rules = await query<Rule>(
       `select id, category, multiplier_min::text, multiplier_max::text, rounding from acc.pricing_rules where is_active`);
-    // Supplier contract terms: fixed markup + optional auto-apply (t.d. Bananar ×1,20 sjálfkrafa).
+    // Supplier contract terms: fixed markup (t.d. Bananar ×1,20).
     const sup = meta.supplierId
-      ? (await query<{ default_markup: string | null; auto_apply_prices: boolean }>(
-          `select default_markup::text, auto_apply_prices from acc.suppliers where id = $1`, [meta.supplierId]))[0]
+      ? (await query<{ default_markup: string | null }>(
+          `select default_markup::text from acc.suppliers where id = $1`, [meta.supplierId]))[0]
       : undefined;
     const supMarkup = sup?.default_markup ? Number(sup.default_markup) : 0;
-    const autoApply = !!sup?.auto_apply_prices;
+    // Verð breytast STRAX við bókun móttöku — engin samþykktarskref (ákvörðun eiganda 2026-07-28).
+    // Allt skráist samt sem 'applied' tillaga: full rekjanleiki á hverri breytingu.
+    const autoApply = true;
     let queued = 0;
 
     for (const c of real) {

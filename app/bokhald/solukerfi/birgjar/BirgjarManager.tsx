@@ -98,9 +98,7 @@ export default function BirgjarManager({ suppliers }: { suppliers: SupplierRow[]
               {field("payment_terms_days", "Greiðslufrestur (dagar)", "number")}
               {field("ap_account", "Lánadrottnalykill")}
               {field("default_markup", "Álagning (t.d. 1,20 = +20%)")}
-              <label className="flex items-center gap-2 text-sm mt-5" title="Verð uppfærast sjálfkrafa við móttöku reiknings (annars tillaga til samþykktar)">
-                <input type="checkbox" checked={!!editing.d.auto_apply_prices} onChange={(e) => set("auto_apply_prices", e.target.checked)} /> Sjálfvirk verðuppfærsla
-              </label>
+              {/* Verð uppfærast ALLTAF sjálfkrafa við bókun móttöku — auto_apply hakið aflagt 2026-07-28. */}
               <label className="flex items-center gap-2 text-sm mt-5"><input type="checkbox" checked={!!editing.d.is_active} onChange={(e) => set("is_active", e.target.checked)} /> Virkur</label>
             </div>
             {err && <p className="text-sm text-red-600 mt-3">{err}</p>}
