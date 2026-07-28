@@ -29,6 +29,28 @@ export function hasAnthropicKey(): boolean {
 
 const stripDataUrl = (d: string) => String(d).replace(/^data:.*?base64,/, "");
 
+/** Kalla á modelið með háu út-taki. Tvöfalt öryggisnet fyrir línumarga heildsalareikninga
+ *  (Innnes o.fl.): (1) hafni API-ið "max_tokens of hátt" er reynt aftur á 8192; (2) skerist
+ *  svarið samt (stop_reason max_tokens) er reynt EINU SINNI með stærra modeli sem ræður við
+ *  hátt út-tak (SKRANING_MODEL_LARGE, sjálfgefið claude-opus-4-8). */
+async function createWithBudget(client: Anthropic, params: Omit<Anthropic.MessageCreateParamsNonStreaming, "max_tokens">, maxTokens: number): Promise<Anthropic.Message> {
+  const attempt = async (p: typeof params, mt: number): Promise<Anthropic.Message> => {
+    try {
+      return await client.messages.create({ ...p, max_tokens: mt });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      if (mt > 8192 && /max_tokens/i.test(msg)) return await client.messages.create({ ...p, max_tokens: 8192 });
+      throw e;
+    }
+  };
+  let msg = await attempt(params, maxTokens);
+  if (msg.stop_reason === "max_tokens") {
+    const big = process.env.SKRANING_MODEL_LARGE || "claude-opus-4-8";
+    if (params.model !== big) msg = await attempt({ ...params, model: big }, Math.max(maxTokens, 32000));
+  }
+  return msg;
+}
+
 /** Parse the model's reply as JSON — strict first, then salvage the first balanced {...} block
  *  (the model sometimes wraps the JSON in prose despite "skilaðu AÐEINS JSON"). When no JSON exists
  *  at all, throw the model's actual words (e.g. "Skjalið er ekki reikningur …") so the pósthólf
@@ -122,14 +144,13 @@ export async function extractInvoice(opts: { instructions?: string; files: Extra
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const model = process.env.SKRANING_MODEL || "claude-haiku-4-5-20251001";
-  const msg = await client.messages.create({
+  const msg = await createWithBudget(client, {
     model,
-    max_tokens: 8192, // línumargir reikningar skila löngu JSON — 4096 skar þá í sundur
     system:
       "Þú ert íslenskur bókari sem bókar fylgiskjöl í tvíhliða bókhald. Bókhaldslyklaskrá fyrirtækisins (lykilnúmer og heiti):\n" +
       chart + "\n\nNotaðu EINGÖNGU lykilnúmer úr þessari skrá.",
     messages: [{ role: "user", content: content as unknown as Anthropic.MessageParam["content"] }],
-  });
+  }, 16000);
   const data = parseModelJson(msg);
 
   return {
@@ -166,11 +187,11 @@ export async function extractReceiptLines(opts: { files: ExtractFile[] }): Promi
   });
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const model = process.env.SKRANING_MODEL || "claude-haiku-4-5-20251001";
-  const msg = await client.messages.create({
-    model, max_tokens: 8192, // vörulínulisti getur orðið langur
+  const msg = await createWithBudget(client, {
+    model, // heildsalareikningar (Innnes o.fl.) telja hundruð vörulína — þarf hátt út-tak
     system: "Þú lest innkaupareikninga og skilar vörulínum nákvæmlega sem JSON.",
     messages: [{ role: "user", content: content as unknown as Anthropic.MessageParam["content"] }],
-  });
+  }, 32000);
   const d = parseModelJson(msg);
   return {
     format: "pdf",
@@ -209,11 +230,11 @@ export async function extractStatement(opts: { files: ExtractFile[] }): Promise<
   });
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const model = process.env.SKRANING_MODEL || "claude-haiku-4-5-20251001";
-  const msg = await client.messages.create({
-    model, max_tokens: 8192, // afstemmingalisti getur talið hundruð reikninga
+  const msg = await createWithBudget(client, {
+    model, // afstemmingalisti getur talið hundruð reikninga — þarf hátt út-tak
     system: "Þú lest afstemmingalista frá birgjum og skilar reikningalínum nákvæmlega sem JSON.",
     messages: [{ role: "user", content: content as unknown as Anthropic.MessageParam["content"] }],
-  });
+  }, 32000);
   const d = parseModelJson(msg);
   return {
     supplier: String(d.supplier ?? ""),
