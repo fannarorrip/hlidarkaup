@@ -10,19 +10,21 @@ interface Row extends P { copies: number }
 
 const kr0 = (n: number) => Math.round(n).toLocaleString("is-IS");
 
-// "720GR" / "0,5 L" / "800 G" / "2KG" úr vöruheiti → verð/kg (eða /l) reiknað af pakkaverði
-function perUnitInfo(p: P): string | null {
+// Verðlínan fyrir ofan strikamerkið: Verð/stk ALLTAF + Verð/KG (eða /L) þegar hægt er að
+// reikna það af pakkastærð í heitinu ("720GR", "2KG", "500ML"...). Vigtarvara = bara kílóverð.
+function priceLine(p: P): string {
   if (p.use_scale) return `Verð/KG ${kr0(p.price_gross)}`;
+  const stk = `Verð/stk ${kr0(p.price_gross)}`;
   const m = p.name.match(/(\d+(?:[.,]\d+)?)\s*(GR?|KG|ML|L)\b/i);
-  if (!m) return null;
+  if (!m) return stk;
   const n = Number(m[1].replace(",", "."));
-  if (!n) return null;
+  if (!n) return stk;
   const unit = m[2].toUpperCase();
-  if (unit === "G" || unit === "GR") return `Verð/KG ${kr0(p.price_gross / (n / 1000))}`;
-  if (unit === "KG") return `Verð/KG ${kr0(p.price_gross / n)}`;
-  if (unit === "ML") return `Verð/L ${kr0(p.price_gross / (n / 1000))}`;
-  if (unit === "L") return `Verð/L ${kr0(p.price_gross / n)}`;
-  return null;
+  if (unit === "G" || unit === "GR") return `${stk} · Verð/KG ${kr0(p.price_gross / (n / 1000))}`;
+  if (unit === "KG") return `${stk} · Verð/KG ${kr0(p.price_gross / n)}`;
+  if (unit === "ML") return `${stk} · Verð/L ${kr0(p.price_gross / (n / 1000))}`;
+  if (unit === "L") return `${stk} · Verð/L ${kr0(p.price_gross / n)}`;
+  return stk;
 }
 
 export default function LabelPrinter() {
@@ -147,15 +149,22 @@ export default function LabelPrinter() {
         {rows.flatMap((r) => Array.from({ length: r.copies }, (_, i) => (
           <div key={`${r.product_number}~${i}`} className="label bg-white border border-dashed border-gray-300 print:border-0 mb-2 print:mb-0 overflow-hidden"
             style={{ width: `${w}mm`, height: `${h}mm`, padding: "1.5mm 2mm", display: "flex", flexDirection: "column", fontFamily: "Arial, sans-serif", color: "#000" }}>
-            <div style={{ fontWeight: 700, fontSize: "3.2mm", lineHeight: 1.15, textTransform: "uppercase", overflow: "hidden", maxHeight: "7.5mm" }}>{r.name}</div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "2.4mm", marginTop: "0.8mm" }}>
-              <span style={{ fontWeight: 700 }}>{perUnitInfo(r) ?? ""}</span>
+            <div style={{ fontWeight: 700, fontSize: "3mm", lineHeight: 1.15, textTransform: "uppercase", overflow: "hidden", maxHeight: "7mm" }}>{r.name}</div>
+            {/* Verð/stk + Verð/KG FYRIR OFAN strikamerkið (+ vörunúmer hægra megin) */}
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "1.5mm", fontSize: "2.4mm", marginTop: "0.7mm", whiteSpace: "nowrap" }}>
+              <span style={{ fontWeight: 700, overflow: "hidden" }}>{priceLine(r)}</span>
               <span>{r.product_number}</span>
             </div>
             <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flex: 1, gap: "2mm" }}>
-              <div style={{ width: "55%", height: "9mm" }}
-                dangerouslySetInnerHTML={{ __html: (r.barcode && ean13Svg(r.barcode, { height: 34 })) || `<div style="font-size:2.4mm;color:#666">${r.barcode ?? ""}</div>` }} />
-              <div style={{ fontWeight: 700, fontSize: "7mm", lineHeight: 1 }}>{kr0(r.price_gross)}</div>
+              <div style={{ width: "55%" }}>
+                <div style={{ height: "6.5mm" }}
+                  dangerouslySetInnerHTML={{ __html: (r.barcode && ean13Svg(r.barcode, { height: 34, showDigits: false })) || "" }} />
+                {/* Tölur strikamerkisins UNDIR því — læsilegar til handinnsláttar bregðist skanninn */}
+                <div style={{ fontSize: "2.3mm", letterSpacing: "0.35mm", fontFamily: "Arial, sans-serif", textAlign: "center", marginTop: "0.3mm" }}>
+                  {(r.barcode ?? "").replace(/\D/g, "") || "—"}
+                </div>
+              </div>
+              <div style={{ fontWeight: 700, fontSize: "6.5mm", lineHeight: 1 }}>{kr0(r.price_gross)}</div>
             </div>
           </div>
         )))}
