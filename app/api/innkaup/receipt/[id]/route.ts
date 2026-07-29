@@ -14,10 +14,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const client = await db.connect();
   try {
     await client.query("begin");
-    const rec = (await client.query<{ status: string }>(`select status from acc.goods_receipts where id = $1 for update`, [id])).rows[0];
+    const rec = (await client.query<{ status: string; supplier_id: string | null }>(`select status, supplier_id from acc.goods_receipts where id = $1 for update`, [id])).rows[0];
     if (!rec) throw new Error("Móttaka fannst ekki");
     if (rec.status === "booked") return NextResponse.json({ error: "Þegar bókað" }, { status: 409 });
 
+    // Birgir NÝR á móttökunni? Þá endurparast línurnar úr minninu Á EFTIR línuvistuninni
+    // (annars myndu giskin úr vafranum yfirskrifa endurpörunina — og öfugt má endurpörunin
+    // EKKI keyra á hverri vistun því hún myndi eyða viljandi handbreytingum).
+    const supplierJustAssigned = supplier_id !== undefined && supplier_id && supplier_id !== rec.supplier_id;
     if (supplier_id !== undefined) {
       const sup = supplier_id ? (await client.query<{ name: string }>(`select name from acc.suppliers where id = $1`, [supplier_id])).rows[0] : null;
       await client.query(`update acc.goods_receipts set supplier_id = $1, supplier_name = coalesce($2, supplier_name) where id = $3`, [supplier_id || null, sup?.name ?? null, id]);
@@ -42,6 +46,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           await client.query(`update shop.products set markup = $1 where product_number = $2`, [m, l.matched_product_number]);
         }
       }
+    }
+
+    // ENDURPARA ÚR MINNI þegar birgir er NÝVALINN: móttökur sem urðu til án þekkts birgis
+    // (t.d. PDF án kennitölu) fengu nafnalíkinda-gisk — lærða tengingin er sannleikurinn og
+    // yfirskrifar giskið (keyrir á eftir línuvistuninni svo giskin úr vafranum vinni ekki).
+    if (supplierJustAssigned) {
+      await client.query(
+        `update acc.goods_receipt_lines l
+            set matched_product_number = si.product_number,
+                pack_qty = coalesce(l.pack_qty, si.pack_qty)
+           from acc.supplier_items si
+          where l.receipt_id = $1
+            and si.supplier_id = $2
+            and si.match_key = any(array[nullif(l.gtin, ''), nullif(l.supplier_item_id, '')])`,
+        [id, supplier_id]);
     }
 
     // Learn supplier-item → product mappings (+ pack size) for matched lines that carry a key.
