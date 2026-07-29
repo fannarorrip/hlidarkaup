@@ -48,5 +48,7 @@ export function ean13Svg(code: string, opts?: { height?: number; showDigits?: bo
   const text = showDigits
     ? `<text x="47.5" y="${h + textH}" font-family="Arial" font-size="9" text-anchor="middle" letter-spacing="2">${parsed.digits}</text>`
     : "";
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 95 ${h + textH + 1}" preserveAspectRatio="none" shape-rendering="crispEdges">${bars}${text}</svg>`;
+  // width/height 100% + display:block er SKYLDA — SVG án stærðar fær sjálfgefna 300×150px
+  // risastærð í vafra og málar strikin yfir allt fyrir neðan sig (t.d. talnalínuna á hillumiða).
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 95 ${h + textH + 1}" width="100%" height="100%" style="display:block" preserveAspectRatio="none" shape-rendering="crispEdges">${bars}${text}</svg>`;
 }
