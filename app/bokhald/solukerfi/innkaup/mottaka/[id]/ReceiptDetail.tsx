@@ -100,15 +100,21 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
 
   async function save(thenConfirm: boolean) {
     setBusy(true); setErr(""); setOk("");
-    const r = await fetch(`/api/innkaup/receipt/${receipt.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(buildBody()) });
-    if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error ?? "Villa við vistun"); setBusy(false); return; }
+    // Handvirk vistun keyrir verðin inn STRAX (apply_prices) — sjálfvirka vistunin geymir bara.
+    const r = await fetch(`/api/innkaup/receipt/${receipt.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...buildBody(), apply_prices: !thenConfirm }) });
+    const saved = await r.json().catch(() => ({}));
+    if (!r.ok) { setErr(saved.error ?? "Villa við vistun"); setBusy(false); return; }
     dirtyRef.current = false;
     if (thenConfirm) {
       const c = await fetch(`/api/innkaup/receipt/${receipt.id}/confirm`, { method: "POST" });
       const d = await c.json(); setBusy(false);
       if (!c.ok) { setErr(d.error ?? "Villa við bókun"); return; }
       router.refresh();
-    } else { setBusy(false); setOk("Vistað"); router.refresh(); }
+    } else {
+      setBusy(false);
+      setOk(saved.priceChanges > 0 ? `Vistað — ${saved.priceChanges} verð keyrð inn ✓` : "Vistað");
+      router.refresh();
+    }
   }
 
   async function discard() {

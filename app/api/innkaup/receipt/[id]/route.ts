@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { applyDraftPrices } from "@/lib/goods-receipt";
 
 // Update a draft receipt: set the supplier, and per-line the matched product + received qty.
 // When a line gets matched, the supplier-item → product mapping is learned for next time.
@@ -9,7 +10,7 @@ interface LinePatch { id: string; matched_product_number?: string | null; receiv
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { supplier_id, lines } = await req.json();
+  const { supplier_id, lines, apply_prices } = await req.json();
   const client = await db.connect();
   try {
     await client.query("begin");
@@ -67,7 +68,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         [sid, id]);
     }
     await client.query("commit");
-    return NextResponse.json({ ok: true });
+    // "Vista drög" með apply_prices: verðin keyrast inn STRAX af drögunum (ekki bara við bókun).
+    // Sjálfvirka vistunin sendir ekki flaggið — hún geymir bara vinnuna.
+    let priceChanges = 0;
+    if (apply_prices === true) {
+      try { priceChanges = await applyDraftPrices(id); } catch (e) { console.error("applyDraftPrices:", e); }
+    }
+    return NextResponse.json({ ok: true, priceChanges });
   } catch (e) {
     await client.query("rollback");
     return NextResponse.json({ error: e instanceof Error ? e.message : "Villa" }, { status: 400 });

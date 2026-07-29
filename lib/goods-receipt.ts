@@ -115,6 +115,36 @@ export async function createReceiptFromParsed(parsedRaw: ParsedInvoice, doc?: { 
 
 interface RecLine { id: string; line_no: number; description: string | null; vat_rate: string; line_net: string; unit_price: string | null; matched_product_number: string | null; received_qty: string | null; invoiced_qty: string; pack_qty: string | null; unit_cost_override: string | null }
 
+/** Beita verðbreytingum STRAX af drögum ("Vista drög" = verðin keyrast inn): sama
+ *  kostnaðarútreikning og staðfestingin (override > línuupphæð÷(magn×pakki) > einingaverð)
+ *  en snertir HVORKI birgðir né bókhald — recordCostChanges sér um verðin + rekjanleikann.
+ *  Endurkeyrsla við bókun verður nær alltaf no-op (1% suð-vörnin grípur óbreytt verð). */
+export async function applyDraftPrices(receiptId: string): Promise<number> {
+  const rec = (await db.query<{ supplier_id: string | null; supplier_name: string | null; status: string }>(
+    `select supplier_id, supplier_name, status from acc.goods_receipts where id = $1`, [receiptId])).rows[0];
+  if (!rec || rec.status === "booked") return 0;
+  const lines = (await db.query<RecLine>(
+    `select id, line_no, description, vat_rate, line_net, unit_price, matched_product_number, received_qty, invoiced_qty, pack_qty, unit_cost_override
+       from acc.goods_receipt_lines where receipt_id = $1 order by line_no`, [receiptId])).rows;
+  const costChanges: { product_number: string; old_cost: number | null; new_cost: number }[] = [];
+  for (const l of lines) {
+    if (!l.matched_product_number) continue;
+    const invQty = Number(l.invoiced_qty) || 0;
+    const pack = Number(l.pack_qty) > 0 ? Number(l.pack_qty) : 1;
+    const override = l.unit_cost_override == null ? null : Number(l.unit_cost_override);
+    const lineNet = l.line_net == null ? null : Number(l.line_net);
+    const cost = override != null && override > 0 ? override
+      : lineNet != null && lineNet > 0 && invQty > 0
+        ? Math.round((lineNet / (invQty * pack)) * 100) / 100
+        : l.unit_price == null ? null : Number(l.unit_price);
+    if (cost == null || cost <= 0) continue;
+    const prev = (await db.query<{ cost_price: string | null }>(
+      `select cost_price::text from shop.products where product_number = $1`, [l.matched_product_number])).rows[0];
+    costChanges.push({ product_number: l.matched_product_number, old_cost: prev?.cost_price != null ? Number(prev.cost_price) : null, new_cost: cost });
+  }
+  return recordCostChanges(costChanges, { receiptId, supplierId: rec.supplier_id, supplierName: rec.supplier_name });
+}
+
 /**
  * Confirm a receipt: raise stock for matched lines (+ movement log), book the full
  * invoice (vörukaup + innskattur + lánadrottna, supplier-tagged) and attach the doc.
