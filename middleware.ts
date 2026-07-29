@@ -15,6 +15,7 @@ const RULES: { prefix: string; roles: string[] }[] = [
   { prefix: "/api/timar", roles: ["stjornandi", "bokari"] },
   // Lagerstjóri: allt sölukerfið/lagerinn — röðin skiptir máli, þetta VERÐUR að standa á
   // undan almennu "/bokhald"-reglunni (fyrsta samsvörun vinnur).
+  { prefix: "/bokhald/dagatal", roles: ["stjornandi", "bokari", "lagerstjori"] },
   { prefix: "/bokhald/solukerfi", roles: ["stjornandi", "bokari", "lagerstjori"] },
   { prefix: "/bokhald", roles: ["stjornandi", "bokari"] },
   { prefix: "/api/products", roles: ["stjornandi", "bokari", "lagerstjori"] },
@@ -44,8 +45,8 @@ const RULES: { prefix: string; roles: string[] }[] = [
   { prefix: "/api/pantanir", roles: ["stjornandi", "bokari", "lagerstjori"] },
   { prefix: "/api/afskriftir", roles: ["stjornandi", "bokari", "afgreidsla", "lagerstjori"] },
   { prefix: "/api/kaelar", roles: ["stjornandi", "bokari", "afgreidsla", "lagerstjori"] },
-  { prefix: "/api/reminders", roles: ["stjornandi", "bokari"] },
-  { prefix: "/api/dagatal", roles: ["stjornandi", "bokari"] },
+  { prefix: "/api/reminders", roles: ["stjornandi", "bokari", "lagerstjori"] },
+  { prefix: "/api/dagatal", roles: ["stjornandi", "bokari", "lagerstjori"] },
   { prefix: "/api/assistant", roles: ["stjornandi", "bokari", "afgreidsla", "eldhus"] },
   { prefix: "/kassi/starf", roles: ["stjornandi", "afgreidsla"] },
   { prefix: "/api/kassi/sale", roles: ["stjornandi", "afgreidsla"] },
