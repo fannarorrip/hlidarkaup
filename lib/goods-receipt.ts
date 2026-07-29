@@ -234,9 +234,20 @@ export async function confirmReceipt(receiptId: string): Promise<{ voucherId: st
     let totalGross = 0;
     for (const [rate, net] of netByRate) {
       if (net === 0) continue;
-      vlines.push({ account: VORUKAUP[rate] ?? "2103", debit: r2(net), credit: 0, vat_code: rate === 24 ? "I24" : rate === 11 ? "I11" : "S00", description: `Vörukaup ${rate}%` });
+      // Neikvæður pottur (aurajöfnun, afsláttar-/skilalínur — t.d. Bananar −0,34 kr á 0%) fer á
+      // KREDIThlið sömu lykla; post_voucher/check-skorður banna neikvætt debet.
       const vat = rate > 0 ? r2(net * rate / 100) : 0;
-      if (vat > 0) vlines.push({ account: INNSKATTUR[rate], debit: vat, credit: 0, vat_code: rate === 24 ? "I24" : "I11", description: `Innskattur ${rate}%` });
+      const vatCode = rate === 24 ? "I24" : rate === 11 ? "I11" : "S00";
+      vlines.push({
+        account: VORUKAUP[rate] ?? "2103",
+        debit: net > 0 ? r2(net) : 0, credit: net < 0 ? r2(-net) : 0,
+        vat_code: vatCode, description: `Vörukaup ${rate}%`,
+      });
+      if (vat !== 0) vlines.push({
+        account: INNSKATTUR[rate],
+        debit: vat > 0 ? vat : 0, credit: vat < 0 ? r2(-vat) : 0,
+        vat_code: vatCode, description: `Innskattur ${rate}%`,
+      });
       totalGross = r2(totalGross + net + vat);
     }
     if (totalGross <= 0) throw new ReceiptError("Engin upphæð til að bóka");
