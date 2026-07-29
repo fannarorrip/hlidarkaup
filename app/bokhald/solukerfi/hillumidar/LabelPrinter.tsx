@@ -10,7 +10,9 @@ import { labelsToEpl2 } from "@/lib/epl2";
 interface P { product_number: string; name: string; price_gross: number; use_scale: boolean; unit_code: string | null; barcode: string | null }
 interface Row extends P { copies: number }
 
-const kr0 = (n: number) => Math.round(n).toLocaleString("is-IS");
+// Handvirk íslensk þúsundaskil (punktur) — toLocaleString("is-IS") fellur í ensku (kommu)
+// á vélum sem vantar íslensku locale-gögnin.
+const kr0 = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
 // Verðlínan fyrir ofan strikamerkið: Verð/stk ALLTAF + Verð/KG (eða /L) þegar hægt er að
 // reikna það af pakkastærð í heitinu ("720GR", "2KG", "500ML"...). Vigtarvara = bara kílóverð.
@@ -198,11 +200,11 @@ export default function LabelPrinter() {
               <span>{r.product_number}</span>
             </div>
             <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flex: 1, gap: "2mm" }}>
-              <div style={{ width: "55%" }}>
-                <div style={{ height: "6.5mm" }}
+              <div style={{ width: "55%", flexShrink: 0 }}>
+                <div style={{ height: "5.5mm" }}
                   dangerouslySetInnerHTML={{ __html: (r.barcode && ean13Svg(r.barcode, { height: 34, showDigits: false })) || "" }} />
                 {/* Tölur strikamerkisins UNDIR því — læsilegar til handinnsláttar bregðist skanninn */}
-                <div style={{ fontSize: "2.3mm", letterSpacing: "0.35mm", fontFamily: "Arial, sans-serif", textAlign: "center", marginTop: "0.3mm" }}>
+                <div style={{ fontSize: "2.3mm", lineHeight: "2.6mm", letterSpacing: "0.35mm", fontFamily: "Arial, sans-serif", textAlign: "center", marginTop: "0.3mm", whiteSpace: "nowrap" }}>
                   {(r.barcode ?? "").replace(/\D/g, "") || "—"}
                 </div>
               </div>
