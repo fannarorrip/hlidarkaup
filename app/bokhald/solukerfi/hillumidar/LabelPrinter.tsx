@@ -33,8 +33,10 @@ export default function LabelPrinter() {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<P[]>([]);
   const [rows, setRows] = useState<Row[]>([]);
-  const [w, setW] = useState(57);   // mm — dæmigert Zebra-hillumiðarúllustærð
+  const [w, setW] = useState(57);   // mm — stærð hvers miða
   const [h, setH] = useState(32);
+  // "a4" = margir miðar á örk með klippilínum (venjulegur prentari); "rulla" = einn miði per síðu (Zebra)
+  const [mode, setMode] = useState<"a4" | "rulla">("a4");
   const [busy, setBusy] = useState(false);
   const [bridge, setBridge] = useState(false);   // kassabrú á þessari vél → beinprentun á Zebra
   const [zBusy, setZBusy] = useState(false);
@@ -70,16 +72,24 @@ export default function LabelPrinter() {
       styleRef.current = document.createElement("style");
       document.head.appendChild(styleRef.current);
     }
-    styleRef.current.textContent = `
-      @media print {
-        @page { size: ${w}mm ${h}mm; margin: 0; }
-        body * { visibility: hidden; }
-        #labels, #labels * { visibility: visible; }
-        #labels { position: absolute; left: 0; top: 0; }
-        .label { page-break-after: always; }
-      }`;
+    styleRef.current.textContent = mode === "rulla"
+      ? `@media print {
+          @page { size: ${w}mm ${h}mm; margin: 0; }
+          body * { visibility: hidden; }
+          #labels, #labels * { visibility: visible; }
+          #labels { position: absolute; left: 0; top: 0; }
+          .label { page-break-after: always; margin: 0 !important; border: 0 !important; }
+        }`
+      : `@media print {
+          @page { size: A4 portrait; margin: 8mm; }
+          body * { visibility: hidden; }
+          #labels, #labels * { visibility: visible; }
+          #labels { position: absolute; left: 0; top: 0; display: flex; flex-wrap: wrap; gap: 0; align-content: flex-start; }
+          .label { break-inside: avoid; page-break-after: auto !important; margin: 0 !important;
+                   border: 0.3mm solid #aaa !important; }   /* klippilínur */
+        }`;
     return () => { /* style element lifir meðan síðan er opin */ };
-  }, [w, h]);
+  }, [w, h, mode]);
 
   useEffect(() => {
     const term = q.trim();
@@ -130,11 +140,16 @@ export default function LabelPrinter() {
         <button onClick={addRecent} disabled={busy} className="px-4 py-2 rounded-lg bg-[#21323A] text-white text-sm font-semibold hover:bg-[#2C687B] disabled:opacity-50">
           {busy ? "Sæki…" : "+ Nýbreytt verð (48 klst)"}
         </button>
+        <div><label className="block text-xs text-gray-500 mb-1">Prentun</label>
+          <select value={mode} onChange={(e) => setMode(e.target.value as "a4" | "rulla")} className={`${inp} bg-white`}>
+            <option value="a4">A4 örk (klippa út)</option>
+            <option value="rulla">Miðarúlla (Zebra)</option>
+          </select></div>
         <div><label className="block text-xs text-gray-500 mb-1">Breidd (mm)</label>
           <input type="number" value={w} onChange={(e) => setW(Number(e.target.value) || 57)} className={`${inp} w-20`} /></div>
         <div><label className="block text-xs text-gray-500 mb-1">Hæð (mm)</label>
           <input type="number" value={h} onChange={(e) => setH(Number(e.target.value) || 32)} className={`${inp} w-20`} /></div>
-        {bridge && (
+        {bridge && mode === "rulla" && (
           <button onClick={printZebra} disabled={rows.length === 0 || zBusy}
             className="px-5 py-2 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-40"
             title="Beint á Zebra-prentarann gegnum brúna — enginn prentgluggi">
@@ -142,8 +157,8 @@ export default function LabelPrinter() {
           </button>
         )}
         <button onClick={() => window.print()} disabled={rows.length === 0}
-          className={`px-5 py-2 rounded-lg text-sm font-bold disabled:opacity-40 ${bridge ? "border border-gray-300 text-gray-600 hover:bg-gray-50" : "bg-red-600 text-white hover:bg-red-700"}`}>
-          🖨 {bridge ? "Prentgluggi…" : `Prenta ${rows.reduce((a, r) => a + r.copies, 0) || ""} miða`}
+          className={`px-5 py-2 rounded-lg text-sm font-bold disabled:opacity-40 ${bridge && mode === "rulla" ? "border border-gray-300 text-gray-600 hover:bg-gray-50" : "bg-red-600 text-white hover:bg-red-700"}`}>
+          🖨 {bridge && mode === "rulla" ? "Prentgluggi…" : `Prenta ${rows.reduce((a, r) => a + r.copies, 0) || ""} miða${mode === "a4" ? " á A4" : ""}`}
         </button>
         {zMsg && <span className={`text-sm ${zMsg.startsWith("✓") ? "text-green-700" : "text-red-600"}`}>{zMsg}</span>}
         {rows.length > 0 && <button onClick={() => setRows([])} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-500">Hreinsa</button>}
@@ -171,8 +186,8 @@ export default function LabelPrinter() {
         </div>
       )}
 
-      {/* Miðarnir sjálfir — forskoðun á skjá, nákvæm stærð í prentun */}
-      <div id="labels">
+      {/* Miðarnir sjálfir — forskoðun á skjá, nákvæm stærð í prentun (A4: raðast hlið við hlið) */}
+      <div id="labels" className={mode === "a4" ? "flex flex-wrap gap-2" : ""}>
         {rows.flatMap((r) => Array.from({ length: r.copies }, (_, i) => (
           <div key={`${r.product_number}~${i}`} className="label bg-white border border-dashed border-gray-300 print:border-0 mb-2 print:mb-0 overflow-hidden"
             style={{ width: `${w}mm`, height: `${h}mm`, padding: "1.5mm 2mm", display: "flex", flexDirection: "column", fontFamily: "Arial, sans-serif", color: "#000" }}>
