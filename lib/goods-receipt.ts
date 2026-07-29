@@ -17,13 +17,16 @@ export class ReceiptError extends Error { constructor(message: string, readonly 
 interface Queryable { query<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<{ rows: T[] }> }
 
 /** Resolve a parsed line to a catalog product_number: GTIN → learned map → fuzzy name. */
+// Forgangsröð pörunar: (1) LÆRÐ tenging af síðasta bókaða/vistaða reikningi (supplier_items —
+// vörunúmer birgja/GTIN → okkar vara + pakkastærð) ræður ALLTAF; (2) GTIN gegn strikamerkjaskrá;
+// (3) nafnalíkindi aðeins sem síðasta hálmstrá á ópöruðu.
 export async function matchLine(client: Queryable, supplierId: string | null, line: ParsedLine): Promise<{ productNumber: string | null; packQty: number | null }> {
-  // Learned pack size rides with the supplier-item mapping (t.d. Lífland: 1 grind = 144 stk).
   if (supplierId) {
-    const key = line.gtin || line.supplierItemId;
-    if (key) {
+    // Báðir mögulegir lyklar athugaðir — tengingin gæti hafa lærst á hvorn sem er.
+    const keys = [line.gtin, line.supplierItemId].filter((k): k is string => !!k);
+    if (keys.length) {
       const m = (await client.query<{ product_number: string; pack_qty: string | null }>(
-        `select product_number, pack_qty::text from acc.supplier_items where supplier_id = $1 and match_key = $2 limit 1`, [supplierId, key])).rows[0];
+        `select product_number, pack_qty::text from acc.supplier_items where supplier_id = $1 and match_key = any($2::text[]) limit 1`, [supplierId, keys])).rows[0];
       if (m) return { productNumber: m.product_number, packQty: m.pack_qty ? Number(m.pack_qty) : null };
     }
   }
@@ -83,7 +86,17 @@ export async function createReceiptFromParsed(parsedRaw: ParsedInvoice, doc?: { 
     const existing = (await db.query<{ id: string }>(`select id from acc.goods_receipts where inexchange_uuid = $1`, [inexchangeUuid])).rows[0];
     if (existing) return existing.id;
   }
-  const supplier = parsed.supplierKennitala ? await findSupplierByKennitala(parsed.supplierKennitala) : null;
+  // Birgir: kennitala fyrst (tölustafa-samanburður), svo NAFN sem varaleið (AI-lesnir PDF-ar skila
+  // stundum engri/rangri kennitölu — án birgis finnast engar lærðar tengingar).
+  let supplier = parsed.supplierKennitala ? await findSupplierByKennitala(parsed.supplierKennitala) : null;
+  if (!supplier && parsed.supplierName && parsed.supplierName.trim().length >= 3) {
+    supplier = (await db.query<{ id: string; name: string }>(
+      `select id, name from acc.suppliers
+       where lower(unaccent(name)) = lower(unaccent($1))
+          or lower(unaccent(name)) like lower(unaccent($1)) || ' %'
+          or lower(unaccent($1)) like lower(unaccent(name)) || ' %'
+       order by length(name) limit 1`, [parsed.supplierName.trim()])).rows[0] ?? null;
+  }
   const client = await db.connect();
   try {
     await client.query("begin");
@@ -266,6 +279,25 @@ export async function confirmReceipt(receiptId: string): Promise<{ voucherId: st
     }
 
     await client.query(`update acc.goods_receipts set status='booked', voucher_id=$1, total_gross=$2 where id=$3`, [v.id, totalGross, receiptId]);
+    // BÓKUN LÆRIR LÍKA: síðasti bókaði reikningur er sannleikurinn um vörutengingar + pakkastærðir
+    // (öryggisnet ef vistunar-lærdómurinn brást, t.d. á útrunninni innskráningu). Sama dedup og í PATCH.
+    if (rec.supplier_id) {
+      await client.query(
+        `insert into acc.supplier_items (supplier_id, match_key, product_number, pack_qty)
+         select distinct on (key) $1, key, matched_product_number, pack_qty
+         from (
+           select coalesce(nullif(l.gtin,''), l.supplier_item_id) as key,
+                  l.matched_product_number, l.pack_qty, l.line_no
+           from acc.goods_receipt_lines l
+           where l.receipt_id = $2 and l.matched_product_number is not null
+             and coalesce(nullif(l.gtin,''), l.supplier_item_id) is not null
+         ) x
+         order by key, line_no desc
+         on conflict (supplier_id, match_key) do update
+           set product_number = excluded.product_number,
+               pack_qty = coalesce(excluded.pack_qty, acc.supplier_items.pack_qty)`,
+        [rec.supplier_id, receiptId]);
+    }
     await client.query("commit");
     // Verðbreytingatillögur: react to changed costs AFTER the booking is safely committed
     // (best-effort — a suggestion failure must never affect the receipt).

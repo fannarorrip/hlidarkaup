@@ -709,8 +709,15 @@ export const searchSuppliers = (q: string, limit = 20) =>
     where is_active and ($1 = '' or unaccent(name) ilike unaccent('%'||$1||'%') or kennitala like $1||'%')
     order by is_generic, name limit $2`, [q, limit]);
 
+// Kennitölur bornar saman TÖLUSTAFI við tölustafi — skráin geymir ýmist "550698-2349" eða
+// "5506982349" og reikningar senda hitt formið; strangur samanburður missti af birginum og þar
+// með ÖLLUM lærðum vörutengingum hans.
 export const findSupplierByKennitala = (kt: string) =>
-  query<{ id: string; name: string }>(`select id, name from acc.suppliers where kennitala = $1 limit 1`, [kt]).then((r) => r[0] ?? null);
+  query<{ id: string; name: string }>(`
+    select id, name from acc.suppliers
+    where regexp_replace(coalesce(kennitala, ''), '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')
+      and regexp_replace($1, '\\D', '', 'g') <> ''
+    limit 1`, [kt]).then((r) => r[0] ?? null);
 
 // ── Innkaupakerfi: móttaka (goods receipts) ──────────────────────────────────
 export interface GoodsReceiptRow {
