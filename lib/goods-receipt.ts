@@ -307,7 +307,9 @@ export async function confirmReceipt(receiptId: string): Promise<{ voucherId: st
     await client.query("rollback");
     if (e instanceof ReceiptError) throw e;
     if (e instanceof DuplicateInvoiceError) throw new ReceiptError(e.message, 409);
+    // Óvænt villa: logga UPPRUNANN (annars er hún ógreinanleg) og bera hann með í skilaboðunum.
+    console.error("[móttaka] bókun sprakk:", e);
     const msg = e instanceof Error ? e.message : "";
-    throw new ReceiptError(msg.includes("balance") ? "Færslan stemmir ekki" : "Villa við bókun móttöku", 400);
+    throw new ReceiptError(msg.includes("balance") ? "Færslan stemmir ekki" : `Villa við bókun móttöku: ${msg.slice(0, 200)}`, 400);
   } finally { client.release(); }
 }
