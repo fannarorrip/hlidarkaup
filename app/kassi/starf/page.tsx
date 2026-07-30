@@ -17,7 +17,8 @@ type Mode = "card" | "cash" | "account" | "transfer";
 const kr = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " kr.";
 const effUnit = (l: Line) => l.priceOverride ?? l.price;                              // VERÐ override
 // Negative-unit lines (skilagjald) keep their negative total and never take discounts.
-const lineTotal = (l: Line) => effUnit(l) < 0 ? effUnit(l) * l.quantity : Math.max(0, effUnit(l) * l.quantity - (l.discount ?? 0)); // AFSL applied
+// Rúnnað per línu eins og serverinn bókar (lineGrossOf í lib/sales.ts) — vigtarvörur gefa brotakíló.
+const lineTotal = (l: Line) => effUnit(l) < 0 ? Math.round(effUnit(l) * l.quantity) : Math.max(0, Math.round(effUnit(l) * l.quantity - (l.discount ?? 0))); // AFSL applied
 
 // Brand palette — deep/ink/teal neutrals, red ONLY for the primary action.
 const RED = "bg-[#DB1A1A] hover:bg-[#c01414]";
@@ -65,6 +66,15 @@ export default function StaffTill() {
   const [splitOpen, setSplitOpen] = useState(false);
   const [splitTenders, setSplitTenders] = useState<{ mode: Mode; amount: number }[]>([]);
   const [splitAmt, setSplitAmt] = useState("");
+  const [splitFresh, setSplitFresh] = useState(true); // fyrsti stafur SKIPTIR ÚT forfylltri upphæð
+  const [splitConfirmClose, setSplitConfirmClose] = useState(false);
+  // Afsláttur á alla körfuna (%): leggst á allar afsláttarvörur óháð viðskiptamanni —
+  // hærri talan af körfuafslætti og viðskiptamannaafslætti gildir, þeir leggjast ALDREI saman.
+  const [saleDiscPct, setSaleDiscPct] = useState(0);
+  const [discOpen, setDiscOpen] = useState(false);
+  const [discInput, setDiscInput] = useState("");
+  const [discFresh, setDiscFresh] = useState(true); // fyrsti stafur skiptir út virku prósentunni
+  const [waitingAmt, setWaitingAmt] = useState(0); // upphæðin sem posinn er að rukka (hlutgreiðsla ≠ heild)
   const [returnMode, setReturnMode] = useState(false);
   const [edit, setEdit] = useState<{ id: string; name: string; catalog: number; qty: string; unit: string; disc: string; discPct: boolean } | null>(null);
   const [editField, setEditField] = useState<"qty" | "unit" | "disc">("qty");
@@ -92,14 +102,32 @@ export default function StaffTill() {
   // Customer fixed discount (%): applied live on top of any manual AFSL, per line (VAT-correct).
   const custPct = customer?.discount_pct ?? 0;
   // Verðlagsvörur (mjólkurvörur o.fl.) mega ekki fá viðskiptamanna-afslátt — vörur með allowDiscount=false
-  // sleppa custPct (handvirkur línu-afsláttur helst þó, sé hann sleginn inn sérstaklega).
+  // sleppa prósentuafslætti (handvirkur línu-afsláttur helst þó, sé hann sleginn inn sérstaklega).
   // Mínuslínur (skilagjald) fá aldrei afslátt og halda neikvæðri samtölu.
-  const custPctFor = (l: Line) => (custPct > 0 && l.allowDiscount !== false && effUnit(l) >= 0) ? custPct : 0;
-  const lineDisc = (l: Line) => effUnit(l) < 0 ? 0 : Math.min(effUnit(l) * l.quantity, (l.discount ?? 0) + (custPctFor(l) > 0 ? Math.round((effUnit(l) * l.quantity - (l.discount ?? 0)) * custPctFor(l) / 100) : 0));
-  const lineTot = (l: Line) => effUnit(l) < 0 ? effUnit(l) * l.quantity : Math.max(0, effUnit(l) * l.quantity - lineDisc(l));
+  // Körfuafsláttur og viðskiptamannaafsláttur STAFLAST EKKI — hærri prósentan gildir.
+  const discPctFor = (l: Line) => (l.allowDiscount !== false && effUnit(l) >= 0) ? Math.max(custPct, saleDiscPct) : 0;
+  const lineDisc = (l: Line) => effUnit(l) < 0 ? 0 : Math.min(effUnit(l) * l.quantity, (l.discount ?? 0) + (discPctFor(l) > 0 ? Math.round((effUnit(l) * l.quantity - (l.discount ?? 0)) * discPctFor(l) / 100) : 0));
+  // HEILAR krónur á línu — sama Math.round og serverinn (lineGrossOf í lib/sales.ts). Vigtarvörur
+  // (brotakíló) gefa annars brotatölur sem summast öðruvísi en bókunin námundar línu fyrir línu,
+  // og salan hafnar með „Greiðslur stemma ekki við samtölu" — verst í miðri skiptri greiðslu.
+  const lineTot = (l: Line) => effUnit(l) < 0 ? Math.round(effUnit(l) * l.quantity) : Math.max(0, Math.round(effUnit(l) * l.quantity - lineDisc(l)));
 
   const total = cart.reduce((s, l) => s + lineTot(l), 0);
-  const vat = Math.round(cart.reduce((s, l) => { const r = l.vatPct ?? 24; return s + (lineTot(l) * r) / (100 + r); }, 0));
+  // VSK sýnt eins og bókast: heiltölu-línur flokkaðar á hlutfall, rúnnað PER FLOKK (sbr. lib/sales.ts).
+  const vatByRate = cart.reduce((m, l) => { const r = l.vatPct ?? 24; return m.set(r, (m.get(r) ?? 0) + lineTot(l)); }, new Map<number, number>());
+  const vat = [...vatByRate].reduce((s, [r, g]) => s + Math.round((g * r) / (100 + r)), 0);
+
+  // Körfuafsláttur deyr með körfunni: sé salan yfirgefin og línurnar fjarlægðar ein af annarri
+  // (ekkert checkout/newSale keyrir) má prósentan EKKI lifa yfir á næsta viðskiptavin.
+  useEffect(() => { if (cart.length === 0) setSaleDiscPct(0); }, [cart.length]);
+  // Geymd skipting = kortahluti þegar rukkaður á posa en EKKERT bókað enn — F5 eða óvart smellur
+  // á Uppgjör/⌂ má ekki henda einu skránni um þá peninga án viðvörunar.
+  useEffect(() => {
+    if (!splitTenders.length) return;
+    const h = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [splitTenders.length]);
 
   // Manual formatting (no locale): the till PCs' browser locale rendered AM/PM. Always 24h + date.
   useEffect(() => { const f = () => { const n = new Date(); const p = (x: number) => String(x).padStart(2, "0"); setClock(`${p(n.getDate())}.${p(n.getMonth() + 1)}.${n.getFullYear()} · ${p(n.getHours())}:${p(n.getMinutes())}`); }; f(); const t = setInterval(f, 20000); return () => clearInterval(t); }, []);
@@ -187,10 +215,18 @@ export default function StaffTill() {
     }
     setCart((p) => { const e = p.find((l) => l.uid === d.id); return e ? p.map((l) => l.uid === d.id ? { ...l, quantity: l.quantity + qty } : l) : [...p, { uid: d.id, id: d.id, name: d.name, price: d.price, vatPct: d.vatPct, quantity: qty, allowDiscount: d.allowDiscount }]; });
   };
+  // SKIPTING Í GANGI = KARFAN MÁ EKKI LÆKKA. Kortahluti er þegar rukkaður á posanum; lækki
+  // heildin niður fyrir tekna upphæð verður salan ÓBÓKANLEG (tenders > total hafnar serverinn).
+  // Að BÆTA VIÐ vörum er leyft (heildin hækkar bara — afgangurinn uppfærist sjálfkrafa).
+  const splitLocked = splitTenders.length > 0;
+  const splitLockErr = () => setError("Skipting greiðslu í gangi — ekki hægt að lækka körfuna. Kláraðu skiptinguna eða hættu við hana fyrst.");
   // ±1 makes no sense for weighed (fractional-kg) lines — those adjust via the line editor.
-  const changeQty = (uid: string, d: number) => setCart((p) => p.map((l) => l.uid === uid && Number.isInteger(l.quantity) ? { ...l, quantity: l.quantity + d } : l).filter((l) => l.quantity > 0));
-  const removeLine = (uid: string) => setCart((p) => p.filter((l) => l.uid !== uid));
-  const openEdit = (l: Line, field: "qty" | "unit" = "qty") => { setEditField(field); setEditFresh(true); setEdit({ id: l.uid, name: l.name, catalog: l.price, qty: String(l.quantity), unit: String(effUnit(l)), disc: String(l.discount ?? 0), discPct: false }); };
+  const changeQty = (uid: string, d: number) => { if (splitLocked && d < 0) { splitLockErr(); return; } setCart((p) => p.map((l) => l.uid === uid && Number.isInteger(l.quantity) ? { ...l, quantity: l.quantity + d } : l).filter((l) => l.quantity > 0)); };
+  // 0-kr línur (hætt við opið verð) mega alltaf fara — þær lækka ekki heildina.
+  const removeLine = (uid: string) => { const l = cart.find((x) => x.uid === uid); if (splitLocked && l && lineTot(l) > 0) { splitLockErr(); return; } setCart((p) => p.filter((x) => x.uid !== uid)); };
+  // Afsláttarreiturinn opnast í % (ósk afgreiðslufólks) — NEMA línan beri þegar kr-afslátt,
+  // þá helst kr svo talan sem sést sé ekki túlkuð sem prósenta og margfaldist óvart.
+  const openEdit = (l: Line, field: "qty" | "unit" = "qty") => { setEditField(field); setEditFresh(true); setEdit({ id: l.uid, name: l.name, catalog: l.price, qty: String(l.quantity), unit: String(effUnit(l)), disc: String(l.discount ?? 0), discPct: !(l.discount && l.discount > 0) }); };
   const selectField = (f: "qty" | "unit" | "disc") => { setEditField(f); setEditFresh(true); };
   // Closing an open-price line that never got a price drops it — no 0-kr lines survive.
   const closeEdit = () => { if (edit && edit.catalog === 0 && (Number(edit.unit) || 0) <= 0) removeLine(edit.id); setEdit(null); };
@@ -200,8 +236,10 @@ export default function StaffTill() {
     const qtyRaw = Number(edit.qty) || 1;
     const qty = Number.isInteger(qtyRaw) ? Math.max(1, Math.round(qtyRaw)) : Math.max(0.001, qtyRaw);
     const unit = Math.max(0, Math.round(Number(edit.unit)) || 0);
+    // Í %-ham þakast innslátturinn við 100 — kr-upphæð slegin inn af gömlum vana (t.d. „500")
+    // má ekki verða 500% og éta alla línuna í gegnum Math.min-þakið.
     const dIn = Math.max(0, Number(edit.disc) || 0);
-    const discKr = edit.discPct ? Math.round((unit * qty * dIn) / 100) : Math.round(dIn);
+    const discKr = edit.discPct ? Math.round((unit * qty * Math.min(100, dIn)) / 100) : Math.round(dIn);
     setCart((p) => p.map((l) => l.uid === edit.id ? { ...l, quantity: qty, priceOverride: unit !== l.price ? unit : undefined, discount: discKr > 0 ? Math.min(discKr, unit * qty) : undefined } : l));
     setEdit(null);
   }
@@ -269,7 +307,7 @@ export default function StaffTill() {
   // Hard overlays that block a stray scan (mid-payment / modal). NOTE: `done` is deliberately
   // NOT here — scanning on the "Sala skráð" screen should auto-start the next sale (see addByCode).
   const overlayRef = useRef(false);
-  useEffect(() => { overlayRef.current = !!(cashFor || edit || custOpen || waiting || ktOpen || recentOpen || splitOpen || locked || noteOpen || simgrOpen || stimpOpen); });
+  useEffect(() => { overlayRef.current = !!(cashFor || edit || custOpen || waiting || ktOpen || recentOpen || splitOpen || locked || noteOpen || simgrOpen || stimpOpen || discOpen); });
   const doneRef = useRef(false);
   useEffect(() => { doneRef.current = !!done; });
   useEffect(() => {
@@ -390,20 +428,32 @@ export default function StaffTill() {
     setSimgrBusy(false);
   }
 
-  async function checkout(mode: Mode, change?: number, tenders?: { mode: Mode; amount: number }[], noteOverride?: string) {
-    if (!cart.length) return;
-    if (total <= 0) { setError("Samtala verður að vera yfir 0 kr. — notaðu Skila vörum fyrir hreina endurgreiðslu."); return; }
-    if (mode === "account" && (!customer || !customer.is_account)) { setError("Veldu reikningsviðskiptamann"); return; }
+  // Skilar true AÐEINS þegar salan bókaðist — skipt greiðsla notar það til að halda
+  // greiðsluformunum lifandi þegar POSTið mistekst (netvilla, 500, ósamræmi).
+  async function checkout(mode: Mode, change?: number, tenders?: { mode: Mode; amount: number }[], noteOverride?: string): Promise<boolean> {
+    if (!cart.length) return false;
+    if (total <= 0) { setError("Samtala verður að vera yfir 0 kr. — notaðu Skila vörum fyrir hreina endurgreiðslu."); return false; }
+    if (mode === "account" && (!customer || !customer.is_account)) { setError("Veldu reikningsviðskiptamann"); return false; }
     setBusy(true); setError("");
     const snapshot = cart.map((l) => ({ ...l, discount: lineDisc(l) })); // bake customer discount into each line
     const note = mode === "account" ? (noteOverride ?? saleNote).trim().slice(0, 120) : "";
-    const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: snapshot.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, tenders, note: note || undefined, customerId: customer?.id, reg: regRef.current, employeeId: activeEmpRef.current?.id ?? undefined, payment: { approved: true, processor: "STAFF" } }) });
-    const d = await r.json(); setBusy(false);
-    if (!r.ok) { setError(d.error ?? "Villa við að skrá söluna"); return; }
+    // try/catch: nettruflun mátti áður skilja busy eftir fast í true (allir takkar dauðir) —
+    // og með skipta greiðslu er kort MÖGULEGA þegar rukkað, svo skilaboðin verða að vera hrein.
+    let r: Response, d: { error?: string; invoiceNumber?: string };
+    try {
+      r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: snapshot.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, tenders, note: note || undefined, customerId: customer?.id, reg: regRef.current, employeeId: activeEmpRef.current?.id ?? undefined, payment: { approved: true, processor: "STAFF" } }) });
+      d = await r.json();
+    } catch {
+      setBusy(false);
+      setError("Náði ekki sambandi við server — ÓVÍST hvort salan bókaðist. Athugaðu Fyrri sölur áður en þú reynir aftur.");
+      return false;
+    }
+    setBusy(false);
+    if (!r.ok) { setError(d.error ?? "Villa við að skrá söluna"); return false; }
     const buyer = customer
       ? { name: customer.name, kennitala: customer.kennitala }
       : (receiptKt.length === 10 ? { kennitala: receiptKt } : undefined);
-    const doneObj = { invoiceNumber: d.invoiceNumber, total, mode, change, lines: snapshot, buyer, tenders, note: note || undefined };
+    const doneObj = { invoiceNumber: d.invoiceNumber ?? "", total, mode, change, lines: snapshot, buyer, tenders, note: note || undefined };
     setDone(doneObj);
     // Auto-print ONLY for account sales — the viðskiptamaður signs (kvittar). Cash/card/transfer
     // print on demand via "Prenta kvittun" on the done screen. Cash drawer opens if any cash is taken.
@@ -411,11 +461,22 @@ export default function StaffTill() {
     const tookCash = mode === "cash" || !!tenders?.some((t) => t.mode === "cash");
     if (tookCash) { if (bridgeRef.current) kbDrawer().catch(() => {}); else fetch("/api/kassi/drawer", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reg: regRef.current }) }).catch(() => {}); }
     setCart([]); setCustomer(null); setCashFor(false); setCashGot("");
+    setSaleDiscPct(0); setSplitTenders([]); setSplitConfirmClose(false);
+    return true;
   }
   // Skipt greiðsla: collect several tenders (cash + posi) until the total is covered, then post once.
   const splitCollected = splitTenders.reduce((s, t) => s + t.amount, 0);
   const splitRemaining = Math.max(0, total - splitCollected);
-  function openSplit() { if (!cart.length) { setError("Karfan er tóm"); return; } setSplitTenders([]); setSplitAmt(String(total)); setError(""); setSplitOpen(true); }
+  // VILLAN sem var: openSplit núllstillti ALLTAF tekin greiðsluform — lokaðist glugginn óvart
+  // (bakgrunns-smellur) eftir að reiðufé var slegið inn, byrjaði allt á fullri upphæð aftur og
+  // kortið rukkaði fullt verð. Nú HALDA tekin greiðsluform sér þar til salan bókast eða
+  // skiptingunni er hætt viljandi, og forfyllt upphæð er alltaf það sem EFTIR stendur.
+  function openSplit() {
+    if (!cart.length) { setError("Karfan er tóm"); return; }
+    setSplitAmt(String(splitRemaining));
+    setSplitFresh(true); setSplitConfirmClose(false); setError("");
+    setSplitOpen(true);
+  }
   async function collectTender(m: Mode) {
     const amt = Math.min(Math.round(Number(splitAmt) || 0), splitRemaining);
     if (amt <= 0) return;
@@ -423,12 +484,20 @@ export default function StaffTill() {
     const next = [...splitTenders, { mode: m, amount: amt }];
     setSplitTenders(next);
     const remaining = total - next.reduce((s, t) => s + t.amount, 0);
-    if (remaining <= 0) { setSplitOpen(false); setSplitTenders([]); setSplitAmt(""); await checkout(m, undefined, next); }
-    else setSplitAmt(String(remaining));
+    // Tenders hreinsast EKKI hér — checkout hreinsar þau AÐEINS þegar bókunin TEKST. Mistakist
+    // POSTið (server/net) standa þau eftir og „Bóka sölu“ í glugganum reynir aftur — áður
+    // þurrkuðust þau út fyrst og „Kort“-endurtekning rukkaði þá fulla upphæð ofan á hlutina.
+    if (remaining <= 0) { setSplitOpen(false); setSplitAmt(""); if (!await checkout(m, undefined, next)) setSplitOpen(true); }
+    else { setSplitAmt(String(remaining)); setSplitFresh(true); }
   }
+  // Allt greitt (afgangur 0) en salan enn óbókuð — t.d. eftir misheppnað POST: bóka með teknu formunum.
+  async function bookSplitSale() { if (!splitTenders.length) return; setSplitOpen(false); if (!await checkout(splitTenders[splitTenders.length - 1].mode, undefined, splitTenders)) setSplitOpen(true); }
 
   function pay(mode: Mode) {
     if (!cart.length) { setError("Karfan er tóm"); return; }
+    // Skipting í gangi (reiðufé/kort þegar tekið): aðaltakkarnir mega ALDREI rukka fulla
+    // upphæð framhjá henni — opnum skiptingargluggann aftur þar sem frá var horfið.
+    if (splitTenders.length > 0) { openSplit(); return; }
     if (mode === "cash") { setCashGot(""); setCashFor(true); return; }
     if (mode === "card" && terminalEnabled) { cardViaTerminal(); return; }
     // Símgreiðsla (MOTO): must go through the posi — no manual/standalone path. Needs the terminal.
@@ -442,6 +511,7 @@ export default function StaffTill() {
   // Charge a (partial) amount on the posi. Returns approval only — no sale posting.
   async function chargeCard(amount: number, opts?: { moto?: boolean }): Promise<boolean> {
     const moto = !!opts?.moto;
+    setWaitingAmt(amount); // biðskjárinn sýnir upphæðina sem posinn rukkar — hlutgreiðsla ≠ karfan
     setWaiting(moto ? "Símgreiðsla — sláðu kortanúmerið inn á posanum…" : "Fylgdu leiðbeiningum á posanum…"); setError("");
     const ac = new AbortController(); terminalAbort.current = ac;
     const svc = String(Date.now()).slice(-10); terminalSvcId.current = svc; // so "Hætta við" can Abort THIS payment
@@ -465,6 +535,7 @@ export default function StaffTill() {
   // Refund a card ON the posi (skil). Standalone refund — the customer taps their card and gets the
   // money back. Same waiting screen + "Hætta við" (Abort) as a charge; returns approval only.
   async function refundCard(amount: number): Promise<boolean> {
+    setWaitingAmt(amount);
     setWaiting("Réttu viðskiptavini posann — endurgreiðsla…"); setError("");
     const ac = new AbortController(); terminalAbort.current = ac;
     const svc = String(Date.now()).slice(-10); terminalSvcId.current = svc; // so "Hætta við" can Abort THIS refund
@@ -490,7 +561,7 @@ export default function StaffTill() {
     terminalAbort.current?.abort();
     setWaiting("");
   }
-  function newSale() { setDone(null); setError(""); setCart([]); setCustomer(null); setReceiptKt(""); setSaleNote(""); setSearch(""); setResults([]); setReturnMode(false); setTimeout(() => scanRef.current?.focus(), 50); }
+  function newSale() { setDone(null); setError(""); setCart([]); setCustomer(null); setReceiptKt(""); setSaleNote(""); setSearch(""); setResults([]); setReturnMode(false); setSaleDiscPct(0); setSplitTenders([]); setSplitConfirmClose(false); setTimeout(() => scanRef.current?.focus(), 50); }
 
   async function openDrawer() {
     if (bridgeRef.current) {
@@ -524,7 +595,7 @@ export default function StaffTill() {
     const doneObj = { invoiceNumber: d.invoiceNumber, total, mode, lines: snapshot, isReturn: true, buyer };
     setDone(doneObj);
     if (bridgeRef.current || netPrintRef.current) printReceipt(doneObj);
-    setCart([]); setCustomer(null); setReturnMode(false);
+    setCart([]); setCustomer(null); setReturnMode(false); setSaleDiscPct(0);
   }
 
   const cashGotN = Number(cashGot.replace(/\D/g, "")) || 0;
@@ -533,7 +604,7 @@ export default function StaffTill() {
     const qRaw = Number(edit.qty) || 1;
     const q = Number.isInteger(qRaw) ? Math.max(1, Math.round(qRaw)) : Math.max(0.001, qRaw); // mirror applyEdit
     const u = Math.max(0, Math.round(Number(edit.unit)) || 0), d = Math.max(0, Number(edit.disc) || 0);
-    return Math.max(0, u * q - (edit.discPct ? Math.round((u * q * d) / 100) : Math.round(d)));
+    return Math.max(0, u * q - (edit.discPct ? Math.round((u * q * Math.min(100, d)) / 100) : Math.round(d)));
   })() : 0;
   const gridItems = search.trim().length >= 2 ? results : grid;
 
@@ -635,7 +706,7 @@ export default function StaffTill() {
 
         {/* SALE (right) */}
         <div className="w-[42%] min-w-[21rem] max-w-[60rem] shrink-0 flex flex-col bg-white border-l border-gray-200">
-          <button onClick={() => { setCustOpen(true); setCustQ(""); }} className="shrink-0 m-2.5 mb-0 flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-[#F0F7F6] hover:bg-[#E4F1F0] text-left transition">
+          <button onClick={() => { if (splitLocked) { splitLockErr(); return; } setCustOpen(true); setCustQ(""); }} className="shrink-0 m-2.5 mb-0 flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-[#F0F7F6] hover:bg-[#E4F1F0] text-left transition">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-[#5C6B72]">Viðskiptamaður</p>
               <p className="font-semibold text-[#21323A]">{customer ? customer.name : "Staðgreitt"}</p>
@@ -649,10 +720,19 @@ export default function StaffTill() {
             <span className="font-mono text-[13px] text-[#21323A]">{receiptKt ? fmtKt(receiptKt) : "—"}</span>
           </button>
 
-          <div className="shrink-0 grid grid-cols-1 gap-2 m-3 mb-0">
-            <FnBtn label={returnMode ? "Hætta skil" : "Skila vörum"} active={returnMode} onClick={() => { setReturnMode((v) => !v); setCart([]); setCustomer(null); setError(""); }} />
+          <div className="shrink-0 grid grid-cols-2 gap-2 m-3 mb-0">
+            {/* Skannaðar vörur HALDA sér við skil-víxlun — sömu línur verða skilalínur (og öfugt).
+                Áður tæmdist karfan og allt þurfti að skanna aftur. */}
+            <FnBtn label={returnMode ? "Hætta skil" : "Skila vörum"} active={returnMode} onClick={() => { if (splitTenders.length) { setError("Skipting greiðslu í gangi — kláraðu hana eða hættu við fyrst."); return; } setReturnMode((v) => !v); setError(""); }} />
+            <FnBtn label={saleDiscPct > 0 ? `Afsláttur ${saleDiscPct}% ✓` : "Afsláttur á körfu"} active={saleDiscPct > 0} onClick={() => { if (splitLocked) { splitLockErr(); return; } setDiscInput(saleDiscPct > 0 ? String(saleDiscPct) : ""); setDiscFresh(true); setDiscOpen(true); }} />
           </div>
           {returnMode && <div className="shrink-0 mx-3 mt-2 rounded-xl bg-[#DB1A1A] text-white text-center py-2.5 font-semibold">SKILAMÁTI — endurgreiðsla</div>}
+          {saleDiscPct > 0 && (
+            <div className="shrink-0 mx-3 mt-2 rounded-xl bg-[#E4F1F0] text-[#21323A] flex items-center justify-between px-3.5 py-2 text-sm font-semibold">
+              <span>{saleDiscPct}% afsláttur á allar afsláttarvörur{custPct > saleDiscPct ? ` (viðskiptam. ${custPct}% gildir — hærri)` : ""}</span>
+              <button onClick={() => setSaleDiscPct(0)} className="text-gray-500 hover:text-[#DB1A1A] text-xl leading-none w-8 h-8" aria-label="Taka afslátt af">×</button>
+            </div>
+          )}
 
           <div className="flex-1 overflow-y-auto p-3">
             {cart.length === 0 ? (
@@ -662,12 +742,12 @@ export default function StaffTill() {
               </div>
             ) : [...cart].reverse().map((l) => ( /* newest scanned on top — staff sees it without scrolling */
               <div key={l.uid} className="flex items-center gap-2 py-3 border-b border-gray-100">
-                <button onClick={() => openEdit(l)} className="flex-1 min-w-0 text-left">
+                <button onClick={() => { if (splitLocked) { splitLockErr(); return; } openEdit(l); }} className="flex-1 min-w-0 text-left">
                   <p className="font-medium leading-tight truncate text-[15px]">{l.name}</p>
                   <p className="text-xs text-gray-400">
                     {kr(effUnit(l))}
                     {l.priceOverride != null && <span className="ml-1 text-amber-600">· verð breytt</span>}
-                    {lineDisc(l) > 0 ? <span className="ml-1 text-[#DB1A1A]">· −{kr(lineDisc(l))}{custPctFor(l) > 0 && !l.discount ? ` (${custPct}%)` : ""}</span> : null}
+                    {lineDisc(l) > 0 ? <span className="ml-1 text-[#DB1A1A]">· −{kr(lineDisc(l))}{discPctFor(l) > 0 && !l.discount ? ` (${discPctFor(l)}%)` : ""}</span> : null}
                   </p>
                 </button>
                 <button onClick={() => changeQty(l.uid, -1)} className="w-11 h-11 rounded-lg bg-gray-100 text-xl leading-none hover:bg-gray-200 active:scale-95 transition">−</button>
@@ -700,7 +780,7 @@ export default function StaffTill() {
                   <PayBtn label="Á reikning" cls="bg-white border-2 border-[#21323A] text-[#21323A] hover:bg-gray-50" onClick={() => pay("account")} disabled={busy || !cart.length || !customer?.is_account} />
                   <PayBtn label="Símgreiðsla" cls="bg-white border-2 border-gray-300 text-gray-600 hover:bg-gray-50" onClick={() => pay("transfer")} disabled={busy || !cart.length} />
                 </div>
-                <button onClick={openSplit} disabled={busy || !cart.length} className="mt-2 w-full py-2.5 rounded-lg border-2 border-dashed border-gray-300 text-gray-600 text-sm font-semibold hover:bg-gray-50 disabled:opacity-40">Skipta greiðslu</button>
+                <button onClick={openSplit} disabled={busy || !cart.length} className={`mt-2 w-full py-2.5 rounded-lg border-2 text-sm font-semibold disabled:opacity-40 ${splitTenders.length ? "border-amber-500 bg-amber-50 text-amber-700 hover:bg-amber-100" : "border-dashed border-gray-300 text-gray-600 hover:bg-gray-50"}`}>{splitTenders.length ? `Skipting í gangi — ${kr(splitRemaining)} eftir` : "Skipta greiðslu"}</button>
               </>
             )}
           </div>
@@ -832,7 +912,9 @@ export default function StaffTill() {
       )}
 
       {splitOpen && (
-        <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={() => setSplitOpen(false)}>
+        /* Bakgrunns-smellur lokar EKKI þegar greiðsluform eru tekin — óvart snerting má aldrei
+           týna innslegnu reiðufé (það var villan: full upphæð fór svo aftur á kortið). */
+        <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={() => { if (!splitTenders.length) setSplitOpen(false); }}>
           <div className="bg-white rounded-2xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-bold text-lg mb-2">Skipta greiðslu</h2>
             <div className="flex justify-between text-sm"><span className="text-gray-500">Samtals</span><span className="tabular-nums font-semibold">{kr(total)}</span></div>
@@ -841,21 +923,79 @@ export default function StaffTill() {
             {splitTenders.length > 0 && <div className="mb-2 text-xs text-gray-500 space-y-0.5 border-t border-gray-100 pt-2">{splitTenders.map((t, i) => <div key={i} className="flex justify-between"><span>{t.mode === "cash" ? "Reiðufé" : "Kort"}</span><span className="tabular-nums">{kr(t.amount)}</span></div>)}</div>}
             <input inputMode="none" readOnly value={kr(Number(splitAmt) || 0)} className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-2xl text-right outline-none mb-2 tabular-nums" />
             <div className="flex gap-2 mb-2">
-              <button onClick={() => setSplitAmt(String(Math.round(splitRemaining / 2)))} className="flex-1 py-2 rounded-lg bg-gray-100 text-sm hover:bg-gray-200">½</button>
-              <button onClick={() => setSplitAmt(String(Math.round(total * 0.7)))} className="flex-1 py-2 rounded-lg bg-gray-100 text-sm hover:bg-gray-200">70%</button>
-              <button onClick={() => setSplitAmt(String(Math.round(total / 3)))} className="flex-1 py-2 rounded-lg bg-gray-100 text-sm hover:bg-gray-200">⅓</button>
-              <button onClick={() => setSplitAmt(String(splitRemaining))} className="flex-1 py-2 rounded-lg bg-gray-100 text-sm hover:bg-gray-200">Allt</button>
+              <button onClick={() => { setSplitAmt(String(Math.round(splitRemaining / 2))); setSplitFresh(true); }} className="flex-1 py-2 rounded-lg bg-gray-100 text-sm hover:bg-gray-200">½</button>
+              <button onClick={() => { setSplitAmt(String(Math.round(splitRemaining * 0.7))); setSplitFresh(true); }} className="flex-1 py-2 rounded-lg bg-gray-100 text-sm hover:bg-gray-200">70%</button>
+              <button onClick={() => { setSplitAmt(String(Math.round(splitRemaining / 3))); setSplitFresh(true); }} className="flex-1 py-2 rounded-lg bg-gray-100 text-sm hover:bg-gray-200">⅓</button>
+              <button onClick={() => { setSplitAmt(String(splitRemaining)); setSplitFresh(true); }} className="flex-1 py-2 rounded-lg bg-gray-100 text-sm hover:bg-gray-200">Allt</button>
             </div>
-            <div className="mb-3"><NumPad onDigit={(d) => setSplitAmt((v) => (v === "0" ? "" : v) + d)} onBackspace={() => setSplitAmt((v) => v.slice(0, -1))} onClear={() => setSplitAmt("")} /></div>
-            <div className="flex gap-3 mb-2">
-              <button onClick={() => collectTender("cash")} disabled={busy || (Number(splitAmt) || 0) <= 0} className={`flex-1 py-3 rounded-xl ${INK} text-white font-semibold disabled:opacity-40`}>Reiðufé</button>
-              <button onClick={() => collectTender("card")} disabled={busy || (Number(splitAmt) || 0) <= 0} className={`flex-1 py-3 rounded-xl ${RED} text-white font-semibold disabled:opacity-40`}>Kort (posi)</button>
-            </div>
+            {/* Fyrsti stafur SKIPTIR ÚT forfylltu upphæðinni — áður bættist hann aftan við
+               (5000 → 50002000) og innslátturinn festist í hámarki = fullri upphæð. */}
+            <div className="mb-3"><NumPad onDigit={(d) => { setSplitAmt((v) => (splitFresh || v === "0" ? "" : v) + d); setSplitFresh(false); }} onBackspace={() => { setSplitAmt((v) => v.slice(0, -1)); setSplitFresh(false); }} onClear={() => { setSplitAmt(""); setSplitFresh(false); }} /></div>
+            {splitRemaining <= 0 && splitTenders.length > 0 ? (
+              /* Allt greitt en salan óbókuð (t.d. POST mistókst): bóka með teknu formunum. */
+              <button onClick={bookSplitSale} disabled={busy} className={`w-full py-3 rounded-xl mb-2 ${INK} text-white font-semibold disabled:opacity-40`}>Bóka sölu — {kr(splitCollected)} greitt</button>
+            ) : (
+              <div className="flex gap-3 mb-2">
+                <button onClick={() => collectTender("cash")} disabled={busy || splitRemaining <= 0 || (Number(splitAmt) || 0) <= 0} className={`flex-1 py-3 rounded-xl ${INK} text-white font-semibold disabled:opacity-40`}>Reiðufé</button>
+                <button onClick={() => collectTender("card")} disabled={busy || splitRemaining <= 0 || (Number(splitAmt) || 0) <= 0} className={`flex-1 py-3 rounded-xl ${RED} text-white font-semibold disabled:opacity-40`}>Kort (posi)</button>
+              </div>
+            )}
             {error && <p className="text-sm text-[#DB1A1A] mb-2">{error}</p>}
-            <button onClick={() => setSplitOpen(false)} className="w-full py-2 rounded-xl border-2 border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50">Loka</button>
+            {splitConfirmClose ? (
+              <div className="rounded-xl border-2 border-[#DB1A1A]/40 bg-red-50 p-3">
+                <p className="text-sm text-[#21323A] mb-2"><b>Hætta við skiptinguna?</b> Búið er að taka við {kr(splitCollected)}{splitTenders.some((t) => t.mode === "card") ? " — kortahlutinn er ÞEGAR rukkaður á posanum og þarf að endurgreiða þar" : ""}. Reiðufé þarf að rétta til baka.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setSplitConfirmClose(false)} className={`flex-1 py-2 rounded-lg ${INK} text-white text-sm font-semibold`}>Halda áfram</button>
+                  <button onClick={() => { setSplitTenders([]); setSplitConfirmClose(false); setSplitOpen(false); }} className="flex-1 py-2 rounded-lg border-2 border-[#DB1A1A] text-[#DB1A1A] text-sm font-semibold hover:bg-red-50">Hætta við skiptingu</button>
+                </div>
+                {/* T.d. til að bæta vöru í körfuna — tekin greiðsluform halda sér og
+                   „Skipta greiðslu“ (eða hvaða greiðslutakki sem er) opnar aftur þar sem frá var horfið. */}
+                <button onClick={() => { setSplitConfirmClose(false); setSplitOpen(false); }} className="w-full mt-2 py-2 rounded-lg border-2 border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50">Loka glugga en HALDA skiptingunni</button>
+              </div>
+            ) : (
+              <button onClick={() => { if (splitTenders.length) setSplitConfirmClose(true); else setSplitOpen(false); }} className="w-full py-2 rounded-xl border-2 border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50">Loka</button>
+            )}
           </div>
         </div>
       )}
+
+      {/* Afsláttur á körfu: % á ALLAR afsláttarvörur í körfunni, óháð viðskiptamanni.
+         Verðlagsvörur (allowDiscount=false) og mínuslínur sleppa — sama regla og
+         viðskiptamannaafsláttur, og hærri prósentan gildir (staflast aldrei). */}
+      {discOpen && (() => {
+        const eligible = cart.filter((l) => l.allowDiscount !== false && effUnit(l) >= 0).length;
+        const blocked = cart.length - eligible;
+        const cand = Math.min(100, Math.max(0, Math.round(Number(discInput) || 0)));
+        const candTotal = cart.reduce((s, l) => {
+          if (effUnit(l) < 0) return s + effUnit(l) * l.quantity;
+          const base = effUnit(l) * l.quantity;
+          const pct = l.allowDiscount !== false ? Math.max(custPct, cand) : 0;
+          const d = Math.min(base, (l.discount ?? 0) + (pct > 0 ? Math.round((base - (l.discount ?? 0)) * pct / 100) : 0));
+          return s + Math.max(0, base - d);
+        }, 0);
+        return (
+          <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={() => setDiscOpen(false)}>
+            <div className="bg-white rounded-2xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+              <h2 className="font-bold text-lg mb-1">Afsláttur á körfu</h2>
+              <p className="text-sm text-gray-500 mb-3">Leggst á {eligible} afsláttarvöru{eligible === 1 ? "" : "r"}{blocked > 0 ? ` (${blocked} verðlagsvörur sleppa)` : ""}.{custPct > 0 ? ` Viðskiptamaður er með ${custPct}% — hærri prósentan gildir, þær leggjast ekki saman.` : ""}</p>
+              <div className="flex gap-2 mb-2">
+                {[5, 7, 10, 15].map((n) => (
+                  <button key={n} onClick={() => { setSaleDiscPct(n); setDiscOpen(false); }} className="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold hover:bg-gray-200">{n}%</button>
+                ))}
+              </div>
+              <input inputMode="none" readOnly value={`${Number(discInput) || 0}%`} className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-2xl text-right outline-none mb-2 tabular-nums" />
+              {cand > 0 && cart.length > 0 && <div className="flex justify-between text-sm mb-2"><span className="text-gray-500">Samtals með {cand}%</span><span className="tabular-nums font-bold text-[#2C687B]">{kr(candTotal)}</span></div>}
+              {/* Fyrsti stafur skiptir út virku prósentunni ("15" + innsláttur "10" varð annars "151" → 100%). */}
+              <div className="mb-3"><NumPad onDigit={(d) => { setDiscInput((v) => ((discFresh || v === "0" ? "" : v) + d).slice(0, 3)); setDiscFresh(false); }} onBackspace={() => { setDiscInput((v) => v.slice(0, -1)); setDiscFresh(false); }} onClear={() => { setDiscInput(""); setDiscFresh(false); }} /></div>
+              <div className="flex gap-3 mb-2">
+                <button onClick={() => { setSaleDiscPct(cand); setDiscOpen(false); }} disabled={cand <= 0} className={`flex-1 py-3 rounded-xl ${INK} text-white font-semibold disabled:opacity-40`}>Setja {cand > 0 ? `${cand}%` : "afslátt"}</button>
+                {saleDiscPct > 0 && <button onClick={() => { setSaleDiscPct(0); setDiscOpen(false); }} className="flex-1 py-3 rounded-xl border-2 border-[#DB1A1A] text-[#DB1A1A] font-semibold hover:bg-red-50">Taka af</button>}
+              </div>
+              <button onClick={() => setDiscOpen(false)} className="w-full py-2 rounded-xl border-2 border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50">Loka</button>
+            </div>
+          </div>
+        );
+      })()}
 
       {noteOpen && (
         <div className="fixed inset-0 z-40 bg-black/40 flex items-start justify-center p-4 pt-10" onClick={() => setNoteOpen(false)}>
@@ -932,7 +1072,8 @@ export default function StaffTill() {
               <svg className="w-8 h-8 text-[#2C687B]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg>
             </div>
             <h1 className="text-xl font-bold mb-1">Greiðsla á posa</h1>
-            <p className="text-3xl font-bold tabular-nums my-2">{kr(total)}</p>
+            {/* Upphæðin sem posinn er raunverulega að rukka — hlutgreiðsla í skiptingu ≠ karfan öll. */}
+            <p className="text-3xl font-bold tabular-nums my-2">{kr(waitingAmt || total)}</p>
             <p className="text-gray-500">{waiting}</p>
             <button onClick={cancelTerminal} className="mt-5 px-6 py-3 rounded-xl border-2 border-gray-200 font-semibold hover:bg-gray-50">Hætta við</button>
           </div>
@@ -967,10 +1108,10 @@ export default function StaffTill() {
             <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700 }}><span>Samtals</span><span>{kr(done.total)}</span></div>
             {done.mode === "cash" && done.change != null && <div style={{ display: "flex", justifyContent: "space-between" }}><span>Til baka</span><span>{kr(done.change)}</span></div>}
             {(() => {
-              const cls = new Map<number, { g: number; v: number }>();
-              done.lines.forEach((l) => { const r = l.vatPct ?? 24; const g = lineTotal(l); const e = cls.get(r) ?? { g: 0, v: 0 }; e.g += g; e.v += g - g / (1 + r / 100); cls.set(r, e); });
-              return [...cls.entries()].sort((a, b) => b[0] - a[0]).map(([r, e]) => (
-                <div key={r} style={{ display: "flex", justifyContent: "space-between" }}><span>{vatClass(r)} = {r}% af {kr(e.g)}</span><span>VSK {kr(Math.round(e.v))}</span></div>
+              const cls = new Map<number, number>();
+              done.lines.forEach((l) => { const r = l.vatPct ?? 24; cls.set(r, (cls.get(r) ?? 0) + lineTotal(l)); });
+              return [...cls.entries()].sort((a, b) => b[0] - a[0]).map(([r, g]) => (
+                <div key={r} style={{ display: "flex", justifyContent: "space-between" }}><span>{vatClass(r)} = {r}% af {kr(g)}</span><span>VSK {kr(Math.round((g * r) / (100 + r)))}</span></div>
               ));
             })()}
           </div>
