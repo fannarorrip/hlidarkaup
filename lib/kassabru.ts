@@ -154,15 +154,14 @@ export function formatReceipt(o: {
 
   // VAT per class (prices are gross): every line carries its class letter (A/B/C),
   // summarized in the VSK table below — the standard Icelandic receipt layout.
-  const vatTotals = new Map<number, { gross: number; vat: number }>();
+  // Gross per VAT class in WHOLE krónur: lines round like the server books them (lineGrossOf in
+  // lib/sales.ts) — weighed lines (fractional kg) must print the same integers as the voucher.
+  const vatTotals = new Map<number, number>();
   for (const l of o.lines) {
     const rate = l.vatPct ?? 24;
     const discount = Math.min(l.discount ?? 0, Math.max(0, l.price * l.quantity)); // never exceed line gross; minus-lines (skilagjald) take no discount
-    const lineTotal = l.price * l.quantity - discount;
-    const cls = vatTotals.get(rate) ?? { gross: 0, vat: 0 };
-    cls.gross += lineTotal;
-    cls.vat += lineTotal - lineTotal / (1 + rate / 100);
-    vatTotals.set(rate, cls);
+    const lineTotal = l.price < 0 ? Math.round(l.price * l.quantity) : Math.max(0, Math.round(l.price * l.quantity - discount));
+    vatTotals.set(rate, (vatTotals.get(rate) ?? 0) + lineTotal);
 
     const letter = vatClass(rate);
     const qty = Number.isInteger(l.quantity) ? String(l.quantity) : l.quantity.toFixed(3);
@@ -187,8 +186,8 @@ export function formatReceipt(o: {
   if (o.change !== undefined && o.change > 0) out.push(row("Skiptimynt", kr(o.change)));
   out.push("");
   out.push(row3("VSK-flokkur", "Velta m/VSK", "VSK"));
-  for (const [rate, cls] of [...vatTotals.entries()].sort((a, b) => b[0] - a[0])) {
-    out.push(row3(`${vatClass(rate)} = ${rate}%`, kr(cls.gross), kr(Math.round(cls.vat))));
+  for (const [rate, gross] of [...vatTotals.entries()].sort((a, b) => b[0] - a[0])) {
+    out.push(row3(`${vatClass(rate)} = ${rate}%`, kr(gross), kr(Math.round((gross * rate) / (100 + rate)))));
   }
   out.push("");
   // Account sales are signed for: leave room above a signature line so the customer
