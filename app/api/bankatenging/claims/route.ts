@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { arionStatus } from "@/lib/arion";
-import { sendQueuedClaims, syncClaimPayments, cancelClaim } from "@/lib/claims-bank";
+import { sendQueuedClaims, syncClaimPayments, cancelClaim, sendTestClaim } from "@/lib/claims-bank";
 import { claimsEnabled } from "@/lib/claims";
 
 // Bank claims: flush queued claims to Arion (send) and pull settlements into the ledger (sync).
@@ -38,6 +38,12 @@ export async function POST(req: NextRequest) {
     if (action === "sync") {
       const res = await syncClaimPayments(auth);
       return NextResponse.json({ ok: true, ...res });
+    }
+    // Prufukrafa: EIN krafa beint í Kröfupottinn (sama leið og alvöru kröfur) — sannar að
+    // REST-kröfuleiðin virki óháð SOAP-biluninni, án þess að hreyfa við biðröðinni.
+    if (action === "test") {
+      const res = await sendTestClaim(String(body.kennitala || ""), Number(body.amount) || 100, auth);
+      return NextResponse.json(res);
     }
     return NextResponse.json({ ok: false, message: "Óþekkt aðgerð." });
   } catch (e) {

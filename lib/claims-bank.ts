@@ -120,6 +120,59 @@ export async function sendQueuedClaims(auth: Auth = {}): Promise<SendResult> {
   return { sent, failed, skipped, requeued };
 }
 
+export interface TestClaimResult { ok: boolean; message: string; claimNumber?: string; arionRef?: string }
+
+/** PRUFUKRAFA: stofna EINA kröfu beint í Kröfupottinum á gefna kennitölu — snertir ekki
+ *  biðröðina. Fer nákvæmlega sömu leið og alvöru kröfur (sama snið, sömu stillingar, skráist
+ *  í acc.claims svo hún sést á Kröfur-síðunni og má fella niður). Sannar að REST-leiðin virki
+ *  óháð SOAP-biluninni. Gjalddagi = í dag + 7 dagar. */
+export async function sendTestClaim(debtorKennitala: string, amountKr: number, auth: Auth = {}): Promise<TestClaimResult> {
+  if (!claimsEnabled()) return { ok: false, message: "Kröfusending er óvirk (ARION_CLAIMS_ENABLED)." };
+  if (!auth.subscriptionKey && !process.env.ARION_CLAIMS_SUBSCRIPTION_KEY) return { ok: false, message: "Vantar Claims áskriftarlykil (ARION_CLAIMS_SUBSCRIPTION_KEY)." };
+  const kt = (debtorKennitala || "").replace(/\D/g, "");
+  if (kt.length !== 10) return { ok: false, message: "Kennitala greiðanda verður að vera 10 tölustafir." };
+  const amount = Math.round(Number(amountKr) || 0);
+  if (amount < 1 || amount > 10_000) return { ok: false, message: "Prufuupphæð verður að vera 1–10.000 kr." };
+  const profile = await getDefaultProfile();
+  if (!profile) return { ok: false, message: "Ekkert sjálfgefið kröfusnið — stilltu það í Innheimtuþjónustur." };
+  const settings = await getCollectionSettings();
+  const claimant = (settings.kennitala_krofuhafa || "").replace(/\D/g, "");
+  const bank = (settings.claim_bank || "").replace(/\D/g, "");
+  if (claimant.length !== 10 || bank.length !== 4) return { ok: false, message: "Kröfustillingar vantar (kennitala kröfuhafa / útibú)." };
+
+  const addDays = (iso: string, n: number) => { const d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const due = addDays(new Date().toISOString().slice(0, 10), 7);
+
+  // Skráð í acc.claims eins og aðrar kröfur (birtist á Kröfur-síðunni, má fella niður þar).
+  const row = (await query<{ id: string; claim_number: string }>(
+    `insert into acc.claims (kennitala, amount, due_date, status, claim_number)
+     values ($1,$2,$3,'sending', nextval('acc.claim_number_seq')) returning id, claim_number::text as claim_number`,
+    [kt, amount, due]))[0];
+  try {
+    const res = await createArionClaim({
+      claimantKennitala: claimant, claimBank: bank, claimNumber: row.claim_number,
+      templateCode: profile.code, debtorKennitala: kt, amount,
+      dueDate: due,
+      finalDueDate: addDays(due, Math.max(0, settings.final_due_days)),
+      expirationDate: addDays(due, Math.max(1, settings.expires_after_days)),
+      reference: "PRUFA", billNumber: row.claim_number, idempotencyKey: row.id,
+      paymentFeePrinting: Math.round(profile.notify_fee_paper || 0),
+      paymentFeePaperless: Math.round(profile.notify_fee_paperless || 0),
+    }, auth);
+    if (res.claimRef) {
+      await query(`update acc.claims set status='created', arion_ref=$2, profile_id=$3, last_error=null where id=$1`, [row.id, res.claimRef, profile.id]);
+      return { ok: true, message: `Prufukrafa stofnuð í Kröfupottinum — ${amount} kr. á ${kt}, gjalddagi ${due}.`, claimNumber: row.claim_number, arionRef: res.claimRef };
+    }
+    const err = res.ok ? "Svar 2xx en kröfunúmer vantar — yfirfara hjá Arion (möguleg skráning)." : (res.error || "Óþekkt villa");
+    await query(`update acc.claims set status='failed', last_error=$2 where id=$1`, [row.id, err.slice(0, 300)]);
+    return { ok: false, message: err, claimNumber: row.claim_number };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    await query(`update acc.claims set status='failed', last_error=$2 where id=$1`, [row.id, msg.slice(0, 300)]);
+    return { ok: false, message: msg, claimNumber: row.claim_number };
+  }
+}
+
 export interface SyncResult { settled: number; checked: number; errors: string[]; reason?: string }
 
 export interface CancelResult { ok: boolean; message: string }
