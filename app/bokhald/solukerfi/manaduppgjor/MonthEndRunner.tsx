@@ -6,13 +6,26 @@ import { dags, kr } from "@/lib/format";
 interface PreviewCustomer { customerId: string; name: string; kennitala: string | null; rafraen: boolean; hasEmail: boolean; staff: boolean; tripCount: number; total: number }
 interface Preview { from: string; to: string; customers: PreviewCustomer[] }
 
-export default function MonthEndRunner({ defaultPeriod }: { defaultPeriod: string }) {
+export default function MonthEndRunner({ defaultPeriod, emailPending }: { defaultPeriod: string; emailPending: number }) {
   const router = useRouter();
   const [period, setPeriod] = useState(defaultPeriod);
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
+
+  async function doEmail() {
+    if (!confirm(`Senda ${emailPending} ósenda mánaðarreikninga sem PDF í tölvupósti á viðskiptamennina?`)) return;
+    setBusy("email"); setErr(""); setMsg("");
+    try {
+      const r = await fetch("/api/manaduppgjor", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "email" }) });
+      const d = await r.json();
+      if (!r.ok) { setErr(d.error ?? "Villa"); return; }
+      setMsg(`Sendi ${d.sent} reikninga í tölvupósti${d.skipped ? ` · ${d.skipped} án netfangs (sæktu PDF og prentaðu)` : ""}${d.failed ? ` · ${d.failed} villur` : ""}.`);
+      if (d.errors?.length) setErr(d.errors.slice(0, 3).join(" · "));
+      router.refresh();
+    } catch (e) { setErr(e instanceof Error ? e.message : "Villa"); } finally { setBusy(""); }
+  }
 
   async function doPreview() {
     setBusy("Skoða…"); setErr(""); setMsg(""); setPreview(null);
@@ -48,6 +61,9 @@ export default function MonthEndRunner({ defaultPeriod }: { defaultPeriod: strin
         <button onClick={doPreview} disabled={!!busy} className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium hover:bg-gray-50 disabled:opacity-50">{busy === "Skoða…" ? "Skoða…" : "Skoða óreikningsfærða sölu"}</button>
         {preview && preview.customers.length > 0 && (
           <button onClick={doRun} disabled={!!busy} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50">{busy === "Keyri uppgjör…" ? "Keyri…" : `Keyra uppgjör (${preview.customers.length})`}</button>
+        )}
+        {emailPending > 0 && (
+          <button onClick={doEmail} disabled={!!busy} className="px-4 py-2 rounded-lg bg-gray-800 text-white text-sm font-semibold hover:bg-gray-900 disabled:opacity-50">{busy === "email" ? "Sendi…" : `Senda reikninga í tölvupósti (${emailPending})`}</button>
         )}
         {err && <span className="text-sm text-red-600">{err}</span>}
         {msg && <span className="text-sm text-green-700">{msg}</span>}

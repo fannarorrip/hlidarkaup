@@ -1,4 +1,4 @@
-import { getBillingInvoices } from "@/lib/month-end";
+import { getBillingInvoices, countUnsentBillingInvoices } from "@/lib/month-end";
 import { kr, MANUDIR } from "@/lib/format";
 import MonthEndRunner from "./MonthEndRunner";
 
@@ -17,13 +17,14 @@ export default async function ManadUppgjorPage() {
   const now = new Date();
   const defaultPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const invoices = await getBillingInvoices(100);
+  const emailPending = await countUnsentBillingInvoices();
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-1">Mánaðaruppgjör</h1>
       <p className="text-sm text-gray-500 mb-6">Reikningsfærir í lok mánaðar þá viðskiptamenn sem eru á „Safna saman" — einn samansafnaður reikningur (sundurliðaður eftir úttektum) + ein krafa á hvern.</p>
 
-      <MonthEndRunner defaultPeriod={defaultPeriod} />
+      <MonthEndRunner defaultPeriod={defaultPeriod} emailPending={emailPending} />
 
       <h2 className="mt-8 mb-2 text-sm font-semibold text-gray-700">Gerðir mánaðarreikningar</h2>
       <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">

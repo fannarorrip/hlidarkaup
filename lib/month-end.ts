@@ -113,6 +113,71 @@ export async function runMonthEnd(period: string, createdBy = "bokhald"): Promis
   }
 }
 
+// Sendir ósenda mánaðarreikninga (delivery_status queued/failed) sem PDF-viðhengi í tölvupósti
+// gegnum Resend — sama leið og e-kvittanir kassans. Netfangið er lesið af viðskiptamanninum NÚNA
+// (ekki eins og það var við keyrsluna) svo nýskráð netfang dugi. Rafræn-viðskipti-fólk fær líka
+// PDF-póst á meðan inExchange-sendingin er í lamasessi — betra að reikningurinn BERIST.
+// Starfsmannareikningar (claim_status 'staff') fá "dregst af launum"-texta í stað kröfutexta.
+export interface EmailInvoicesResult { sent: number; skipped: number; failed: number; errors: string[] }
+export async function emailBillingInvoices(): Promise<EmailInvoicesResult> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return { sent: 0, skipped: 0, failed: 0, errors: ["RESEND_API_KEY vantar — enginn póstur sendur."] };
+  const { renderStatementInvoicePdf } = await import("@/lib/pdf/statement-invoice");
+  const from = process.env.RECEIPT_FROM ?? "Hlíðarkaup <onboarding@resend.dev>";
+  const rows = await query<{ id: string; invoice_number: string; customer_name: string | null; kennitala: string | null;
+    period: string; total: string; detail: unknown; claim_status: string; email: string | null }>(`
+    select b.id, b.invoice_number, b.customer_name, b.kennitala, b.period, b.total::text as total, b.detail, b.claim_status, c.email
+    from acc.billing_invoices b
+    left join shop.customers c on c.id = b.customer_id
+    where b.delivery_status in ('queued','failed')
+    order by b.created_at asc limit 200`);
+  let sent = 0, skipped = 0, failed = 0;
+  const errors: string[] = [];
+  const MAN = ["janúar", "febrúar", "mars", "apríl", "maí", "júní", "júlí", "ágúst", "september", "október", "nóvember", "desember"];
+  for (const b of rows) {
+    const email = (b.email || "").trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { skipped++; continue; }
+    try {
+      const m = /^(\d{4})-(\d{2})$/.exec(b.period);
+      const tímabil = m && MAN[+m[2] - 1] ? `${MAN[+m[2] - 1]} ${m[1]}` : b.period;
+      const pdf = await renderStatementInvoicePdf({
+        invoice_number: b.invoice_number, customer_name: b.customer_name, kennitala: b.kennitala,
+        period: b.period, total: Math.round(Number(b.total)),
+        trips: (Array.isArray(b.detail) ? b.detail : []) as import("@/lib/pdf/statement-invoice").StatementTrip[],
+      });
+      const krTxt = Math.round(Number(b.total)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      const payLine = b.claim_status === "staff"
+        ? "Upphæðin dregst af launum — engin krafa er send."
+        : "Krafa (greiðsluseðill) fylgir í heimabanka.";
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST", headers: { Authorization: `Bearer ${key}`, "content-type": "application/json" },
+        body: JSON.stringify({
+          from, to: [email],
+          subject: `Mánaðarreikningur ${b.invoice_number} — ${tímabil} — Hlíðarkaup`,
+          html: `<p>Sæl/l,</p><p>Meðfylgjandi er mánaðarreikningur nr. <b>${b.invoice_number}</b> fyrir úttektir í ${tímabil}, samtals <b>${krTxt} kr.</b>, sundurliðaður eftir úttektum.</p><p>${payLine}</p><p>Kær kveðja,<br/>Hlíðarkaup</p>`,
+          attachments: [{ filename: `${b.invoice_number}.pdf`, content: Buffer.from(pdf).toString("base64") }],
+        }),
+      });
+      if (!res.ok) throw new Error(`Resend ${res.status}`);
+      await query(`update acc.billing_invoices set delivery_status = 'sent' where id = $1`, [b.id]);
+      sent++;
+    } catch (e) {
+      await query(`update acc.billing_invoices set delivery_status = 'failed' where id = $1`, [b.id]).catch(() => {});
+      failed++;
+      errors.push(`${b.invoice_number}: ${e instanceof Error ? e.message : "villa"}`.slice(0, 120));
+    }
+  }
+  return { sent, skipped, failed, errors };
+}
+
+// Fjöldi ósendra reikninga sem HÆGT er að senda (viðskiptamaðurinn hefur netfang) — fyrir takkann.
+export const countUnsentBillingInvoices = () =>
+  query<{ n: string }>(`
+    select count(*) as n from acc.billing_invoices b
+    join shop.customers c on c.id = b.customer_id
+    where b.delivery_status in ('queued','failed') and coalesce(c.email,'') <> ''`)
+    .then((r) => Number(r[0]?.n || 0));
+
 export interface BillingInvoiceRow {
   id: string; invoice_number: string; customer_name: string | null; kennitala: string | null;
   period: string; trip_count: number; total: string; delivery: string | null;
