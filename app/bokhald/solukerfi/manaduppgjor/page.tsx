@@ -11,7 +11,7 @@ const periodLabel = (p: string) => {
 };
 
 const DLV: Record<string, string> = { einvoice: "Rafrænt", pdf: "PDF í pósti", none: "—" };
-const STATUS: Record<string, string> = { queued: "Í biðröð", sent: "Sent", failed: "Mistókst", created: "Stofnuð", paid: "Greidd" };
+const STATUS: Record<string, string> = { queued: "Í biðröð", sent: "Sent", failed: "Mistókst", created: "Stofnuð", paid: "Greidd", staff: "Dregst af launum" };
 
 export default async function ManadUppgjorPage() {
   const now = new Date();
@@ -51,7 +51,7 @@ export default async function ManadUppgjorPage() {
                 <td className="px-4 py-2 text-center text-gray-600">{b.trip_count}</td>
                 <td className="px-4 py-2 text-right font-medium">{kr(b.total)}</td>
                 <td className="px-4 py-2 text-gray-500">{DLV[b.delivery ?? "none"] ?? b.delivery} <span className="text-xs text-gray-400">({STATUS[b.delivery_status] ?? b.delivery_status})</span></td>
-                <td className="px-4 py-2"><span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800">{STATUS[b.claim_status] ?? b.claim_status}</span></td>
+                <td className="px-4 py-2"><span className={`text-xs px-2 py-0.5 rounded ${b.claim_status === "staff" ? "bg-blue-50 text-blue-700" : "bg-amber-100 text-amber-800"}`}>{STATUS[b.claim_status] ?? b.claim_status}</span></td>
                 <td className="px-4 py-2 text-right"><a href={`/api/manadarreikningur/${b.id}/pdf`} target="_blank" rel="noopener" className="text-red-700 hover:underline">PDF</a></td>
               </tr>
             ))}

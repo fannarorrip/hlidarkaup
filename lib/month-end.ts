@@ -1,6 +1,9 @@
-// Month-end consolidated billing run for 'consolidated' account customers. Gathers each
-// customer's UNBILLED account sales in the period into ONE invoice (grouped by shopping trip)
-// + ONE krafa, and marks those sales billed. Does NOT post new ledger vouchers (AR already booked).
+// Month-end consolidated billing run for 'consolidated' and 'staff' account customers. Gathers
+// each customer's UNBILLED account sales in the period into ONE invoice (grouped by shopping trip),
+// and marks those sales billed. Does NOT post new ledger vouchers (AR already booked).
+// 'consolidated' fær að auki EINA bankakröfu; 'staff' (starfsmenn) fær ENGA kröfu — úttektin
+// dregst af launum: M-reikningurinn er frádráttarseðillinn og bókarinn jafnar viðskiptakröfuna
+// á móti launum þegar þau eru greidd.
 import { db, query } from "@/lib/db";
 import { enqueueMonthlyClaim } from "@/lib/claims";
 
@@ -12,33 +15,33 @@ export function periodRange(period: string): { from: string; to: string } {
 
 interface UnbilledRow {
   voucher_id: string; customer_id: string; customer_name: string; kennitala: string | null;
-  rafraen_vidskipti: boolean; email: string | null;
+  rafraen_vidskipti: boolean; email: string | null; billing_mode: string;
   voucher_date: string; series_code: string; voucher_number: string; gross: string;
 }
 
 function unbilledSales(from: string, to: string) {
   return query<UnbilledRow>(`
-    select v.id as voucher_id, v.customer_id, c.name as customer_name, c.kennitala, c.rafraen_vidskipti, c.email,
+    select v.id as voucher_id, v.customer_id, c.name as customer_name, c.kennitala, c.rafraen_vidskipti, c.email, c.billing_mode,
            v.voucher_date::text as voucher_date, v.series_code, v.voucher_number, coalesce(sum(le.debit),0) as gross
     from acc.vouchers v
     join acc.ledger_entries le on le.voucher_id = v.id
     join shop.customers c on c.id = v.customer_id
     where v.voucher_type = 'account_sale' and v.status = 'posted'
-      and c.billing_mode = 'consolidated' and c.is_generic = false
+      and c.billing_mode in ('consolidated','staff') and c.is_generic = false
       and v.voucher_date between $1::date and $2::date
       and not exists (select 1 from acc.billing_invoice_vouchers biv where biv.voucher_id = v.id)
-    group by v.id, v.customer_id, c.name, c.kennitala, c.rafraen_vidskipti, c.email, v.voucher_date, v.series_code, v.voucher_number
+    group by v.id, v.customer_id, c.name, c.kennitala, c.rafraen_vidskipti, c.email, c.billing_mode, v.voucher_date, v.series_code, v.voucher_number
     order by c.name, v.voucher_date, v.voucher_number`, [from, to]);
 }
 
-export interface PreviewCustomer { customerId: string; name: string; kennitala: string | null; rafraen: boolean; hasEmail: boolean; tripCount: number; total: number }
+export interface PreviewCustomer { customerId: string; name: string; kennitala: string | null; rafraen: boolean; hasEmail: boolean; staff: boolean; tripCount: number; total: number }
 export async function previewMonthEnd(period: string): Promise<{ from: string; to: string; customers: PreviewCustomer[] }> {
   const { from, to } = periodRange(period);
   const rows = await unbilledSales(from, to);
   const byCust = new Map<string, PreviewCustomer>();
   for (const r of rows) {
     let g = byCust.get(r.customer_id);
-    if (!g) { g = { customerId: r.customer_id, name: r.customer_name, kennitala: r.kennitala, rafraen: r.rafraen_vidskipti, hasEmail: !!r.email, tripCount: 0, total: 0 }; byCust.set(r.customer_id, g); }
+    if (!g) { g = { customerId: r.customer_id, name: r.customer_name, kennitala: r.kennitala, rafraen: r.rafraen_vidskipti, hasEmail: !!r.email, staff: r.billing_mode === "staff", tripCount: 0, total: 0 }; byCust.set(r.customer_id, g); }
     g.tripCount++; g.total += Math.round(Number(r.gross));
   }
   return { from, to, customers: [...byCust.values()] };
@@ -78,13 +81,16 @@ export async function runMonthEnd(period: string, createdBy = "bokhald"): Promis
       const seq = (await client.query<{ n: string }>(`select nextval('acc.billing_invoice_seq') as n`)).rows[0].n;
       const invNo = `M-${String(seq).padStart(6, "0")}`;
       const delivery = c.rafraen_vidskipti ? "einvoice" : c.email ? "pdf" : "none";
+      // Starfsmenn: engin bankakrafa — claim_status 'staff' merkir reikninginn sem launafrádrátt
+      // (M-reikningurinn er frádráttarseðillinn) og hann fer ALDREI í kröfubiðröðina.
+      const isStaff = c.billing_mode === "staff";
 
       const bi = (await client.query<{ id: string }>(
-        `insert into acc.billing_invoices (run_id, invoice_number, customer_id, kennitala, customer_name, period, trip_count, total, detail, delivery)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10) returning id`,
-        [run.id, invNo, customerId, (c.kennitala || "").replace(/\D/g, "") || null, c.customer_name, period, trips.length, custTotal, JSON.stringify(detail), delivery])).rows[0];
+        `insert into acc.billing_invoices (run_id, invoice_number, customer_id, kennitala, customer_name, period, trip_count, total, detail, delivery, claim_status)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11) returning id`,
+        [run.id, invNo, customerId, (c.kennitala || "").replace(/\D/g, "") || null, c.customer_name, period, trips.length, custTotal, JSON.stringify(detail), delivery, isStaff ? "staff" : "queued"])).rows[0];
       for (const t of trips) await client.query(`insert into acc.billing_invoice_vouchers (billing_invoice_id, voucher_id) values ($1,$2) on conflict do nothing`, [bi.id, t.voucher_id]);
-      createdInvoiceIds.push(bi.id);
+      if (!isStaff) createdInvoiceIds.push(bi.id);
       invoiceCount++; total += custTotal;
     }
 

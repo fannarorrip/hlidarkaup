@@ -21,7 +21,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
        typeof b.is_account === "boolean" ? b.is_account : null,
        typeof b.is_active === "boolean" ? b.is_active : null,
        typeof b.rafraen_vidskipti === "boolean" ? b.rafraen_vidskipti : null,
-       ["per_trip", "per_trip_invoice", "consolidated"].includes(b.billing_mode) ? b.billing_mode : null,
+       ["per_trip", "per_trip_invoice", "consolidated", "staff"].includes(b.billing_mode) ? b.billing_mode : null,
        b.discount_pct != null ? Math.min(100, Math.max(0, Number(b.discount_pct) || 0)) : null],
     );
     if (!rows.length) return NextResponse.json({ error: "Viðskiptamaður fannst ekki" }, { status: 404 });

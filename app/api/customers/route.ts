@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   const ktDigits = String(b.kennitala || "").replace(/\D/g, "");
   const isKS = ktDigits.startsWith("5506982349");
   const billingMode = isKS ? "per_trip_invoice"
-    : ["per_trip", "per_trip_invoice"].includes(b.billing_mode) ? b.billing_mode : "consolidated";
+    : ["per_trip", "per_trip_invoice", "staff"].includes(b.billing_mode) ? b.billing_mode : "consolidated";
   const discountPct = isKS ? Math.max(7, Number(b.discount_pct) || 0)
     : Math.min(100, Math.max(0, Number(b.discount_pct) || 0));
   try {
