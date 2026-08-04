@@ -6,7 +6,7 @@ import { kbHealth, kbScanEvents, kbPrint, kbDrawer, kbWeigh, formatReceipt, vatC
 // uid = the LINE's identity (edit/remove/merge); id = the product number (what the sale posts).
 // They differ for price-embedded (verðmerkt) packs, where every scan must stay its own line.
 interface Line { uid: string; id: string; name: string; price: number; vatPct?: number; quantity: number; priceOverride?: number; discount?: number; allowDiscount?: boolean; }
-interface Customer { id: string; name: string; kennitala: string | null; is_account: boolean; discount_pct?: number; }
+interface Customer { id: string; name: string; kennitala: string | null; customer_number?: string | null; is_account: boolean; discount_pct?: number; }
 interface RecentSale { id: string; invoiceNumber: string; time: string; total: number; mode: string; buyer?: { name?: string | null; kennitala?: string | null }; lines: { name: string; quantity: number; price: number; vatPct: number; discount: number }[]; }
 interface UnpaidSimgr { id: string; invoiceNumber: string; date: string; description: string | null; total: number; }
 interface SItem { id: string; name: string; price: number; vatPct?: number; image?: string; useScale?: boolean; embeddedPrice?: number; embeddedKg?: number | null; embeddedWeightKg?: number; allowDiscount?: boolean; }
@@ -873,13 +873,13 @@ export default function StaffTill() {
         <div className="fixed inset-0 z-40 bg-black/40 flex items-start justify-center pt-14" onClick={closeCust}>
           <div className="bg-white rounded-2xl w-full max-w-md p-5" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3"><h2 className="font-bold text-lg">Veldu viðskiptamann</h2><button onClick={closeCust} className="text-gray-400 text-3xl leading-none w-11 h-11" aria-label="Loka">×</button></div>
-            <input autoFocus value={custQ} onChange={(e) => setCustQ(e.target.value)} onFocus={() => setKb("customer")} onClick={() => setKb("customer")} inputMode="none" placeholder="Leita eftir nafni eða kennitölu…" className="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 text-base outline-none focus:border-[#8CC7C4] mb-3" />
+            <input autoFocus value={custQ} onChange={(e) => setCustQ(e.target.value)} onFocus={() => setKb("customer")} onClick={() => setKb("customer")} inputMode="none" placeholder="Leita — nafn, kennitala eða viðskiptanúmer…" className="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 text-base outline-none focus:border-[#8CC7C4] mb-3" />
             <button onClick={() => { setCustomer(null); closeCust(); }} className="w-full text-left px-3 py-3.5 rounded-xl hover:bg-gray-50 text-gray-500 mb-1">Staðgreitt (enginn viðskiptamaður)</button>
             <div className={`overflow-y-auto divide-y divide-gray-100 ${kb === "customer" ? "max-h-[24vh]" : "max-h-[38vh]"}`}>
               {custResults.map((c) => (
                 <button key={c.id} onClick={() => { setCustomer(c); closeCust(); }} className="w-full text-left px-3 py-3.5 hover:bg-gray-50">
                   <p className="font-medium">{c.name}{!c.is_account && <span className="text-[10px] text-gray-400 ml-2">ekki reikningsv.</span>}</p>
-                  <p className="text-xs text-gray-400 font-mono">{c.kennitala ?? "—"}</p>
+                  <p className="text-xs text-gray-400 font-mono">{c.kennitala ?? "—"}{c.customer_number ? <span className="ml-2 text-[#2C687B]">nr. {c.customer_number}</span> : null}</p>
                 </button>
               ))}
             </div>
