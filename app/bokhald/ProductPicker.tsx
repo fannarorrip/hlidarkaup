@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { groupLabel } from "@/lib/format";
 
 // Compact product picker for the móttaka line-matching (search by number/barcode/name).
-interface P { product_number: string; name: string }
+interface P { product_number: string; name: string; product_group?: string | null }
 
 export default function ProductPicker({ value, valueName, onChange }: {
   value: string | null; valueName?: string | null; onChange: (pn: string | null, name: string | null) => void;
@@ -43,6 +44,8 @@ export default function ProductPicker({ value, valueName, onChange }: {
               {res.map((p) => (
                 <button key={p.product_number} onClick={() => pick(p)} className="block w-full text-left px-2 py-1.5 hover:bg-red-50">
                   {p.name} <span className="text-gray-400">{p.product_number}</span>
+                  {/* Vöruflokkurinn strax í leitinni — „bananar" sýnir í hvaða flokki þeir eru */}
+                  {groupLabel(p.product_group) && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{groupLabel(p.product_group)}</span>}
                 </button>
               ))}
               {!res.length && <div className="px-2 py-1.5 text-gray-400">Engin vara fannst</div>}

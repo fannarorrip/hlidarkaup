@@ -749,6 +749,7 @@ export interface GoodsReceiptLineRow {
   matched_markup: string | null; pack_qty: string | null; unit_cost_override: string | null;
   matched_price: number | null; matched_cost: string | null;
   learned_match: boolean; // pörunin er LÆRÐ (supplier_items: vörunúmer birgja → þessi vara) — bókuð áður
+  reviewed: boolean;      // „farið yfir"-hakið — línan ljósgræn í yfirferðinni
 }
 export const getReceiptLines = (receiptId: string) =>
   query<GoodsReceiptLineRow>(`select l.*, p.name as matched_name, p.markup::text as matched_markup,
@@ -763,10 +764,11 @@ export const getReceiptLines = (receiptId: string) =>
     from acc.goods_receipt_lines l left join shop.products p on p.product_number = l.matched_product_number
     where l.receipt_id = $1 order by l.line_no`, [receiptId]);
 
-// Product search for the móttaka product-picker (by number / barcode / name).
+// Product search for the móttaka product-picker (by number / barcode / name). Skilar líka
+// vöruflokknum svo pörunin sýni strax í hvaða flokki varan er (t.d. „bananar → 20 Ávextir").
 export const searchProductsForPicker = (q: string, limit = 20) =>
-  query<{ product_number: string; name: string; price_gross: number; stock_quantity: string }>(`
-    select p.product_number, p.name, p.price_gross, p.stock_quantity from shop.products p
+  query<{ product_number: string; name: string; price_gross: number; stock_quantity: string; product_group: string | null }>(`
+    select p.product_number, p.name, p.price_gross, p.stock_quantity, p.product_group from shop.products p
     where p.is_active and ($1 = '' or p.product_number ilike $1||'%' or unaccent(p.name) ilike unaccent('%'||$1||'%')
        or exists (select 1 from shop.product_barcodes b where b.product_number = p.product_number and b.barcode like $1||'%'))
     order by p.name limit $2`, [q, limit]);

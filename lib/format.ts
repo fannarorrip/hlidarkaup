@@ -92,3 +92,8 @@ export const STATUS_LABEL: Record<string, string> = {
   reversed: "Bakfært",
   draft: "Drög",
 };
+
+// Vöruflokka-heiti (sama map og kassinn notar í /api/kassi/categories) — flokkar eru
+// annars bara kóðar í shop.products.product_group.
+export const GROUP_NAMES: Record<string, string> = { "10": "Aðalvalmynd", "20": "Ávextir", "30": "Grænmeti", "40": "Kál", "50": "Bakarí" };
+export const groupLabel = (g?: string | null) => (g ? (GROUP_NAMES[g] ? `${g} · ${GROUP_NAMES[g]}` : g) : null);

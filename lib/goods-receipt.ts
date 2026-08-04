@@ -136,12 +136,17 @@ export async function applyDraftPrices(receiptId: string): Promise<number> {
   const rec = (await db.query<{ supplier_id: string | null; supplier_name: string | null; status: string }>(
     `select supplier_id, supplier_name, status from acc.goods_receipts where id = $1`, [receiptId])).rows[0];
   if (!rec || rec.status === "booked") return 0;
-  const lines = (await db.query<RecLine>(
-    `select id, line_no, description, vat_rate, line_net, unit_price, matched_product_number, received_qty, invoiced_qty, pack_qty, unit_cost_override
+  const lines = (await db.query<RecLine & { reviewed: boolean }>(
+    `select id, line_no, description, vat_rate, line_net, unit_price, matched_product_number, received_qty, invoiced_qty, pack_qty, unit_cost_override, reviewed
        from acc.goods_receipt_lines where receipt_id = $1 order by line_no`, [receiptId])).rows;
+  // HLUTA-VERÐKEYRSLA: sé einhver lína HÖKUÐ (farið yfir) keyrast verð AÐEINS inn fyrir þær
+  // hökuðu — restin af reikningnum geymist í drögunum og fær sín verð þegar hakað er við hana
+  // (eða við bókun, sem tekur alltaf allar línur). Ekkert hakað = allar paraðar línur eins og áður.
+  const anyReviewed = lines.some((l) => l.reviewed);
   const costChanges: { product_number: string; old_cost: number | null; new_cost: number }[] = [];
   for (const l of lines) {
     if (!l.matched_product_number) continue;
+    if (anyReviewed && !l.reviewed) continue;
     const invQty = Number(l.invoiced_qty) || 0;
     const pack = Number(l.pack_qty) > 0 ? Number(l.pack_qty) : 1;
     const override = l.unit_cost_override == null ? null : Number(l.unit_cost_override);

@@ -7,7 +7,7 @@ import { dags, kr } from "@/lib/format";
 import SupplierPicker from "../../../../SupplierPicker";
 import ProductPicker from "../../../../ProductPicker";
 
-interface LineState { id: string; matched: string | null; matchedName: string | null; received: string; markup: string; pack: string; cost: string }
+interface LineState { id: string; matched: string | null; matchedName: string | null; received: string; markup: string; pack: string; cost: string; reviewed: boolean }
 
 export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceiptRow & { has_doc?: boolean }; lines: GoodsReceiptLineRow[] }) {
   const router = useRouter();
@@ -22,6 +22,7 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
     markup: l.matched_markup != null ? String(Number(l.matched_markup)).replace(".", ",") : "",
     pack: l.pack_qty != null ? qty(l.pack_qty) : "",
     cost: l.unit_cost_override != null ? String(Number(l.unit_cost_override)).replace(".", ",") : "",
+    reviewed: !!l.reviewed,
   })));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -63,6 +64,7 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
       markup: r.markup.trim() === "" ? null : Number(r.markup.replace(",", ".")),
       pack_qty: r.pack.trim() === "" ? null : Number(r.pack.replace(",", ".")),
       unit_cost_override: r.cost.trim() === "" ? null : Number(r.cost.replace(",", ".")),
+      reviewed: r.reviewed,
     })),
   });
 
@@ -170,6 +172,7 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
               <th className="px-3 py-2 font-semibold text-right w-24" title="Kostnaður á söluvöru. Reiknast sjálfkrafa (upphæð ÷ (magn × í pakka)) — skrifaðu tölu til að yfirskrifa.">Ein.verð</th>
               <th className="px-3 py-2 font-semibold text-right w-20" title="Föst álagning vörunnar — festist á vörunni og reiknar söluverð = kostnaður × álagning við hverja móttöku">Álagning</th>
               <th className="px-3 py-2 font-semibold text-right w-32" title="Núverandi söluverð → verð eftir álagningu (endar á 9). RAUTT = álagningin fer undir ×1,20.">Verð nú → eftir</th>
+              <th className="px-3 py-2 font-semibold text-center w-12" title="Farið yfir — línan verður græn og vistast með drögunum. Sé eitthvað hakað keyrir Vista drög verð AÐEINS inn fyrir hökuðu línurnar — restin geymist þar til hakað er (eða bókað).">✓</th>
             </tr>
           </thead>
           <tbody>
@@ -178,7 +181,8 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
               const rec = rows[i]?.received === "" ? null : Number((rows[i]?.received ?? "").replace(",", "."));
               const variance = rec == null ? null : rec - inv;
               return (
-                <tr key={l.id} className="border-t border-gray-100">
+                /* Ljósgræn lína = búið að fara yfir hana (hakið aftast) */
+                <tr key={l.id} className={`border-t border-gray-100 ${rows[i]?.reviewed ? "bg-green-50" : ""}`}>
                   <td className="px-3 py-2">
                     <div className="font-medium">{l.description || "—"}</div>
                     <div className="text-xs text-gray-400">{l.gtin ? `EAN ${l.gtin}` : l.supplier_item_id ? `nr. ${l.supplier_item_id}` : ""}</div>
@@ -273,6 +277,11 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
                         </span>
                       );
                     })()}
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <input type="checkbox" checked={!!rows[i]?.reviewed} disabled={booked}
+                      onChange={(e) => setRow(i, { reviewed: e.target.checked })}
+                      className="w-5 h-5 accent-green-600 cursor-pointer" title="Farið yfir þessa línu" />
                   </td>
                 </tr>
               );

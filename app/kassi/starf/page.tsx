@@ -47,6 +47,7 @@ export default function StaffTill() {
   const [recentOpen, setRecentOpen] = useState(false);
   const [recent, setRecent] = useState<RecentSale[]>([]);
   const [recentBusy, setRecentBusy] = useState(false);
+  const [recentShow, setRecentShow] = useState<string | null>(null); // opin sala í Fyrri sölur (sýnir línurnar)
   // Ógreiddar símgreiðslur: old phone orders posted to 7830 with no card charged — collect now via MOTO.
   const [simgrOpen, setSimgrOpen] = useState(false);
   const [simgrList, setSimgrList] = useState<UnpaidSimgr[]>([]);
@@ -215,15 +216,21 @@ export default function StaffTill() {
     }
     setCart((p) => { const e = p.find((l) => l.uid === d.id); return e ? p.map((l) => l.uid === d.id ? { ...l, quantity: l.quantity + qty } : l) : [...p, { uid: d.id, id: d.id, name: d.name, price: d.price, vatPct: d.vatPct, quantity: qty, allowDiscount: d.allowDiscount }]; });
   };
-  // SKIPTING Í GANGI = KARFAN MÁ EKKI LÆKKA. Kortahluti er þegar rukkaður á posanum; lækki
-  // heildin niður fyrir tekna upphæð verður salan ÓBÓKANLEG (tenders > total hafnar serverinn).
-  // Að BÆTA VIÐ vörum er leyft (heildin hækkar bara — afgangurinn uppfærist sjálfkrafa).
+  // SKIPTING Í GANGI = KARFAN MÁ EKKI LÆKKA NIÐUR FYRIR ÞAÐ SEM ÞEGAR ER GREITT. Kortahluti er
+  // þegar rukkaður á posanum; færi heildin undir teknu upphæðina yrði salan ÓBÓKANLEG (tenders >
+  // total hafnar serverinn). Lækkun að greiddu upphæðinni er í lagi (t.d. vöru sleppt sem enn er
+  // ógreidd) og að BÆTA VIÐ vörum er alltaf leyft — afgangurinn uppfærist sjálfkrafa.
   const splitLocked = splitTenders.length > 0;
-  const splitLockErr = () => setError("Skipting greiðslu í gangi — ekki hægt að lækka körfuna. Kláraðu skiptinguna eða hættu við hana fyrst.");
+  const splitLockErr = () => setError(`Skipting greiðslu í gangi — karfan má ekki fara undir það sem þegar er greitt (${kr(splitCollected)}). Kláraðu skiptinguna eða hættu við hana fyrst.`);
   // ±1 makes no sense for weighed (fractional-kg) lines — those adjust via the line editor.
-  const changeQty = (uid: string, d: number) => { if (splitLocked && d < 0) { splitLockErr(); return; } setCart((p) => p.map((l) => l.uid === uid && Number.isInteger(l.quantity) ? { ...l, quantity: l.quantity + d } : l).filter((l) => l.quantity > 0)); };
-  // 0-kr línur (hætt við opið verð) mega alltaf fara — þær lækka ekki heildina.
-  const removeLine = (uid: string) => { const l = cart.find((x) => x.uid === uid); if (splitLocked && l && lineTot(l) > 0) { splitLockErr(); return; } setCart((p) => p.filter((x) => x.uid !== uid)); };
+  const changeQty = (uid: string, d: number) => {
+    if (splitLocked && d < 0) {
+      const l = cart.find((x) => x.uid === uid);
+      if (l) { const shrunk = { ...l, quantity: l.quantity + d }; const newTotal = total - lineTot(l) + (shrunk.quantity > 0 ? lineTot(shrunk) : 0); if (newTotal < splitCollected) { splitLockErr(); return; } }
+    }
+    setCart((p) => p.map((l) => l.uid === uid && Number.isInteger(l.quantity) ? { ...l, quantity: l.quantity + d } : l).filter((l) => l.quantity > 0));
+  };
+  const removeLine = (uid: string) => { const l = cart.find((x) => x.uid === uid); if (splitLocked && l && total - lineTot(l) < splitCollected) { splitLockErr(); return; } setCart((p) => p.filter((x) => x.uid !== uid)); };
   // Afsláttarreiturinn opnast í % (ósk afgreiðslufólks) — NEMA línan beri þegar kr-afslátt,
   // þá helst kr svo talan sem sést sé ekki túlkuð sem prósenta og margfaldist óvart.
   const openEdit = (l: Line, field: "qty" | "unit" = "qty") => { setEditField(field); setEditFresh(true); setEdit({ id: l.uid, name: l.name, catalog: l.price, qty: String(l.quantity), unit: String(effUnit(l)), disc: String(l.discount ?? 0), discPct: !(l.discount && l.discount > 0) }); };
@@ -416,7 +423,9 @@ export default function StaffTill() {
     if (!terminalEnabled) { setError("Posi ekki tengdur — símgreiðsla fer í gegnum posann."); return; }
     const total = sel.reduce((a, s) => a + s.total, 0);
     setSimgrOpen(false);
-    const ok = await chargeCard(total, { moto: true });
+    // unknownHint: hér er EKKERT sölukarfa-flæði — óvissa leysist með handvirkri bókun
+    // innheimtunnar (Dr 7716 / Cr 7830) í bókhaldinu, ALDREI með því að skrá kort í skiptingu.
+    const ok = await chargeCard(total, { moto: true, unknownHint: "ÓVÍST er hvort símgreiðslan var rukkuð — skoðaðu POSANN. EF rukkað var: bókaðu innheimtuna handvirkt í bókhaldinu (Dr 7716 / Cr 7830) — EKKI rukka aftur." });
     if (!ok) { setSimgrOpen(true); return; }               // decline/abort — nothing booked, let them retry
     setSimgrBusy(true);
     try {
@@ -428,12 +437,13 @@ export default function StaffTill() {
     setSimgrBusy(false);
   }
 
-  // Skilar true AÐEINS þegar salan bókaðist — skipt greiðsla notar það til að halda
-  // greiðsluformunum lifandi þegar POSTið mistekst (netvilla, 500, ósamræmi).
-  async function checkout(mode: Mode, change?: number, tenders?: { mode: Mode; amount: number }[], noteOverride?: string): Promise<boolean> {
-    if (!cart.length) return false;
-    if (total <= 0) { setError("Samtala verður að vera yfir 0 kr. — notaðu Skila vörum fyrir hreina endurgreiðslu."); return false; }
-    if (mode === "account" && (!customer || !customer.is_account)) { setError("Veldu reikningsviðskiptamann"); return false; }
+  // Þrjú afdrif, því kortaleiðirnar verða að greina á milli: "ok" = bókað; "failed" = bókaðist
+  // ÖRUGGLEGA ekki (endurtekning er óhætt); "unknown" = svarið týndist og salan GÆTI verið bókuð
+  // — þá má ALDREI hvetja til endurbókunar í blindni (tvíbókun: sala/VSK/lager tvisvar).
+  async function checkout(mode: Mode, change?: number, tenders?: { mode: Mode; amount: number }[], noteOverride?: string): Promise<"ok" | "failed" | "unknown"> {
+    if (!cart.length) return "failed";
+    if (total <= 0) { setError("Samtala verður að vera yfir 0 kr. — notaðu Skila vörum fyrir hreina endurgreiðslu."); return "failed"; }
+    if (mode === "account" && (!customer || !customer.is_account)) { setError("Veldu reikningsviðskiptamann"); return "failed"; }
     setBusy(true); setError("");
     const snapshot = cart.map((l) => ({ ...l, discount: lineDisc(l) })); // bake customer discount into each line
     const note = mode === "account" ? (noteOverride ?? saleNote).trim().slice(0, 120) : "";
@@ -445,11 +455,11 @@ export default function StaffTill() {
       d = await r.json();
     } catch {
       setBusy(false);
-      setError("Náði ekki sambandi við server — ÓVÍST hvort salan bókaðist. Athugaðu Fyrri sölur áður en þú reynir aftur.");
-      return false;
+      setError("Náði ekki sambandi við server — ÓVÍST hvort salan bókaðist. Athugaðu FYRRI SÖLUR áður en þú reynir aftur.");
+      return "unknown";
     }
     setBusy(false);
-    if (!r.ok) { setError(d.error ?? "Villa við að skrá söluna"); return false; }
+    if (!r.ok) { setError(d.error ?? "Villa við að skrá söluna"); return "failed"; }
     const buyer = customer
       ? { name: customer.name, kennitala: customer.kennitala }
       : (receiptKt.length === 10 ? { kennitala: receiptKt } : undefined);
@@ -462,7 +472,7 @@ export default function StaffTill() {
     if (tookCash) { if (bridgeRef.current) kbDrawer().catch(() => {}); else fetch("/api/kassi/drawer", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reg: regRef.current }) }).catch(() => {}); }
     setCart([]); setCustomer(null); setCashFor(false); setCashGot("");
     setSaleDiscPct(0); setSplitTenders([]); setSplitConfirmClose(false);
-    return true;
+    return "ok";
   }
   // Skipt greiðsla: collect several tenders (cash + posi) until the total is covered, then post once.
   const splitCollected = splitTenders.reduce((s, t) => s + t.amount, 0);
@@ -487,11 +497,13 @@ export default function StaffTill() {
     // Tenders hreinsast EKKI hér — checkout hreinsar þau AÐEINS þegar bókunin TEKST. Mistakist
     // POSTið (server/net) standa þau eftir og „Bóka sölu“ í glugganum reynir aftur — áður
     // þurrkuðust þau út fyrst og „Kort“-endurtekning rukkaði þá fulla upphæð ofan á hlutina.
-    if (remaining <= 0) { setSplitOpen(false); setSplitAmt(""); if (!await checkout(m, undefined, next)) setSplitOpen(true); }
+    // "unknown" opnar EKKI gluggann aftur — ÓVÍST-villan (athuga Fyrri sölur) stendur þá og
+    // formin geymast; blind „Bóka sölu“-hvatning eftir týnt svar væri tvíbókunarleið.
+    if (remaining <= 0) { setSplitOpen(false); setSplitAmt(""); if (await checkout(m, undefined, next) === "failed") setSplitOpen(true); }
     else { setSplitAmt(String(remaining)); setSplitFresh(true); }
   }
   // Allt greitt (afgangur 0) en salan enn óbókuð — t.d. eftir misheppnað POST: bóka með teknu formunum.
-  async function bookSplitSale() { if (!splitTenders.length) return; setSplitOpen(false); if (!await checkout(splitTenders[splitTenders.length - 1].mode, undefined, splitTenders)) setSplitOpen(true); }
+  async function bookSplitSale() { if (!splitTenders.length) return; setSplitOpen(false); if (await checkout(splitTenders[splitTenders.length - 1].mode, undefined, splitTenders) === "failed") setSplitOpen(true); }
 
   function pay(mode: Mode) {
     if (!cart.length) { setError("Karfan er tóm"); return; }
@@ -509,7 +521,9 @@ export default function StaffTill() {
   const terminalAbort = useRef<AbortController | null>(null);
   const terminalSvcId = useRef<string>("");
   // Charge a (partial) amount on the posi. Returns approval only — no sale posting.
-  async function chargeCard(amount: number, opts?: { moto?: boolean }): Promise<boolean> {
+  // unknownHint: flæðis-sértæk leiðbeining þegar afdrif fást EKKI staðfest (sjá collectSimgr —
+  // þar á EKKI við að skrá kort í skiptingu, heldur að bóka innheimtuna handvirkt).
+  async function chargeCard(amount: number, opts?: { moto?: boolean; unknownHint?: string }): Promise<boolean> {
     const moto = !!opts?.moto;
     setWaitingAmt(amount); // biðskjárinn sýnir upphæðina sem posinn rukkar — hlutgreiðsla ≠ karfan
     setWaiting(moto ? "Símgreiðsla — sláðu kortanúmerið inn á posanum…" : "Fylgdu leiðbeiningum á posanum…"); setError("");
@@ -518,20 +532,75 @@ export default function StaffTill() {
     try {
       const r = await fetch("/api/kassi/terminal/pay", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount, ref: `${moto ? "sim" : "till"}-${Date.now()}`, reg: regRef.current, serviceId: svc, ...(moto ? { moto: true } : {}) }), signal: ac.signal });
       const d = await r.json().catch(() => ({}));
+      // Serverinn missti sambandið við skýið og gat EKKI staðfest afdrifin — sama óvissa og
+      // þegar okkar eigin fetch springur: fara verify-leiðina, ALDREI sýna sem venjulega höfnun.
+      if (!d.approved && d.unknown === true) return await resolveUnknown(svc, opts?.unknownHint);
       setWaiting("");
       if (!d.approved) { setError(d.error ? `Posi: ${d.error}` : (moto ? "Símgreiðslu hafnað" : "Greiðslu hafnað")); return false; }
       return true;
     } catch (e) {
-      setWaiting("");
-      if (ac.signal.aborted) { setError(`Hætt við — ${moto ? "símgreiðslan" : "greiðslan"} var afturkölluð á posanum.`); return false; }
-      setError(e instanceof Error ? e.message : "Villa við posa");
-      return false;
+      if (ac.signal.aborted) {
+        // „Hætta við“ ýtt — en viðskiptavinurinn GÆTI hafa klárað að borga rétt á undan
+        // (nexo Abort nær ekki til greiðslu sem þegar er lokið). Staðfesta afdrifin alltaf.
+        const verdict = await verifyCharge(svc, "Athuga hvort hætt var við í tæka tíð…");
+        setWaiting("");
+        if (verdict === "approved") { setToast("Viðskiptavinurinn náði að greiða áður en hætt var við — greiðslan gildir."); setTimeout(() => setToast(""), 6000); return true; }
+        if (verdict === "declined") { setError(`Hætt við — ${moto ? "símgreiðslan" : "greiðslan"} fór ekki í gegn.`); return false; }
+        setError("Hætt við — en ÓVÍST er hvort greiðslan fór samt í gegn. Skoðaðu POSANN: ef kvittun kom, notaðu Skipta greiðslu → „Skrá kort sem þegar var rukkað“."); return false;
+      }
+      return await resolveUnknown(svc, opts?.unknownHint, e);
     }
   }
-  async function cardViaTerminal() { if (await chargeCard(total)) await checkout("card"); }
+  // Sameiginlegt óvissu-ferli: staðfesta afdrif hjá skýinu; approved = halda áfram eins og
+  // ekkert hafi í skorist, declined = óhætt að reyna aftur, unknown = afgreiðslumaðurinn ræður.
+  async function resolveUnknown(svc: string, hint?: string, e?: unknown): Promise<boolean> {
+    const verdict = await verifyCharge(svc);
+    setWaiting("");
+    if (verdict === "approved") return true;
+    if (verdict === "declined") { setError("Greiðslan fór EKKI í gegn — óhætt að reyna aftur."); return false; }
+    setError(hint ?? `Samband rofnaði${e instanceof Error ? ` (${e.message})` : ""} og ÓVÍST er hvort kortið var rukkað. Skoðaðu kvittun/skjá POSANS: ef rukkað var, notaðu Skipta greiðslu → „Skrá kort sem þegar var rukkað“ — annars má reyna aftur.`);
+    return false;
+  }
+  // Afdrif rukkunar eftir sambandsrof: approved = fór í gegn, declined = fór EKKI í gegn,
+  // unknown = ekkert öruggt svar (enn í vinnslu / fyrirspurn brást) — þá ræður afgreiðslumaðurinn.
+  async function verifyCharge(serviceId: string, waitMsg?: string): Promise<"approved" | "declined" | "unknown"> {
+    setWaiting(waitMsg ?? "Samband rofnaði — athuga hvort greiðslan fór í gegn…");
+    try {
+      const r = await fetch("/api/kassi/terminal/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ serviceId, reg: regRef.current }) });
+      const d = await r.json().catch(() => ({}));
+      if (d.known === true) return d.approved === true ? "approved" : "declined";
+    } catch { /* fellur í unknown */ }
+    return "unknown";
+  }
+  // TVÍRUKKUNAR-VÖRNIN: tekst rukkunin en EKKI bókunin (server að endurræsa, net dettur út)
+  // skráist kortið sem tekið greiðsluform — þá grípur skiptingar-vörnin: allir greiðslutakkar
+  // leiða í „Bóka sölu“ sem reynir bókunina aftur ÁN þess að rukka kortið aftur. Áður sá
+  // afgreiðslumaðurinn bara villu og ýtti aftur á Kort → viðskiptavinurinn rukkaður tvisvar.
+  // busy strax í byrjun: tvísmellur á Kort má heldur ekki senda tvær rukkanir á posann.
+  async function cardViaTerminal() {
+    setBusy(true);
+    try {
+      if (!await chargeCard(total)) return;
+      const paid = [{ mode: "card" as Mode, amount: total }];
+      const res = await checkout("card");
+      if (res === "failed") { setSplitTenders(paid); setError("Kortið VAR rukkað en bókunin mistókst — ýttu á „Bóka sölu“ til að reyna aftur (rukkar EKKI aftur)."); setSplitOpen(true); }
+      // "unknown": salan GÆTI hafa bókast þótt svarið týndist — formin geymast en EKKERT má
+      // hvetja til endurbókunar fyrr en Fyrri sölur hafa verið skoðaðar (annars tvíbókun).
+      else if (res === "unknown") { setSplitTenders(paid); setError("Kortið VAR rukkað en ÓVÍST er hvort salan bókaðist — athugaðu FYRRI SÖLUR. Sé salan EKKI þar: Skipta greiðslu → „Bóka sölu“ (rukkar ekki aftur)."); }
+    } finally { setBusy(false); }
+  }
   // Símgreiðsla = MOTO (phone-order card payment). Goes entirely through the posi: the cashier keys the
   // card number on the terminal (PCI-safe), books to the card account on approval. No standalone/handvirkt.
-  async function simgreidslaViaTerminal() { if (await chargeCard(total, { moto: true })) await checkout("transfer"); }
+  async function simgreidslaViaTerminal() {
+    setBusy(true);
+    try {
+      if (!await chargeCard(total, { moto: true })) return;
+      const paid = [{ mode: "transfer" as Mode, amount: total }];
+      const res = await checkout("transfer");
+      if (res === "failed") { setSplitTenders(paid); setError("Símgreiðslan VAR rukkuð en bókunin mistókst — ýttu á „Bóka sölu“ til að reyna aftur (rukkar EKKI aftur)."); setSplitOpen(true); }
+      else if (res === "unknown") { setSplitTenders(paid); setError("Símgreiðslan VAR rukkuð en ÓVÍST er hvort salan bókaðist — athugaðu FYRRI SÖLUR. Sé salan EKKI þar: Skipta greiðslu → „Bóka sölu“ (rukkar ekki aftur)."); }
+    } finally { setBusy(false); }
+  }
   // Refund a card ON the posi (skil). Standalone refund — the customer taps their card and gets the
   // money back. Same waiting screen + "Hætta við" (Abort) as a charge; returns approval only.
   async function refundCard(amount: number): Promise<boolean> {
@@ -542,13 +611,25 @@ export default function StaffTill() {
     try {
       const r = await fetch("/api/kassi/terminal/refund", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount, ref: `skil-${Date.now()}`, reg: regRef.current, serviceId: svc }), signal: ac.signal });
       const d = await r.json().catch(() => ({}));
+      if (!d.approved && d.unknown === true) {
+        // Serverinn gat ekki staðfest afdrifin — sama óvissuferli og við rukkun.
+        const verdict = await verifyCharge(svc);
+        setWaiting("");
+        if (verdict === "approved") return true;
+        if (verdict === "declined") { setError("Endurgreiðslan fór EKKI í gegn — óhætt að reyna aftur."); return false; }
+        setError("ÓVÍST er hvort endurgreiðslan fór í gegn — skoðaðu kvittun/skjá POSANS áður en þú reynir aftur.");
+        return false;
+      }
       setWaiting("");
       if (!d.approved) { setError(d.error ? `Posi: ${d.error}` : "Endurgreiðslu hafnað"); return false; }
       return true;
     } catch (e) {
+      // Sama vörn og við rukkun — LÍKA þegar hætt er við (tvöföld endurgreiðsla = búðin tapar).
+      const verdict = await verifyCharge(svc, ac.signal.aborted ? "Athuga hvort hætt var við í tæka tíð…" : undefined);
       setWaiting("");
-      if (ac.signal.aborted) { setError("Hætt við — endurgreiðslan var afturkölluð á posanum."); return false; }
-      setError(e instanceof Error ? e.message : "Villa við posa");
+      if (verdict === "approved") { if (ac.signal.aborted) { setToast("Endurgreiðslan náði í gegn áður en hætt var við — hún gildir."); setTimeout(() => setToast(""), 6000); } return true; }
+      if (verdict === "declined") { setError(ac.signal.aborted ? "Hætt við — endurgreiðslan fór ekki í gegn." : "Endurgreiðslan fór EKKI í gegn — óhætt að reyna aftur."); return false; }
+      setError(`${ac.signal.aborted ? "Hætt við — en" : `Samband rofnaði (${e instanceof Error ? e.message : "villa"}) og`} ÓVÍST er hvort endurgreiðslan fór í gegn — skoðaðu kvittun/skjá POSANS áður en þú reynir aftur.`);
       return false;
     }
   }
@@ -866,12 +947,25 @@ export default function StaffTill() {
             {recentBusy ? <p className="text-gray-400 py-8 text-center">Sæki…</p> : recent.length === 0 ? <p className="text-gray-400 py-8 text-center">Engar sölur</p> : (
               <div className="overflow-y-auto -mx-2 px-2 divide-y divide-gray-100">
                 {recent.map((s) => (
-                  <div key={s.id} className="flex items-center gap-3 py-2.5">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-mono text-sm text-[#21323A]">{s.invoiceNumber} · <span className="tabular-nums">{kr(s.total)}</span></p>
-                      <p className="text-xs text-gray-400 truncate">{new Date(s.time).toLocaleString("is-IS", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}{s.buyer?.name ? ` · ${s.buyer.name}` : ""}</p>
+                  <div key={s.id} className="py-2.5">
+                    <div className="flex items-center gap-3">
+                      {/* Smellt á söluna sjálfa opnar/lokar línulistanum — hvað var keypt */}
+                      <button onClick={() => setRecentShow((v) => (v === s.id ? null : s.id))} className="flex-1 min-w-0 text-left">
+                        <p className="font-mono text-sm text-[#21323A]">{s.invoiceNumber} · <span className="tabular-nums">{kr(s.total)}</span><span className="ml-1.5 text-gray-300">{recentShow === s.id ? "▾" : "▸"}</span></p>
+                        <p className="text-xs text-gray-400 truncate">{new Date(s.time).toLocaleString("is-IS", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}{s.buyer?.name ? ` · ${s.buyer.name}` : ""}</p>
+                      </button>
+                      <button onClick={() => reprint(s)} className="px-4 py-2 rounded-lg bg-[#21323A] text-white text-sm font-semibold hover:bg-[#2C687B] active:scale-95 transition shrink-0">Prenta</button>
                     </div>
-                    <button onClick={() => reprint(s)} className="px-4 py-2 rounded-lg bg-[#21323A] text-white text-sm font-semibold hover:bg-[#2C687B] active:scale-95 transition shrink-0">Prenta</button>
+                    {recentShow === s.id && (
+                      <div className="mt-1.5 ml-1 rounded-lg bg-gray-50 px-3 py-2 text-xs space-y-0.5">
+                        {s.lines.map((l, i) => (
+                          <div key={i} className="flex justify-between gap-2">
+                            <span className="min-w-0 truncate">{l.name}{l.quantity !== 1 ? ` × ${String(l.quantity).replace(".", ",")}` : ""}</span>
+                            <span className="tabular-nums shrink-0">{l.discount > 0 && <span className="text-[#DB1A1A] mr-1.5">−{kr(l.discount)}</span>}{kr(l.price * l.quantity - (l.discount || 0))}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -920,7 +1014,7 @@ export default function StaffTill() {
             <div className="flex justify-between text-sm"><span className="text-gray-500">Samtals</span><span className="tabular-nums font-semibold">{kr(total)}</span></div>
             <div className="flex justify-between text-sm"><span className="text-gray-500">Greitt</span><span className="tabular-nums text-[#2C687B]">{kr(splitCollected)}</span></div>
             <div className="flex justify-between text-base mb-2"><span className="font-semibold">Eftir</span><span className="tabular-nums font-bold">{kr(splitRemaining)}</span></div>
-            {splitTenders.length > 0 && <div className="mb-2 text-xs text-gray-500 space-y-0.5 border-t border-gray-100 pt-2">{splitTenders.map((t, i) => <div key={i} className="flex justify-between"><span>{t.mode === "cash" ? "Reiðufé" : "Kort"}</span><span className="tabular-nums">{kr(t.amount)}</span></div>)}</div>}
+            {splitTenders.length > 0 && <div className="mb-2 text-xs text-gray-500 space-y-0.5 border-t border-gray-100 pt-2">{splitTenders.map((t, i) => <div key={i} className="flex justify-between"><span>{t.mode === "cash" ? "Reiðufé" : t.mode === "transfer" ? "Símgreiðsla" : "Kort"}</span><span className="tabular-nums">{kr(t.amount)}</span></div>)}</div>}
             <input inputMode="none" readOnly value={kr(Number(splitAmt) || 0)} className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-2xl text-right outline-none mb-2 tabular-nums" />
             <div className="flex gap-2 mb-2">
               <button onClick={() => { setSplitAmt(String(Math.round(splitRemaining / 2))); setSplitFresh(true); }} className="flex-1 py-2 rounded-lg bg-gray-100 text-sm hover:bg-gray-200">½</button>
@@ -935,15 +1029,21 @@ export default function StaffTill() {
               /* Allt greitt en salan óbókuð (t.d. POST mistókst): bóka með teknu formunum. */
               <button onClick={bookSplitSale} disabled={busy} className={`w-full py-3 rounded-xl mb-2 ${INK} text-white font-semibold disabled:opacity-40`}>Bóka sölu — {kr(splitCollected)} greitt</button>
             ) : (
-              <div className="flex gap-3 mb-2">
-                <button onClick={() => collectTender("cash")} disabled={busy || splitRemaining <= 0 || (Number(splitAmt) || 0) <= 0} className={`flex-1 py-3 rounded-xl ${INK} text-white font-semibold disabled:opacity-40`}>Reiðufé</button>
-                <button onClick={() => collectTender("card")} disabled={busy || splitRemaining <= 0 || (Number(splitAmt) || 0) <= 0} className={`flex-1 py-3 rounded-xl ${RED} text-white font-semibold disabled:opacity-40`}>Kort (posi)</button>
+              <div className="mb-2">
+                <div className="flex gap-3 mb-1.5">
+                  <button onClick={() => collectTender("cash")} disabled={busy || splitRemaining <= 0 || (Number(splitAmt) || 0) <= 0} className={`flex-1 py-3 rounded-xl ${INK} text-white font-semibold disabled:opacity-40`}>Reiðufé</button>
+                  <button onClick={() => collectTender("card")} disabled={busy || splitRemaining <= 0 || (Number(splitAmt) || 0) <= 0} className={`flex-1 py-3 rounded-xl ${RED} text-white font-semibold disabled:opacity-40`}>Kort (posi)</button>
+                </div>
+                {/* Öryggisventill eftir sambandsrof: posinn RUKKAÐI (kvittun til sönnunar) en kassinn
+                   veit það ekki — skrá upphæðina sem tekið kort ÁN þess að rukka aftur. */}
+                <button onClick={() => { const amt = Math.min(Math.round(Number(splitAmt) || 0), splitRemaining); if (amt <= 0) return; setSplitTenders((p) => [...p, { mode: "card", amount: amt }]); const rem = splitRemaining - amt; if (rem > 0) { setSplitAmt(String(rem)); setSplitFresh(true); } else setSplitAmt("0"); }} disabled={busy || splitRemaining <= 0 || (Number(splitAmt) || 0) <= 0} className="w-full py-1.5 rounded-lg text-xs text-gray-500 hover:bg-gray-50 border border-dashed border-gray-300 disabled:opacity-40">Skrá kort sem ÞEGAR var rukkað á posa (rukkar ekki aftur)</button>
               </div>
             )}
             {error && <p className="text-sm text-[#DB1A1A] mb-2">{error}</p>}
             {splitConfirmClose ? (
               <div className="rounded-xl border-2 border-[#DB1A1A]/40 bg-red-50 p-3">
-                <p className="text-sm text-[#21323A] mb-2"><b>Hætta við skiptinguna?</b> Búið er að taka við {kr(splitCollected)}{splitTenders.some((t) => t.mode === "card") ? " — kortahlutinn er ÞEGAR rukkaður á posanum og þarf að endurgreiða þar" : ""}. Reiðufé þarf að rétta til baka.</p>
+                {/* mode !== "cash" = rukkað á posa (kort OG símgreiðsla) — hvort tveggja þarf endurgreiðslu þar. */}
+                <p className="text-sm text-[#21323A] mb-2"><b>Hætta við skiptinguna?</b> Búið er að taka við {kr(splitCollected)}{splitTenders.some((t) => t.mode !== "cash") ? " — korta-/símgreiðsluhlutinn er ÞEGAR rukkaður á posanum og þarf að endurgreiða þar" : ""}. Reiðufé þarf að rétta til baka.</p>
                 <div className="flex gap-2">
                   <button onClick={() => setSplitConfirmClose(false)} className={`flex-1 py-2 rounded-lg ${INK} text-white text-sm font-semibold`}>Halda áfram</button>
                   <button onClick={() => { setSplitTenders([]); setSplitConfirmClose(false); setSplitOpen(false); }} className="flex-1 py-2 rounded-lg border-2 border-[#DB1A1A] text-[#DB1A1A] text-sm font-semibold hover:bg-red-50">Hætta við skiptingu</button>

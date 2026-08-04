@@ -1,12 +1,18 @@
-import { getStockSummary, getStockAttention, getRecentStockMovements } from "@/lib/stock-report";
+import { getStockSummary, getStockAttention, getRecentStockMovements, getStockSuppliers } from "@/lib/stock-report";
 import { dags, kr } from "@/lib/format";
+import BirgirFilter from "./BirgirFilter";
 
 export const dynamic = "force-dynamic";
 
 const MOVE: Record<string, string> = { sale: "Sala", receipt: "Móttaka", adjust: "Leiðrétting", count: "Talning", waste: "Rýrnun" };
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export default async function BirgdaskyrslaPage() {
-  const [s, attention, moves] = await Promise.all([getStockSummary(), getStockAttention(300), getRecentStockMovements(60)]);
+export default async function BirgdaskyrslaPage({ searchParams }: { searchParams: Promise<{ birgir?: string }> }) {
+  const sp = await searchParams;
+  const birgir = sp.birgir && UUID.test(sp.birgir) ? sp.birgir : "";
+  const [s, attention, moves, suppliers] = await Promise.all([
+    getStockSummary(), getStockAttention(300, birgir || undefined), getRecentStockMovements(60), getStockSuppliers(),
+  ]);
   const n = (x: string | number | null) => Math.round(Number(x) || 0);
 
   const Metric = ({ label, value, accent }: { label: string; value: string; accent?: string }) => (
@@ -20,7 +26,11 @@ export default async function BirgdaskyrslaPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold flex items-center gap-2">📦 Birgðaskýrsla</h1>
-        <a href="/api/birgdaskyrsla/xlsx" className="px-4 py-2 rounded-lg bg-green-700 text-white text-sm font-semibold hover:bg-green-800">📊 Sækja Excel</a>
+        <div className="flex items-center gap-2">
+          {/* Birgja-sían nær yfir athyglislistann OG Excel-útflutninginn */}
+          <BirgirFilter suppliers={suppliers} value={birgir} />
+          <a href={`/api/birgdaskyrsla/xlsx${birgir ? `?birgir=${birgir}` : ""}`} className="px-4 py-2 rounded-lg bg-green-700 text-white text-sm font-semibold hover:bg-green-800">📊 Sækja Excel</a>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -35,16 +45,17 @@ export default async function BirgdaskyrslaPage() {
         <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
           <table className="w-full text-sm min-w-[720px]">
             <thead className="bg-gray-50 text-gray-500 text-left">
-              <tr><th className="px-4 py-2 font-medium">Vara</th><th className="px-4 py-2 font-medium">Flokkur</th><th className="px-4 py-2 font-medium text-right">Birgðir</th><th className="px-4 py-2 font-medium text-right">Öryggisb.</th><th className="px-4 py-2 font-medium text-right">Birgðavirði</th><th className="px-4 py-2 font-medium">Staða</th></tr>
+              <tr><th className="px-4 py-2 font-medium">Vara</th><th className="px-4 py-2 font-medium">Flokkur</th><th className="px-4 py-2 font-medium">Birgir</th><th className="px-4 py-2 font-medium text-right">Birgðir</th><th className="px-4 py-2 font-medium text-right">Öryggisb.</th><th className="px-4 py-2 font-medium text-right">Birgðavirði</th><th className="px-4 py-2 font-medium">Staða</th></tr>
             </thead>
             <tbody>
-              {attention.length === 0 ? <tr><td colSpan={6} className="px-4 py-6 text-center text-gray-400">Allar birgðir í lagi 🎉</td></tr> : attention.map((p) => {
+              {attention.length === 0 ? <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-400">Allar birgðir í lagi 🎉</td></tr> : attention.map((p) => {
                 const stock = Number(p.stock_quantity) || 0;
                 const out = stock <= 0;
                 return (
                   <tr key={p.product_number} className="border-t border-gray-100">
                     <td className="px-4 py-2"><a href={`/bokhald/solukerfi/vorur/${p.product_number}`} className="text-red-700 hover:underline"><span className="font-mono text-gray-400 mr-2">{p.product_number}</span>{p.name}</a></td>
                     <td className="px-4 py-2 text-gray-500">{p.product_group ?? "—"}</td>
+                    <td className="px-4 py-2 text-gray-500">{p.supplier_name ?? "—"}</td>
                     <td className="px-4 py-2 text-right tabular-nums">{n(p.stock_quantity)}</td>
                     <td className="px-4 py-2 text-right tabular-nums text-gray-500">{p.reorder_point != null ? n(p.reorder_point) : "—"}</td>
                     <td className="px-4 py-2 text-right tabular-nums">{kr(stock * (Number(p.cost_price) || 0))}</td>
