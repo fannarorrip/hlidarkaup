@@ -11,9 +11,15 @@ import { enqueueClaim } from "@/lib/claims";
 
 export async function handleAccountSaleBilling(voucherId: string, customerId: string): Promise<void> {
   try {
-    const c = (await db.query<{ billing_mode: string; rafraen_vidskipti: boolean; email: string | null }>(
-      `select billing_mode, rafraen_vidskipti, email from shop.customers where id = $1`, [customerId])).rows[0];
-    if (!c || (c.billing_mode !== "per_trip" && c.billing_mode !== "per_trip_invoice")) return; // consolidated → month-end run
+    const c = (await db.query<{ billing_mode: string; rafraen_vidskipti: boolean; email: string | null; email_each_sale: boolean }>(
+      `select billing_mode, rafraen_vidskipti, email, email_each_sale from shop.customers where id = $1`, [customerId])).rows[0];
+    if (!c) return;
+    if (c.billing_mode !== "per_trip" && c.billing_mode !== "per_trip_invoice") {
+      // consolidated/staff → mánaðaruppgjörið reikningsfærir. En hakið „tölvupóstur við hverja
+      // sölu" sendir kvittunina samt strax í PDF — krafan kemur ÁFRAM aðeins í lok mánaðar.
+      if (c.email_each_sale && c.email) { try { await emailInvoicePdf(voucherId, c.email); } catch { /* best-effort */ } }
+      return;
+    }
 
     // Deliver the invoice (reikningur í hvert sinn)
     if (c.rafraen_vidskipti) {

@@ -98,6 +98,7 @@ export interface SalesInvoiceRow extends VoucherRow {
   customer_flagged: boolean;       // customer marked rafræn viðskipti
   customer_kt: string | null;
   einvoice_status: string | null;  // acc.einvoice_outbox.status (null = never queued)
+  created_time: string | null;     // klukkan sem salan var slegin inn (HH:MM) — til að para við posakvittanir
 }
 const SALES_INVOICE_SELECT = `
     select v.id, v.series_code, v.voucher_number, v.voucher_date::text, v.voucher_type,
@@ -105,7 +106,8 @@ const SALES_INVOICE_SELECT = `
            v.customer_id, c.name as customer_name,
            coalesce(c.rafraen_vidskipti, false) as customer_flagged,
            c.kennitala as customer_kt,
-           eo.status as einvoice_status
+           eo.status as einvoice_status,
+           to_char(v.created_at at time zone 'Atlantic/Reykjavik', 'HH24:MI') as created_time
     from acc.vouchers v
     join acc.ledger_entries le on le.voucher_id = v.id
     left join shop.customers c on c.id = v.customer_id
@@ -567,8 +569,9 @@ export interface CustomerRow {
   address: string | null; postal_code: string | null; city: string | null; phone: string | null; email: string | null;
   payment_terms_days: number; is_account: boolean; is_active: boolean; is_generic: boolean; ar_account: string | null;
   rafraen_vidskipti: boolean;
-  billing_mode: string;   // 'consolidated' | 'per_trip'
+  billing_mode: string;   // 'consolidated' | 'per_trip' | 'per_trip_invoice' | 'staff'
   discount_pct: number;   // fastur afsláttur % á kassanum
+  email_each_sale: boolean; // kvittun í PDF-pósti við hverja sölu (krafa óbreytt)
   balance: string;
 }
 export const getCustomers = () =>

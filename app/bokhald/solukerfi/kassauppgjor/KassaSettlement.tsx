@@ -5,7 +5,8 @@ import { kr } from "@/lib/format";
 import type { DailySettlement } from "@/lib/accounting-queries";
 import type { ZReport } from "@/lib/z-report";
 
-export default function KassaSettlement({ date, s, z }: { date: string; s: DailySettlement; z: ZReport | null }) {
+// minimal (lagerstjóri): aðeins sjóðstalningin — væntanlegt reiðufé, talning og lokun dags.
+export default function KassaSettlement({ date, s, z, minimal = false }: { date: string; s: DailySettlement; z: ZReport | null; minimal?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const [counted, setCounted] = useState("");
@@ -57,31 +58,35 @@ export default function KassaSettlement({ date, s, z }: { date: string; s: Daily
           className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-red-400" />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <Metric label="Heildarvelta (án VSK)" value={kr(veltaNet)} />
-        <Metric label="Útskattur" value={kr(n(s.output_vat))} />
-        <Metric label="Innborgað alls" value={kr(totalMoney)} />
-        <Metric label="Sölur / skil" value={`${s.sale_count} / ${s.return_count}`} />
-      </div>
+      {!minimal && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Metric label="Heildarvelta (án VSK)" value={kr(veltaNet)} />
+            <Metric label="Útskattur" value={kr(n(s.output_vat))} />
+            <Metric label="Innborgað alls" value={kr(totalMoney)} />
+            <Metric label="Sölur / skil" value={`${s.sale_count} / ${s.return_count}`} />
+          </div>
 
-      <div className="grid lg:grid-cols-2 gap-5">
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <p className="px-4 py-2 bg-gray-50 text-sm font-semibold text-gray-600">Greiðslumáti</p>
-          <Row label="Reiðufé" value={cash} />
-          <Row label="Kort og símgreiðsla" value={card} />
-          {transfer !== 0 && <Row label="Millifærsla (eldra)" value={transfer} />}
-          <Row label="Á reikning" value={account} />
-          <div className="flex justify-between px-4 py-2.5 border-t-2 border-gray-200 font-semibold"><span>Samtals</span><span className="tabular-nums">{kr(totalMoney)}</span></div>
-        </div>
+          <div className="grid lg:grid-cols-2 gap-5">
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <p className="px-4 py-2 bg-gray-50 text-sm font-semibold text-gray-600">Greiðslumáti</p>
+              <Row label="Reiðufé" value={cash} />
+              <Row label="Kort og símgreiðsla" value={card} />
+              {transfer !== 0 && <Row label="Millifærsla (eldra)" value={transfer} />}
+              <Row label="Á reikning" value={account} />
+              <div className="flex justify-between px-4 py-2.5 border-t-2 border-gray-200 font-semibold"><span>Samtals</span><span className="tabular-nums">{kr(totalMoney)}</span></div>
+            </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <p className="px-4 py-2 bg-gray-50 text-sm font-semibold text-gray-600">Velta eftir þrepi (án VSK)</p>
-          <Row label="24% þrep" value={n(s.velta24)} />
-          <Row label="11% þrep" value={n(s.velta11)} />
-          <Row label="0% / undanþegið" value={n(s.velta0)} />
-          <div className="flex justify-between px-4 py-2.5 border-t-2 border-gray-200 font-semibold"><span>Samtals</span><span className="tabular-nums">{kr(veltaNet)}</span></div>
-        </div>
-      </div>
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <p className="px-4 py-2 bg-gray-50 text-sm font-semibold text-gray-600">Velta eftir þrepi (án VSK)</p>
+              <Row label="24% þrep" value={n(s.velta24)} />
+              <Row label="11% þrep" value={n(s.velta11)} />
+              <Row label="0% / undanþegið" value={n(s.velta0)} />
+              <div className="flex justify-between px-4 py-2.5 border-t-2 border-gray-200 font-semibold"><span>Samtals</span><span className="tabular-nums">{kr(veltaNet)}</span></div>
+            </div>
+          </div>
+        </>
+      )}
 
       <div className="bg-white border border-gray-200 rounded-xl p-5 max-w-md">
         <p className="text-sm font-semibold text-gray-600 mb-3">Sjóðstalning</p>

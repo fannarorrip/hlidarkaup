@@ -20,6 +20,7 @@ export default function CustomerForm({ customer }: { customer?: CustomerRow | nu
     discount_pct: String(customer?.discount_pct ?? 0),
     is_account: customer?.is_account ?? false, is_active: customer?.is_active ?? true,
     rafraen_vidskipti: customer?.rafraen_vidskipti ?? false,
+    email_each_sale: customer?.email_each_sale ?? false,
     billing_mode: ["per_trip", "per_trip_invoice", "staff"].includes(customer?.billing_mode ?? "") ? (customer!.billing_mode as string) : "consolidated",
   });
   const set = (k: string, v: string | boolean) => setF((p) => ({ ...p, [k]: v }));
@@ -84,6 +85,13 @@ export default function CustomerForm({ customer }: { customer?: CustomerRow | nu
         </label>
         {f.rafraen_vidskipti && !f.kennitala.trim() && (
           <p className="text-xs text-amber-600 pl-6">Kennitölu vantar — hún þarf að vera skráð til að senda rafræna reikninga.</p>
+        )}
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input type="checkbox" checked={f.email_each_sale} onChange={(e) => set("email_each_sale", e.target.checked)} className="w-4 h-4 accent-red-600" />
+          Tölvupóstur við hverja sölu (kvittun í PDF) — krafan kemur áfram bara í lok mánaðar
+        </label>
+        {f.email_each_sale && !f.email.trim() && (
+          <p className="text-xs text-amber-600 pl-6">Netfang vantar — það þarf að vera skráð svo pósturinn komist til skila.</p>
         )}
         <div className="pt-3 border-t border-gray-100">
           <span className="block text-sm text-gray-500 mb-1">Reikningsmáti (reikningsviðskipti)</span>

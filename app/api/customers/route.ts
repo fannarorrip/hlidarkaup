@@ -16,12 +16,12 @@ export async function POST(req: NextRequest) {
   try {
     const rows = await query<{ id: string }>(
       `insert into shop.customers
-         (customer_number, kennitala, name, address, postal_code, city, phone, email, payment_terms_days, is_account, is_active, rafraen_vidskipti, billing_mode, discount_pct)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning id`,
+         (customer_number, kennitala, name, address, postal_code, city, phone, email, payment_terms_days, is_account, is_active, rafraen_vidskipti, billing_mode, discount_pct, email_each_sale)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) returning id`,
       [b.customer_number || null, b.kennitala || null, b.name.trim(), b.address || null, b.postal_code || null,
        b.city || null, b.phone || null, b.email || null, Number(b.payment_terms_days) || 0,
        !!b.is_account, b.is_active !== false, isKS || !!b.rafraen_vidskipti, billingMode,
-       Math.min(100, discountPct)],
+       Math.min(100, discountPct), !!b.email_each_sale],
     );
     return NextResponse.json({ ok: true, id: rows[0].id });
   } catch {
