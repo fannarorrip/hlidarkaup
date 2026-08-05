@@ -11,8 +11,19 @@ export default function VidskiptamannalistiTabs({ customers, suppliers }: { cust
   const [tab, setTab] = useState<"c" | "s">("c");
   const [q, setQ] = useState("");
 
+  // VILLAN SEM VAR: kennitölu-hlutinn notaði q án tölustafa = "" og „inniheldur tóman streng"
+  // er satt fyrir ALLT — nafnaleit síaði því aldrei neitt. Talnahlutinn gildir nú AÐEINS þegar
+  // tölustafir eru í leitinni. Nafnasamanburður fellir brodd- og sérstafi ("petur" finnur Pétur,
+  // "gudrun" finnur Guðrúnu) með ES5-öruggri vörpun sem gamlir vafrar ráða við.
+  const fold = (s: string) => {
+    let t = s.toLowerCase();
+    try { t = t.normalize("NFD").replace(/[̀-ͯ]/g, ""); } catch { /* eldgamalt umhverfi */ }
+    return t.replace(/ð/g, "d").replace(/þ/g, "th").replace(/æ/g, "ae").replace(/ö/g, "o");
+  };
+  const needle = fold(q.trim());
+  const digits = q.replace(/\D/g, "");
   const match = (name: string, kt: string | null) =>
-    !q.trim() || name.toLowerCase().includes(q.toLowerCase()) || (kt ?? "").replace(/\D/g, "").includes(q.replace(/\D/g, ""));
+    !needle || fold(name).includes(needle) || (digits !== "" && (kt ?? "").replace(/\D/g, "").includes(digits));
   const fc = customers.filter((c) => match(c.name, c.kennitala));
   const fs = suppliers.filter((s) => match(s.name, s.kennitala));
 
