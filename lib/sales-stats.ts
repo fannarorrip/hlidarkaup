@@ -104,3 +104,115 @@ export const getSalesByHour = (d: string) =>
     where v.status = 'posted' and v.voucher_type in ${SALE_TYPES} and v.voucher_date = $1::date
       and l.line_total > 0
     group by 1 order by 1`, [d]);
+
+// ── Framlegð, flokkar, samanburður og stök vara ────────────────────────────────────────────
+
+// Framlegðarhetjur dagsins: hverjar SKILA mestu (velta − kostnaður), ekki bara velta mest.
+// Aðeins vörur með skráð kostnaðarverð — framlegðin er annars ágiskun.
+export interface MarginRow { product_number: string; name: string; qty: string; revenue: string; margin: string; margin_pct: string }
+export const getMarginHeroes = (d: string, limit = 10) =>
+  query<MarginRow>(`
+    select l.product_number, max(l.name) as name, sum(l.quantity) as qty, sum(l.line_total) as revenue,
+           sum(l.line_total - l.quantity * p.cost_price) as margin,
+           round(100.0 * sum(l.line_total - l.quantity * p.cost_price) / nullif(sum(l.line_total), 0), 1) as margin_pct
+    from shop.sale_lines l
+    join acc.vouchers v on v.id = l.voucher_id
+    join shop.products p on p.product_number = l.product_number and p.cost_price > 0
+    where v.status = 'posted' and v.voucher_type in ${SALE_TYPES}
+      and v.voucher_date = $1::date and l.line_total > 0
+    group by l.product_number
+    order by margin desc limit $2`, [d, limit]);
+
+// Flokkaskipting veltunnar: hlutur hvers vöruflokks í deginum.
+export interface GroupSplitRow { product_group: string | null; revenue: string; share_pct: string }
+export const getGroupSplit = (d: string) =>
+  query<GroupSplitRow>(`
+    select p.product_group, sum(l.line_total) as revenue,
+           round(100.0 * sum(l.line_total) / nullif(sum(sum(l.line_total)) over (), 0), 1) as share_pct
+    from shop.sale_lines l
+    join acc.vouchers v on v.id = l.voucher_id
+    left join shop.products p on p.product_number = l.product_number
+    where v.status = 'posted' and v.voucher_type in ${SALE_TYPES}
+      and v.voucher_date = $1::date and l.line_total > 0
+    group by p.product_group
+    order by revenue desc`, [d]);
+
+// Vikusamanburður: sami vikudagur síðustu 4 vikur á undan — meðaltal karfa og veltu.
+export interface WeekdayCompare { avg_baskets: string; avg_gross: string; days: number }
+export const getWeekdayCompare = async (d: string) => (await query<WeekdayCompare>(`
+  with prior as (
+    select v.voucher_date, count(distinct v.id) as baskets, sum(l.line_total) as gross
+    from acc.vouchers v join shop.sale_lines l on l.voucher_id = v.id
+    where v.status = 'posted' and v.voucher_type in ${SALE_TYPES} and l.line_total > 0
+      and extract(dow from v.voucher_date) = extract(dow from $1::date)
+      and v.voucher_date < $1::date and v.voucher_date >= $1::date - 28
+    group by v.voucher_date
+  )
+  select coalesce(avg(baskets), 0) as avg_baskets, coalesce(avg(gross), 0) as avg_gross, count(*)::int as days from prior`, [d]))[0];
+
+// ── Stök vara + samanburður ────────────────────────────────────────────────────────────────
+
+export interface ProductInfo { product_number: string; name: string; product_group: string | null; price_gross: number; cost_price: string | null; stock_quantity: string; is_stock_controlled: boolean }
+export const getProductInfo = (pn: string) =>
+  query<ProductInfo>(`
+    select product_number, name, product_group, price_gross, cost_price::text as cost_price, stock_quantity, is_stock_controlled
+    from shop.products where product_number = $1`, [pn]).then((r) => r[0] ?? null);
+
+// Dagleg sala einnar eða fleiri vara yfir tímabil (fyrir línurit/samanburð).
+export interface ProductDailyRow { product_number: string; day: string; qty: string; revenue: string }
+export const getProductDaily = (pns: string[], days = 30) =>
+  query<ProductDailyRow>(`
+    select l.product_number, v.voucher_date::text as day, sum(l.quantity) as qty, sum(l.line_total) as revenue
+    from shop.sale_lines l join acc.vouchers v on v.id = l.voucher_id
+    where v.status = 'posted' and v.voucher_type in ${SALE_TYPES} and l.line_total > 0
+      and l.product_number = any($1) and v.voucher_date >= current_date - ($2::int - 1)
+    group by l.product_number, v.voucher_date
+    order by v.voucher_date`, [pns, days]);
+
+// Heildartölur vöru/vara yfir tímabil: stk, velta, framlegð, körfur og körfuhlutfall.
+export interface ProductTotalsRow { product_number: string; name: string; qty: string; revenue: string; margin: string | null; baskets: number; basket_pct: string }
+export const getProductTotals = (pns: string[], days = 30) =>
+  query<ProductTotalsRow>(`
+    select l.product_number, max(l.name) as name, sum(l.quantity) as qty, sum(l.line_total) as revenue,
+           case when max(p.cost_price) > 0 then sum(l.line_total - l.quantity * p.cost_price) end as margin,
+           count(distinct l.voucher_id)::int as baskets,
+           round(100.0 * count(distinct l.voucher_id) / greatest((
+             select count(distinct v2.id) from acc.vouchers v2 join shop.sale_lines l2 on l2.voucher_id = v2.id
+             where v2.status = 'posted' and v2.voucher_type in ${SALE_TYPES}
+               and v2.voucher_date >= current_date - ($2::int - 1)), 1), 1) as basket_pct
+    from shop.sale_lines l
+    join acc.vouchers v on v.id = l.voucher_id
+    left join shop.products p on p.product_number = l.product_number
+    where v.status = 'posted' and v.voucher_type in ${SALE_TYPES} and l.line_total > 0
+      and l.product_number = any($1) and v.voucher_date >= current_date - ($2::int - 1)
+    group by l.product_number`, [pns, days]);
+
+// Fylgivörur: hvað kaupa viðskiptavinir OFTAST með þessari vöru (sama karfa, tímabil).
+export interface CompanionRow { product_number: string; name: string; together: number }
+export const getCompanions = (pn: string, days = 30, limit = 10) =>
+  query<CompanionRow>(`
+    with baskets as (
+      select distinct l.voucher_id from shop.sale_lines l
+      join acc.vouchers v on v.id = l.voucher_id
+      where v.status = 'posted' and v.voucher_type in ${SALE_TYPES}
+        and l.product_number = $1 and v.voucher_date >= current_date - ($2::int - 1)
+    )
+    select l.product_number, max(l.name) as name, count(distinct l.voucher_id)::int as together
+    from shop.sale_lines l
+    join baskets b on b.voucher_id = l.voucher_id
+    where l.product_number is not null and l.product_number <> $1 and l.line_total > 0
+    group by l.product_number
+    order by together desc limit $3`, [pn, days, limit]);
+
+// Vikudagamynstur vörunnar: meðalsala eftir vikudegi yfir tímabilið.
+export interface WeekdayAvgRow { dow: number; avg_qty: string }
+export const getProductWeekdayAvg = (pn: string, days = 56) =>
+  query<WeekdayAvgRow>(`
+    with daily as (
+      select v.voucher_date, extract(dow from v.voucher_date)::int as dow, sum(l.quantity) as qty
+      from shop.sale_lines l join acc.vouchers v on v.id = l.voucher_id
+      where v.status = 'posted' and v.voucher_type in ${SALE_TYPES} and l.line_total > 0
+        and l.product_number = $1 and v.voucher_date >= current_date - ($2::int - 1)
+      group by v.voucher_date
+    )
+    select dow, avg(qty) as avg_qty from daily group by dow order by dow`, [pn, days]);
