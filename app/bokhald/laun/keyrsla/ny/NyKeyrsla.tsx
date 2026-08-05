@@ -19,6 +19,45 @@ export default function NyKeyrsla({ employees }: { employees: Emp[] }) {
   const [included, setIncluded] = useState<Record<string, boolean>>(Object.fromEntries(employees.map((e) => [e.id, true])));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [timaMsg, setTimaMsg] = useState("");
+  const [timaInfo, setTimaInfo] = useState<Record<string, string>>({}); // sundurliðun per launþega
+
+  // Launatímabilið er 25.–24.: mánuðurinn sem valinn er greiðir tímana frá 25. fyrri mánaðar.
+  const p2 = (n: number) => String(n).padStart(2, "0");
+  const prev = new Date(Date.UTC(year, month - 2, 25));
+  const timabil = `25.${p2(prev.getUTCMonth() + 1)}.${prev.getUTCFullYear()} – 24.${p2(month)}.${year}`;
+
+  interface TimaRow { employee_id: string; name: string; work: number; sick: number; vacation: number; other: number; total: number }
+  async function saekjaTima() {
+    setBusy(true); setErr(""); setTimaMsg("");
+    try {
+      const r = await fetch(`/api/timar?laun=${year}-${p2(month)}`);
+      const d = await r.json();
+      if (!r.ok) { setErr(d.error ?? "Villa við að sækja tíma"); return; }
+      const rows: TimaRow[] = d.hours ?? [];
+      const byId = new Map(rows.map((h) => [h.employee_id, h]));
+      let filled = 0;
+      const info: Record<string, string> = {};
+      setHours((s) => {
+        const next = { ...s };
+        for (const e of employees) {
+          const h = byId.get(e.id);
+          if (!h) continue;
+          const parts = [
+            h.sick > 0 ? `veikindi ${h.sick}` : "",
+            h.vacation > 0 ? `orlof ${h.vacation}` : "",
+            h.other > 0 ? `annað ${h.other}` : "",
+          ].filter(Boolean).join(" · ");
+          info[e.id] = `${h.total} klst úr stimpilklukku${parts ? ` (þar af ${parts})` : ""}`;
+          if (e.employment_type === "hourly") { next[e.id] = String(h.total); filled++; }
+        }
+        return next;
+      });
+      setTimaInfo(info);
+      setTimaMsg(`Tímabil ${d.from} – ${d.to}: fyllti tíma hjá ${filled} tímakaupsfólki (má lagfæra handvirkt).`);
+    } catch (e) { setErr(e instanceof Error ? e.message : "Villa"); }
+    finally { setBusy(false); }
+  }
 
   const inp = "border border-gray-300 rounded-lg px-2 py-1 text-sm outline-none focus:border-red-400";
 
@@ -53,7 +92,16 @@ export default function NyKeyrsla({ employees }: { employees: Emp[] }) {
           </select>
         </div>
         <div><label className="block text-xs font-medium text-gray-500 mb-1">Útborgunardagur</label><input type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} className={inp} /></div>
+        <div className="pb-1">
+          <span className="block text-xs font-medium text-gray-500 mb-1">Launatímabil (25.–24.)</span>
+          <span className="text-sm font-semibold tabular-nums">{timabil}</span>
+        </div>
+        <button onClick={saekjaTima} disabled={busy}
+          className="px-4 py-2 rounded-lg border-2 border-[#2C687B] text-[#2C687B] text-sm font-semibold hover:bg-[#E4F1F0] disabled:opacity-50">
+          {busy ? "Sæki…" : "⏱ Sækja tíma úr stimpilklukku"}
+        </button>
       </div>
+      {timaMsg && <p className="text-sm text-green-700">{timaMsg}</p>}
 
       <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
         <table className="w-full text-sm min-w-[820px]">
@@ -65,7 +113,10 @@ export default function NyKeyrsla({ employees }: { employees: Emp[] }) {
             {employees.map((e) => (
               <tr key={e.id} className="border-t border-gray-100">
                 <td className="px-4 py-2"><input type="checkbox" checked={!!included[e.id]} onChange={(ev) => setIncluded((s) => ({ ...s, [e.id]: ev.target.checked }))} /></td>
-                <td className="px-4 py-2 font-medium">{e.name}</td>
+                <td className="px-4 py-2 font-medium">
+                  {e.name}
+                  {timaInfo[e.id] && <div className="text-[11px] text-gray-400 font-normal">{timaInfo[e.id]}</div>}
+                </td>
                 <td className="px-4 py-2 text-gray-500">{e.employment_type === "hourly" ? "Tímakaup" : "Föst laun"}</td>
                 <td className="px-4 py-2 text-right">{e.employment_type === "hourly" ? `${kr(e.hourly_rate)}/klst` : kr(e.monthly_salary)}</td>
                 <td className="px-3 py-2">

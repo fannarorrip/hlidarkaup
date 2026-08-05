@@ -12,6 +12,28 @@ const HOURS_SQL = `case when te.entry_type <> 'work' then coalesce(te.hours_over
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
 
+  // LAUNATÍMABIL fyrir launakeyrslu: ?laun=YYYY-MM → tímar hvers starfsmanns frá 25. fyrri
+  // mánaðar til 24. í mánuðinum (uppgjörstímabil launa), sundurliðaðir eftir tegund.
+  const laun = sp.get("laun") ?? "";
+  if (/^\d{4}-\d{2}$/.test(laun)) {
+    const [ly, lm] = laun.split("-").map(Number);
+    const p2 = (n: number) => String(n).padStart(2, "0");
+    const prev = new Date(Date.UTC(ly, lm - 2, 25));
+    const from = `${prev.getUTCFullYear()}-${p2(prev.getUTCMonth() + 1)}-25`;
+    const to = `${ly}-${p2(lm)}-24`;
+    const hours = await query(`
+      select te.employee_id, e.name,
+             round(sum(${HOURS_SQL}) filter (where te.entry_type = 'work')::numeric, 2)::float8 as work,
+             round(sum(${HOURS_SQL}) filter (where te.entry_type = 'sick')::numeric, 2)::float8 as sick,
+             round(sum(${HOURS_SQL}) filter (where te.entry_type = 'vacation')::numeric, 2)::float8 as vacation,
+             round(sum(${HOURS_SQL}) filter (where te.entry_type in ('holiday','absence'))::numeric, 2)::float8 as other,
+             round(sum(${HOURS_SQL})::numeric, 2)::float8 as total
+      from acc.time_entries te join acc.employees e on e.id = te.employee_id
+      where (te.clock_in at time zone 'Atlantic/Reykjavik')::date between $1::date and $2::date
+      group by te.employee_id, e.name`, [from, to]);
+    return NextResponse.json({ from, to, hours });
+  }
+
   // Mánaðarblað EINS starfsmanns: ?employee=<uuid>&month=YYYY-MM → allar færslur mánaðarins.
   const employee = sp.get("employee") ?? "";
   const month = sp.get("month") ?? "";
