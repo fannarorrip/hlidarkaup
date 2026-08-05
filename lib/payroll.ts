@@ -28,6 +28,9 @@ export interface Employee {
   pension_employee_pct: number; pension_employer_pct: number;
   private_pension_employee_pct: number; private_pension_employer_pct: number;
   vacation_pct: number; orlof_method: "accrue" | "payout";
+  // Kjarasamningstaxtar (VR/SA): sé wage_category sett reiknast grunnlaun og álagstaxtar
+  // sjálfkrafa úr acc.wage_scale út frá aldri og starfsaldri (sjá lib/wage-scale.ts).
+  wage_category?: string | null; start_date?: string | null; trade_start?: string | null;
 }
 
 export interface PayComponent { kind: "yfirvinna" | "bonus" | "alag" | "fradrattur"; label?: string; units?: number; rate?: number; amount?: number }
@@ -85,7 +88,11 @@ export function calcLine(emp: Employee, input: LineInput, c: TaxConfig, funds: U
       if (amt) earnings.push({ code: "110", label: comp.label || "Yfirvinna", units: comp.units != null ? num(comp.units) : undefined, rate: comp.rate != null ? num(comp.rate) : undefined, amount: amt });
     }
     else if (comp.kind === "bonus") earnings.push({ code: "240", label: comp.label || "Bónus", amount: r(num(comp.amount)) });
-    else if (comp.kind === "alag") earnings.push({ code: "241", label: comp.label || "Álag", amount: r(num(comp.amount)) });
+    else if (comp.kind === "alag") {
+      // Álag (t.d. stórhátíðarkaup) má gefa sem einingar × taxta eins og yfirvinnu.
+      const amt = comp.amount != null ? r(num(comp.amount)) : r(num(comp.units) * num(comp.rate));
+      if (amt) earnings.push({ code: "241", label: comp.label || "Álag", units: comp.units != null ? num(comp.units) : undefined, rate: comp.rate != null ? num(comp.rate) : undefined, amount: amt });
+    }
   }
   const regularWages = earnings.reduce((a, e) => a + e.amount, 0); // orlof base (excl. uppbætur)
 

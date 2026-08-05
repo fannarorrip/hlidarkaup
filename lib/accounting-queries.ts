@@ -634,9 +634,10 @@ export interface EmployeeRow {
   union_dues_pct: string; union_employer_pct: string; vacation_pct: string; orlof_method: "accrue" | "payout";
   staff_email: string | null; is_active: boolean; start_date: string | null; end_date: string | null;
   union_id: string | null; starfsheiti: string | null; deild: string | null; employment_ratio: string;
+  wage_category: string | null; trade_start: string | null; // kjarasamningstaxti + starfsaldur í starfsgrein
 }
 export const listEmployees = (activeOnly = false) =>
-  query<EmployeeRow>(`select *, start_date::text as start_date, end_date::text as end_date
+  query<EmployeeRow>(`select *, start_date::text as start_date, end_date::text as end_date, trade_start::text as trade_start
     from acc.employees ${activeOnly ? "where is_active" : ""} order by name`);
 export const getEmployeeById = (id: string) =>
   query<EmployeeRow>(`select * from acc.employees where id = $1`, [id]).then((r) => r[0] ?? null);

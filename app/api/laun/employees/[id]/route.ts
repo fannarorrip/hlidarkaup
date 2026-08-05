@@ -10,6 +10,7 @@ const FIELDS = [
   "union_name", "union_dues_pct", "union_employer_pct", "vacation_pct", "orlof_method",
   "staff_email", "is_active", "start_date", "end_date",
   "union_id", "starfsheiti", "deild", "employment_ratio",
+  "wage_category", "trade_start",
 ];
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

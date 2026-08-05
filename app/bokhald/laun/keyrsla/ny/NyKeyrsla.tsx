@@ -1,9 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { kr } from "@/lib/format";
 
-interface Emp { id: string; name: string; employment_type: "salary" | "hourly"; monthly_salary: string; hourly_rate: string }
+interface Emp { id: string; name: string; employment_type: "salary" | "hourly"; monthly_salary: string; hourly_rate: string; wage_category?: string | null }
+// Leystur kjarasamningstaxti (frá /api/laun/taxtar) — þrep + taxtar tímabilsins.
+interface Rate { employee_id: string; stepLabel: string; monthly: number; dagvinna: number; eftirvinna: number | null; naeturvinna: number | null; yfirvinna: number; storhatid: number; age: number | null }
 
 export default function NyKeyrsla({ employees }: { employees: Emp[] }) {
   const router = useRouter();
@@ -16,6 +18,12 @@ export default function NyKeyrsla({ employees }: { employees: Emp[] }) {
   const exDefault = { yfirvinna: "", bonus: "", fradrattur: "" };
   const setEx = (id: string, k: "yfirvinna" | "bonus" | "fradrattur", v: string) =>
     setExtra((s) => ({ ...s, [id]: { ...exDefault, ...(s[id] || {}), [k]: v.replace(/[^\d]/g, "") } }));
+  // Klst á kjarasamningstöxtum (aðeins fólk með wage_category): eftirvinna/næturvinna/yfirvinna/stórhátíð.
+  const [alag, setAlag] = useState<Record<string, { ev: string; nv: string; yv: string; sh: string }>>({});
+  const alDefault = { ev: "", nv: "", yv: "", sh: "" };
+  const setAl = (id: string, k: "ev" | "nv" | "yv" | "sh", v: string) =>
+    setAlag((s) => ({ ...s, [id]: { ...alDefault, ...(s[id] || {}), [k]: v.replace(/[^\d.,]/g, "") } }));
+  const [rates, setRates] = useState<Record<string, Rate>>({});
   const [included, setIncluded] = useState<Record<string, boolean>>(Object.fromEntries(employees.map((e) => [e.id, true])));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -26,6 +34,17 @@ export default function NyKeyrsla({ employees }: { employees: Emp[] }) {
   const p2 = (n: number) => String(n).padStart(2, "0");
   const prev = new Date(Date.UTC(year, month - 2, 25));
   const timabil = `25.${p2(prev.getUTCMonth() + 1)}.${prev.getUTCFullYear()} – 24.${p2(month)}.${year}`;
+
+  // Kjarasamningstaxtar tímabilsins — þrep hvers starfsmanns (aldur + starfsaldur) til sýnis;
+  // útreikningurinn leysir þá sjálfstætt server-megin við keyrslu.
+  const loadRates = useCallback(async () => {
+    try {
+      const r = await fetch(`/api/laun/taxtar?year=${year}&month=${month}`);
+      const d = await r.json();
+      setRates(Object.fromEntries((d.rates ?? []).map((x: Rate) => [x.employee_id, x])));
+    } catch { /* taxtar birtast þá ekki — keyrslan reiknar samt rétt */ }
+  }, [year, month]);
+  useEffect(() => { loadRates(); }, [loadRates]);
 
   interface TimaRow { employee_id: string; name: string; work: number; sick: number; vacation: number; other: number; total: number }
   async function saekjaTima() {
@@ -63,16 +82,21 @@ export default function NyKeyrsla({ employees }: { employees: Emp[] }) {
 
   async function create() {
     setBusy(true); setErr("");
+    const n = (v?: string) => Number((v ?? "").replace(",", ".")) || 0;
     const entries = employees.filter((e) => included[e.id]).map((e) => {
       const x = extra[e.id] || {};
+      const a = alag[e.id] || {};
       const components: { kind: string; label?: string; amount: number }[] = [];
-      if (Number(x.yfirvinna)) components.push({ kind: "yfirvinna", label: "Yfirvinna", amount: Number(x.yfirvinna) });
+      // Yfirvinnu-KR dálkurinn gildir aðeins fyrir handvirk laun — taxtafólk notar klst-dálkana.
+      if (!e.wage_category && Number(x.yfirvinna)) components.push({ kind: "yfirvinna", label: "Yfirvinna", amount: Number(x.yfirvinna) });
       if (Number(x.bonus)) components.push({ kind: "bonus", amount: Number(x.bonus) });
       if (Number(x.fradrattur)) components.push({ kind: "fradrattur", label: "Frádráttur", amount: Number(x.fradrattur) });
       return {
         employee_id: e.id,
-        hours: e.employment_type === "hourly" ? Number(hours[e.id] || 0) : undefined,
+        hours: e.employment_type === "hourly" ? n(hours[e.id]) : undefined,
         components: components.length ? components : undefined,
+        // Klst á töxtum — serverinn leysir taxtana sjálfur úr wage_scale:
+        ...(e.wage_category ? { ev_hours: n(a.ev), nv_hours: n(a.nv), yv_hours: n(a.yv), sh_hours: n(a.sh) } : {}),
       };
     });
     if (!entries.length) { setErr("Veldu a.m.k. einn launþega"); setBusy(false); return; }
@@ -106,29 +130,44 @@ export default function NyKeyrsla({ employees }: { employees: Emp[] }) {
       <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
         <table className="w-full text-sm min-w-[820px]">
           <thead className="bg-gray-50 text-gray-500 text-left">
-            <tr><th className="px-4 py-2 w-8"></th><th className="px-4 py-2 font-semibold">Launþegi</th><th className="px-4 py-2 font-semibold">Tegund</th><th className="px-4 py-2 font-semibold text-right">Laun/taxti</th><th className="px-3 py-2 font-semibold w-24">Tímar</th><th className="px-3 py-2 font-semibold w-28">Yfirvinna kr</th><th className="px-3 py-2 font-semibold w-24">Bónus kr</th><th className="px-3 py-2 font-semibold w-28">Frádr. kr</th></tr>
+            <tr><th className="px-4 py-2 w-8"></th><th className="px-4 py-2 font-semibold">Launþegi</th><th className="px-4 py-2 font-semibold text-right">Laun/taxti</th><th className="px-3 py-2 font-semibold w-20" title="Dagvinnutímar">Tímar</th><th className="px-3 py-2 font-semibold w-20" title="Eftirvinnutímar á taxta">Eftirv.</th><th className="px-3 py-2 font-semibold w-20" title="Næturvinnutímar á taxta">Næturv.</th><th className="px-3 py-2 font-semibold w-20" title="Yfirvinnutímar á taxta (kr hjá handvirkum)">Yfirv.</th><th className="px-3 py-2 font-semibold w-20" title="Stórhátíðartímar á taxta">Stórh.</th><th className="px-3 py-2 font-semibold w-24">Bónus kr</th><th className="px-3 py-2 font-semibold w-24">Frádr. kr</th></tr>
           </thead>
           <tbody>
-            {employees.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Engir virkir launþegar. Skráðu launþega fyrst.</td></tr>}
-            {employees.map((e) => (
+            {employees.length === 0 && <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-400">Engir virkir launþegar. Skráðu launþega fyrst.</td></tr>}
+            {employees.map((e) => {
+              const w = e.wage_category ? rates[e.id] : undefined;
+              const alagInp = (k: "ev" | "nv" | "yv" | "sh", enabled: boolean) => enabled
+                ? <input value={alag[e.id]?.[k] ?? ""} onChange={(ev) => setAl(e.id, k, ev.target.value)} placeholder="0" className={`${inp} w-16 text-right`} />
+                : <span className="text-gray-300">—</span>;
+              return (
               <tr key={e.id} className="border-t border-gray-100">
                 <td className="px-4 py-2"><input type="checkbox" checked={!!included[e.id]} onChange={(ev) => setIncluded((s) => ({ ...s, [e.id]: ev.target.checked }))} /></td>
                 <td className="px-4 py-2 font-medium">
                   {e.name}
+                  <div className="text-[11px] text-gray-400 font-normal">{e.employment_type === "hourly" ? "Tímakaup" : "Föst laun"}{w ? ` · VR/SA: ${w.stepLabel}${w.age != null && w.age < 18 ? ` (${w.age} ára)` : ""}` : e.wage_category ? " · VR/SA taxti" : ""}</div>
                   {timaInfo[e.id] && <div className="text-[11px] text-gray-400 font-normal">{timaInfo[e.id]}</div>}
                 </td>
-                <td className="px-4 py-2 text-gray-500">{e.employment_type === "hourly" ? "Tímakaup" : "Föst laun"}</td>
-                <td className="px-4 py-2 text-right">{e.employment_type === "hourly" ? `${kr(e.hourly_rate)}/klst` : kr(e.monthly_salary)}</td>
+                <td className="px-4 py-2 text-right whitespace-nowrap">{w
+                  ? (e.employment_type === "hourly" ? `${kr(w.dagvinna)}/klst` : kr(w.monthly))
+                  : e.employment_type === "hourly" ? `${kr(e.hourly_rate)}/klst` : kr(e.monthly_salary)}</td>
                 <td className="px-3 py-2">
                   {e.employment_type === "hourly"
-                    ? <input value={hours[e.id] ?? ""} onChange={(ev) => setHours((s) => ({ ...s, [e.id]: ev.target.value.replace(/[^\d.]/g, "") }))} placeholder="0" className={`${inp} w-20 text-right`} />
+                    ? <input value={hours[e.id] ?? ""} onChange={(ev) => setHours((s) => ({ ...s, [e.id]: ev.target.value.replace(/[^\d.,]/g, "") }))} placeholder="0" className={`${inp} w-16 text-right`} />
                     : <span className="text-gray-300">—</span>}
                 </td>
-                <td className="px-3 py-2"><input value={extra[e.id]?.yfirvinna ?? ""} onChange={(ev) => setEx(e.id, "yfirvinna", ev.target.value)} placeholder="0" className={`${inp} w-24 text-right`} /></td>
+                <td className="px-3 py-2">{alagInp("ev", !!e.wage_category)}</td>
+                <td className="px-3 py-2">{alagInp("nv", !!e.wage_category)}</td>
+                <td className="px-3 py-2">
+                  {e.wage_category
+                    ? alagInp("yv", true)
+                    : <input value={extra[e.id]?.yfirvinna ?? ""} onChange={(ev) => setEx(e.id, "yfirvinna", ev.target.value)} placeholder="kr" title="Yfirvinna í krónum (handvirk laun)" className={`${inp} w-20 text-right`} />}
+                </td>
+                <td className="px-3 py-2">{alagInp("sh", !!e.wage_category)}</td>
                 <td className="px-3 py-2"><input value={extra[e.id]?.bonus ?? ""} onChange={(ev) => setEx(e.id, "bonus", ev.target.value)} placeholder="0" className={`${inp} w-20 text-right`} /></td>
-                <td className="px-3 py-2"><input value={extra[e.id]?.fradrattur ?? ""} onChange={(ev) => setEx(e.id, "fradrattur", ev.target.value)} placeholder="0" className={`${inp} w-24 text-right`} /></td>
+                <td className="px-3 py-2"><input value={extra[e.id]?.fradrattur ?? ""} onChange={(ev) => setEx(e.id, "fradrattur", ev.target.value)} placeholder="0" className={`${inp} w-20 text-right`} /></td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

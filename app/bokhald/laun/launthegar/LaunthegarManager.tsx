@@ -13,6 +13,18 @@ const NEW: Draft = {
   private_pension_employee_pct: "0", private_pension_employer_pct: "0",
   union_id: "", starfsheiti: "", deild: "", employment_ratio: "100", vacation_pct: "10.17",
   orlof_method: "accrue", is_active: true, start_date: "",
+  wage_category: "", trade_start: "",
+};
+
+// Launaflokkar kjarasamnings VR/SA — velji maður flokk reiknast grunnlaun og öll álög
+// (eftirvinna/næturvinna/yfirvinna/stórhátíð) SJÁLFKRAFA úr taxtatöflunni við hverja
+// launakeyrslu: aldur les kerfið úr kennitölunni, starfsaldur úr upphafsdögunum.
+const WAGE_CATS: Record<string, string> = {
+  afgreidsla: "Afgreiðslufólk í verslunum",
+  serthjalfad: "Sérþjálfað starfsfólk verslana",
+  skrifstofa: "Skrifstofufólk",
+  lyfjataeknir: "Lyfjatæknar",
+  afthreying: "Afþreying/ferðaþjónusta (samsett störf)",
 };
 
 function toDraft(e: EmployeeRow): Draft {
@@ -70,7 +82,9 @@ export default function LaunthegarManager({ employees, unions }: { employees: Em
                 <td className="px-4 py-2 font-medium">{e.name}</td>
                 <td className="px-4 py-2 text-gray-500">{e.kennitala}</td>
                 <td className="px-4 py-2">{e.employment_type === "hourly" ? "Tímakaup" : "Föst laun"}</td>
-                <td className="px-4 py-2 text-right">{e.employment_type === "hourly" ? `${kr(e.hourly_rate)}/klst` : kr(e.monthly_salary)}</td>
+                <td className="px-4 py-2 text-right">{e.wage_category
+                  ? <span className="text-xs px-2 py-0.5 rounded bg-[#E4F1F0] text-[#21323A]" title={WAGE_CATS[e.wage_category] ?? e.wage_category}>VR/SA taxti</span>
+                  : e.employment_type === "hourly" ? `${kr(e.hourly_rate)}/klst` : kr(e.monthly_salary)}</td>
                 <td className="px-4 py-2">{e.is_active ? <span className="text-green-700 text-xs">virkur</span> : <span className="text-gray-400 text-xs">óvirkur</span>}</td>
                 <td className="px-4 py-2 text-right"><button onClick={() => setEditing({ id: e.id, d: toDraft(e) })} className="text-red-600 hover:text-red-700 text-sm">Breyta</button></td>
               </tr>
@@ -97,7 +111,16 @@ export default function LaunthegarManager({ employees, unions }: { employees: Em
                   <option value="hourly">Tímakaup</option>
                 </select>
               </div>
-              {isHourly ? pctField("hourly_rate", "Tímataxti (kr)") : pctField("monthly_salary", "Mánaðarlaun (kr)")}
+              <div>
+                <label className={lbl}>Kjarasamningstaxti (VR/SA)</label>
+                <select value={String(editing.d.wage_category ?? "")} onChange={(e) => set("wage_category", e.target.value)} className={inp}>
+                  <option value="">— handvirk laun —</option>
+                  {Object.entries(WAGE_CATS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+              {editing.d.wage_category
+                ? <p className="text-xs text-gray-500 sm:col-span-1 md:col-span-1 self-end pb-2">Laun + öll álög reiknast sjálfkrafa úr taxtatöflunni — aldur úr kennitölu, þrep úr starfsaldri (upphafsdagar hér að neðan).</p>
+                : (isHourly ? pctField("hourly_rate", "Tímataxti (kr)") : pctField("monthly_salary", "Mánaðarlaun (kr)"))}
               {pctField("personal_credit_pct", "Persónuafsláttur %")}
               {field("pension_fund", "Lífeyrissjóður")}
               {pctField("pension_employee_pct", "Lífeyrir launþegi %")}
@@ -122,7 +145,8 @@ export default function LaunthegarManager({ employees, unions }: { employees: Em
                   <option value="payout">Greitt jafnóðum</option>
                 </select>
               </div>
-              {field("start_date", "Upphafsdagur", "date")}
+              {field("start_date", "Upphafsdagur í FYRIRTÆKI (starfsaldur)", "date")}
+              {field("trade_start", "Upphaf í STARFSGREIN (tómt = sami dagur)", "date")}
               <label className="flex items-center gap-2 text-sm mt-5"><input type="checkbox" checked={!!editing.d.is_active} onChange={(e) => set("is_active", e.target.checked)} /> Virkur</label>
             </div>
             {err && <p className="text-sm text-red-600 mt-3">{err}</p>}
