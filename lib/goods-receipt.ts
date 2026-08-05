@@ -23,7 +23,7 @@ interface Queryable { query<T = Record<string, unknown>>(text: string, params?: 
 export async function matchLine(client: Queryable, supplierId: string | null, line: ParsedLine): Promise<{ productNumber: string | null; packQty: number | null }> {
   if (supplierId) {
     // Báðir mögulegir lyklar athugaðir — tengingin gæti hafa lærst á hvorn sem er.
-    const keys = [line.gtin, line.supplierItemId].filter((k): k is string => !!k);
+    const keys = [line.gtin, line.supplierItemId].map((k) => (k ?? "").trim()).filter((k) => k !== "");
     if (keys.length) {
       const m = (await client.query<{ product_number: string; pack_qty: string | null }>(
         `select product_number, pack_qty::text from acc.supplier_items where supplier_id = $1 and match_key = any($2::text[]) limit 1`, [supplierId, keys])).rows[0];
@@ -303,16 +303,17 @@ export async function confirmReceipt(receiptId: string): Promise<{ voucherId: st
     await client.query(`update acc.email_invoices set status='approved', voucher_id = coalesce(voucher_id, $2), error=null where receipt_id = $1`, [receiptId, v.id]);
     // BÓKUN LÆRIR LÍKA: síðasti bókaði reikningur er sannleikurinn um vörutengingar + pakkastærðir
     // (öryggisnet ef vistunar-lærdómurinn brást, t.d. á útrunninni innskráningu). Sama dedup og í PATCH.
+    // BÁÐIR lyklar lærðir (strikamerki OG vörunúmer birgja) — næsti reikningur sýnir stundum bara annan.
     if (rec.supplier_id) {
       await client.query(
         `insert into acc.supplier_items (supplier_id, match_key, product_number, pack_qty)
          select distinct on (key) $1, key, matched_product_number, pack_qty
          from (
-           select coalesce(nullif(l.gtin,''), l.supplier_item_id) as key,
-                  l.matched_product_number, l.pack_qty, l.line_no
+           select k.key, l.matched_product_number, l.pack_qty, l.line_no
            from acc.goods_receipt_lines l
-           where l.receipt_id = $2 and l.matched_product_number is not null
-             and coalesce(nullif(l.gtin,''), l.supplier_item_id) is not null
+           cross join lateral (values (nullif(btrim(coalesce(l.gtin,'')),'')),
+                                      (nullif(btrim(coalesce(l.supplier_item_id,'')),''))) as k(key)
+           where l.receipt_id = $2 and l.matched_product_number is not null and k.key is not null
          ) x
          order by key, line_no desc
          on conflict (supplier_id, match_key) do update

@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
            from acc.supplier_items si
           where l.receipt_id = $1
             and si.supplier_id = $2
-            and si.match_key = any(array[nullif(l.gtin, ''), nullif(l.supplier_item_id, '')])`,
+            and si.match_key = any(array[nullif(btrim(coalesce(l.gtin,'')),''), nullif(btrim(coalesce(l.supplier_item_id,'')),'')])`,
         [id, supplier_id]);
     }
 
@@ -71,16 +71,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (sid) {
       // DISTINCT ON: sama varan getur verið á FLEIRI en einni línu reiknings (Innnes o.fl.) —
       // án dedup springur upsertið á "ON CONFLICT DO UPDATE cannot affect row a second time".
-      // Síðasta línan (hæsta line_no) vinnur.
+      // Síðasta línan (hæsta line_no) vinnur. BÁÐIR lyklar lærðir (strikamerki OG vörunúmer
+      // birgja) — næsti reikningur sýnir stundum bara annan þeirra.
       await client.query(
         `insert into acc.supplier_items (supplier_id, match_key, product_number, pack_qty)
          select distinct on (key) $1, key, matched_product_number, pack_qty
          from (
-           select coalesce(nullif(l.gtin,''), l.supplier_item_id) as key,
-                  l.matched_product_number, l.pack_qty, l.line_no
+           select k.key, l.matched_product_number, l.pack_qty, l.line_no
            from acc.goods_receipt_lines l
-           where l.receipt_id = $2 and l.matched_product_number is not null
-             and coalesce(nullif(l.gtin,''), l.supplier_item_id) is not null
+           cross join lateral (values (nullif(btrim(coalesce(l.gtin,'')),'')),
+                                      (nullif(btrim(coalesce(l.supplier_item_id,'')),''))) as k(key)
+           where l.receipt_id = $2 and l.matched_product_number is not null and k.key is not null
          ) x
          order by key, line_no desc
          on conflict (supplier_id, match_key) do update

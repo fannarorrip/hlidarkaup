@@ -783,7 +783,7 @@ export const getReceiptLines = (receiptId: string) =>
         select 1 from acc.supplier_items si
         join acc.goods_receipts r on r.id = l.receipt_id
         where si.supplier_id = r.supplier_id
-          and si.match_key = any(array[nullif(l.gtin, ''), nullif(l.supplier_item_id, '')])
+          and si.match_key = any(array[nullif(btrim(coalesce(l.gtin,'')),''), nullif(btrim(coalesce(l.supplier_item_id,'')),'')])
           and si.product_number = l.matched_product_number
       ) as learned_match
     from acc.goods_receipt_lines l left join shop.products p on p.product_number = l.matched_product_number
