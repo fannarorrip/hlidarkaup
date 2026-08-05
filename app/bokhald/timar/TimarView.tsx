@@ -1,8 +1,10 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { kr } from "@/lib/format";
 
-interface Entry { id: string; employee_id: string; name: string; register_id: string | null; clock_in: string; clock_out: string | null; edited_by: string | null; hours: number }
+interface Entry { id: string; employee_id: string; name: string; register_id: string | null; entry_type?: string; clock_in: string; clock_out: string | null; edited_by: string | null; hours: number }
+const TYPE_LABEL: Record<string, string> = { sick: "Veikindi", vacation: "Orlof", holiday: "Frídagur", absence: "Fjarvist" };
 interface Total { employee_id: string; name: string; hours: number; entries: number }
 interface Sales { employee_id: string; name: string; sales: number; amount: number }
 
@@ -59,9 +61,11 @@ export default function TimarView() {
               {totals.length === 0 ? <tr><td className="px-4 py-5 text-center text-gray-400">Engar stimplanir</td></tr>
                 : totals.map((t) => (
                   <tr key={t.employee_id} className="border-t border-gray-100">
-                    <td className="px-4 py-2 font-medium">{t.name}</td>
+                    {/* Nafnið opnar MÁNAÐARBLAÐ starfsmannsins — allur mánuðurinn dag fyrir dag,
+                       leiðréttingar, veikindi og aðrar fjarvistir skráðar þar. */}
+                    <td className="px-4 py-2 font-medium"><Link href={`/bokhald/timar/${t.employee_id}`} className="text-red-700 hover:underline">{t.name}</Link></td>
                     <td className="px-4 py-2 text-right tabular-nums"><b>{t.hours.toLocaleString("is-IS")}</b> klst</td>
-                    <td className="px-4 py-2 text-right text-gray-400 text-xs">{t.entries} stimplanir</td>
+                    <td className="px-4 py-2 text-right text-gray-400 text-xs">{t.entries} skráningar</td>
                   </tr>
                 ))}
             </tbody>
@@ -93,10 +97,16 @@ export default function TimarView() {
           <tbody>
             {entries.map((e) => (
               <tr key={e.id} className="border-t border-gray-100">
-                <td className="px-4 py-2 font-medium">{e.name}{e.edited_by && <span className="ml-1.5 text-[10px] text-amber-600" title="Handvirkt leiðrétt">✎</span>}</td>
+                <td className="px-4 py-2 font-medium"><Link href={`/bokhald/timar/${e.employee_id}`} className="hover:text-red-700 hover:underline">{e.name}</Link>{e.edited_by && <span className="ml-1.5 text-[10px] text-amber-600" title="Handvirkt leiðrétt">✎</span>}</td>
                 <td className="px-4 py-2 text-gray-500">{e.register_id ?? "—"}</td>
-                <td className="px-4 py-2">{fmtT(e.clock_in)}</td>
-                <td className="px-4 py-2">{e.clock_out ? fmtT(e.clock_out) : <span className="text-green-700 font-medium">Í vinnu</span>}</td>
+                {e.entry_type && e.entry_type !== "work" ? (
+                  <td className="px-4 py-2" colSpan={2}><span className="text-xs px-2 py-0.5 rounded bg-rose-50 text-rose-700">{TYPE_LABEL[e.entry_type] ?? e.entry_type}</span></td>
+                ) : (
+                  <>
+                    <td className="px-4 py-2">{fmtT(e.clock_in)}</td>
+                    <td className="px-4 py-2">{e.clock_out ? fmtT(e.clock_out) : <span className="text-green-700 font-medium">Í vinnu</span>}</td>
+                  </>
+                )}
                 <td className="px-4 py-2 text-right tabular-nums">{e.hours.toLocaleString("is-IS")}</td>
                 <td className="px-4 py-2 text-right whitespace-nowrap">
                   <button onClick={() => setEdit({ id: e.id, cin: dtLocal(e.clock_in), cout: e.clock_out ? dtLocal(e.clock_out) : "" })} className="text-xs text-gray-500 hover:text-red-700 mr-3">Leiðrétta</button>
