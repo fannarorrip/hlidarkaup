@@ -1,4 +1,6 @@
 import { getProductGroups, getWebCategories } from "@/lib/accounting-queries";
+import { query } from "@/lib/db";
+import AiFlokkun from "./AiFlokkun";
 import { num, GROUP_NAMES } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +9,7 @@ export const dynamic = "force-dynamic";
 // og VEFFLOKKARNIR (Krónu-stíll: Brauð, Kjöt, Mjólkurvörur...) sem vörur fá að auki.
 export default async function VoruflokkarPage() {
   const [groups, webCats] = await Promise.all([getProductGroups(), getWebCategories().catch(() => [])]);
+  const unclassified = Number((await query<{ n: string }>(`select count(*) as n from shop.products where is_active and web_category is null`).catch(() => [{ n: "0" }]))[0].n) || 0;
   const mains = webCats.filter((c) => !c.parent_slug);
   const subsOf = (slug: string) => webCats.filter((c) => c.parent_slug === slug);
   const countWithSubs = (slug: string) => (webCats.find((c) => c.slug === slug)?.product_count ?? 0) + subsOf(slug).reduce((s, c) => s + c.product_count, 0);
@@ -40,7 +43,10 @@ export default async function VoruflokkarPage() {
       </div>
 
       <div>
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">Vefflokkar — Krónu-stíll ({mains.length} yfirflokkar)</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+          <h2 className="text-sm font-semibold text-gray-700">Vefflokkar ({mains.length} yfirflokkar)</h2>
+          <AiFlokkun unclassified={unclassified} />
+        </div>
         {mains.length === 0 ? (
           <p className="text-sm text-gray-400 border border-dashed border-gray-200 rounded-lg px-4 py-6 max-w-xl">Engir vefflokkar enn — þeir koma með næstu uppfærslu.</p>
         ) : (
