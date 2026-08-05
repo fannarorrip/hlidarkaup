@@ -12,6 +12,9 @@ const needsSsl = !isLocal && !/sslmode=disable/.test(cs);
 export const db =
   globalForDb._pgPool ?? new Pool({
     connectionString: process.env.DATABASE_URL,
+    // pg bíður annars ENDALAUST eftir lausri tengingu úr pollinum — uppurinn pollur má aldrei
+    // frysta greiðslusvör (posa-annállinn o.fl. mega frekar fá villu en að halda svari í gíslingu).
+    connectionTimeoutMillis: 5000,
     ...(needsSsl ? { ssl: { rejectUnauthorized: false } } : {}),
   });
 

@@ -65,7 +65,8 @@ export default function ReikningarTable({ rows: initial }: { rows: SalesInvoiceR
                 <td className="px-4 py-2">
                   <Link href={`/bokhald/solukerfi/reikningar/${v.id}`} className="font-mono text-red-700 hover:underline whitespace-nowrap">{vNr(v.series_code, v.voucher_number)}</Link>
                 </td>
-                <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{dags(v.voucher_date)}</td>
+                {/* Klukkan með: nauðsynleg til að para sölu við posakvittun (t.d. tvöföld heimild). */}
+                <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{dags(v.voucher_date)}{v.created_time ? <span className="text-gray-400"> · {v.created_time}</span> : null}</td>
                 <td className="px-4 py-2">{vType(v.voucher_type)}</td>
                 <td className="px-4 py-2 text-gray-600">{sourceLabel(v.source)}</td>
                 <td className="px-4 py-2 text-gray-600 truncate max-w-[12rem]">{v.customer_name ?? "—"}</td>
