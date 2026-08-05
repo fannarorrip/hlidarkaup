@@ -46,7 +46,7 @@ export default function NyKeyrsla({ employees }: { employees: Emp[] }) {
   }, [year, month]);
   useEffect(() => { loadRates(); }, [loadRates]);
 
-  interface TimaRow { employee_id: string; name: string; work: number; sick: number; vacation: number; other: number; total: number }
+  interface TimaRow { employee_id: string; name: string; dag: number; eftir: number; natur: number; yfir: number; storhatid: number; sick: number; vacation: number; other: number; open_entries: number; work: number; total: number }
   async function saekjaTima() {
     setBusy(true); setErr(""); setTimaMsg("");
     try {
@@ -55,25 +55,43 @@ export default function NyKeyrsla({ employees }: { employees: Emp[] }) {
       if (!r.ok) { setErr(d.error ?? "Villa við að sækja tíma"); return; }
       const rows: TimaRow[] = d.hours ?? [];
       const byId = new Map(rows.map((h) => [h.employee_id, h]));
-      let filled = 0;
+      let filled = 0, openTotal = 0;
       const info: Record<string, string> = {};
-      setHours((s) => {
-        const next = { ...s };
-        for (const e of employees) {
-          const h = byId.get(e.id);
-          if (!h) continue;
-          const parts = [
-            h.sick > 0 ? `veikindi ${h.sick}` : "",
-            h.vacation > 0 ? `orlof ${h.vacation}` : "",
-            h.other > 0 ? `annað ${h.other}` : "",
-          ].filter(Boolean).join(" · ");
-          info[e.id] = `${h.total} klst úr stimpilklukku${parts ? ` (þar af ${parts})` : ""}`;
-          if (e.employment_type === "hourly") { next[e.id] = String(h.total); filled++; }
-        }
-        return next;
+      const s = (n: number) => String(n).replace(".", ",");
+      setHours((prevH) => {
+        const nextH = { ...prevH };
+        setAlag((prevA) => {
+          const nextA = { ...prevA };
+          for (const e of employees) {
+            const h = byId.get(e.id);
+            if (!h) continue;
+            openTotal += h.open_entries;
+            const absH = h.sick + h.vacation + h.other;
+            const parts = [
+              h.eftir > 0 ? `eftirv. ${s(h.eftir)}` : "", h.natur > 0 ? `næturv. ${s(h.natur)}` : "",
+              h.yfir > 0 ? `YFIRV. ${s(h.yfir)}` : "", h.storhatid > 0 ? `STÓRHÁTÍÐ ${s(h.storhatid)}` : "",
+              h.sick > 0 ? `veikindi ${s(h.sick)}` : "", h.vacation > 0 ? `orlof ${s(h.vacation)}` : "",
+              h.other > 0 ? `önnur fjarvist ${s(h.other)}` : "",
+              h.open_entries > 0 ? `⚠ ${h.open_entries} OPIN stimplun ótalin` : "",
+            ].filter(Boolean).join(" · ");
+            info[e.id] = `${s(h.total)} klst flokkaðar sjálfkrafa${parts ? ` — ${parts}` : ""}`;
+            if (e.employment_type === "hourly") {
+              if (e.wage_category) {
+                // Kjarasamningsfólk: hver flokkur í sinn dálk — veikindi/orlof teljast sem dagvinna.
+                nextH[e.id] = String(h.dag + absH);
+                nextA[e.id] = { ev: h.eftir ? String(h.eftir) : "", nv: h.natur ? String(h.natur) : "", yv: h.yfir ? String(h.yfir) : "", sh: h.storhatid ? String(h.storhatid) : "" };
+              } else {
+                nextH[e.id] = String(h.total); // handvirk laun: heildin í tímadálkinn eins og áður
+              }
+              filled++;
+            }
+          }
+          return nextA;
+        });
+        return nextH;
       });
       setTimaInfo(info);
-      setTimaMsg(`Tímabil ${d.from} – ${d.to}: fyllti tíma hjá ${filled} tímakaupsfólki (má lagfæra handvirkt).`);
+      setTimaMsg(`Tímabil ${d.from} – ${d.to}: flokkaði og fyllti hjá ${filled} tímakaupsfólki (má lagfæra handvirkt).${openTotal ? ` ⚠ ${openTotal} opnar stimplanir ótaldar — lokaðu þeim á mánaðarblaðinu og sæktu aftur.` : ""}`);
     } catch (e) { setErr(e instanceof Error ? e.message : "Villa"); }
     finally { setBusy(false); }
   }

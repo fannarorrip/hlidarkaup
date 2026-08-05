@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { classifyPeriod } from "@/lib/wage-hours";
 
 // Tímar starfsmanna + afgreiðslutölfræði. Gated stjornandi/bokari (middleware /api/timar).
 // Klst-reglan alls staðar: vinna = út−inn (eða til núna); fjarvist = hours_override (t.d. 8).
@@ -13,7 +14,9 @@ export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
 
   // LAUNATÍMABIL fyrir launakeyrslu: ?laun=YYYY-MM → tímar hvers starfsmanns frá 25. fyrri
-  // mánaðar til 24. í mánuðinum (uppgjörstímabil launa), sundurliðaðir eftir tegund.
+  // mánaðar til 24. í mánuðinum, FLOKKAÐIR SJÁLFKRAFA í dagvinnu/eftirvinnu/næturvinnu/
+  // yfirvinnu/stórhátíðarkaup skv. kjarasamningi (sjá lib/wage-hours.ts). Opnar stimplanir
+  // (gleymd út-stimplun) eru EKKI taldar — þær eru taldar upp svo hægt sé að leiðrétta fyrst.
   const laun = sp.get("laun") ?? "";
   if (/^\d{4}-\d{2}$/.test(laun)) {
     const [ly, lm] = laun.split("-").map(Number);
@@ -21,16 +24,29 @@ export async function GET(req: NextRequest) {
     const prev = new Date(Date.UTC(ly, lm - 2, 25));
     const from = `${prev.getUTCFullYear()}-${p2(prev.getUTCMonth() + 1)}-25`;
     const to = `${ly}-${p2(lm)}-24`;
-    const hours = await query(`
-      select te.employee_id, e.name,
-             round(sum(${HOURS_SQL}) filter (where te.entry_type = 'work')::numeric, 2)::float8 as work,
-             round(sum(${HOURS_SQL}) filter (where te.entry_type = 'sick')::numeric, 2)::float8 as sick,
-             round(sum(${HOURS_SQL}) filter (where te.entry_type = 'vacation')::numeric, 2)::float8 as vacation,
-             round(sum(${HOURS_SQL}) filter (where te.entry_type in ('holiday','absence'))::numeric, 2)::float8 as other,
-             round(sum(${HOURS_SQL})::numeric, 2)::float8 as total
+    const rows = await query<{ employee_id: string; name: string; entry_type: string; clock_in: string; clock_out: string | null; hours_override: string | null }>(`
+      select te.employee_id, e.name, te.entry_type, te.clock_in::text as clock_in, te.clock_out::text as clock_out, te.hours_override::text as hours_override
       from acc.time_entries te join acc.employees e on e.id = te.employee_id
       where (te.clock_in at time zone 'Atlantic/Reykjavik')::date between $1::date and $2::date
-      group by te.employee_id, e.name`, [from, to]);
+      order by te.employee_id, te.clock_in`, [from, to]);
+    const byEmp = new Map<string, typeof rows>();
+    for (const r of rows) { if (!byEmp.has(r.employee_id)) byEmp.set(r.employee_id, []); byEmp.get(r.employee_id)!.push(r); }
+    const hours = [];
+    for (const [employeeId, list] of byEmp) {
+      const intervals = list.filter((r) => r.entry_type === "work" && r.clock_out)
+        .map((r) => ({ clockIn: new Date(r.clock_in), clockOut: new Date(r.clock_out!) }));
+      const open = list.filter((r) => r.entry_type === "work" && !r.clock_out).length;
+      const abs = (t: (x: string) => boolean) => list.filter((r) => r.entry_type !== "work" && t(r.entry_type)).reduce((s, r) => s + (Number(r.hours_override) || 0), 0);
+      const sick = abs((t) => t === "sick"), vacation = abs((t) => t === "vacation"), other = abs((t) => t === "holiday" || t === "absence");
+      const b = classifyPeriod(intervals, sick + vacation + other);
+      hours.push({
+        employee_id: employeeId, name: list[0].name,
+        dag: b.dag, eftir: b.eftir, natur: b.natur, yfir: b.yfir, storhatid: b.storhatid,
+        sick, vacation, other, open_entries: open,
+        work: Math.round((b.dag + b.eftir + b.natur + b.yfir + b.storhatid) * 100) / 100,
+        total: Math.round((b.dag + b.eftir + b.natur + b.yfir + b.storhatid + sick + vacation + other) * 100) / 100,
+      });
+    }
     return NextResponse.json({ from, to, hours });
   }
 
