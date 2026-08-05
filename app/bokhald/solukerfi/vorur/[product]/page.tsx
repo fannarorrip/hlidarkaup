@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProductDetail } from "@/lib/accounting-queries";
+import { getProductDetail, getWebCategories } from "@/lib/accounting-queries";
 import { getProductVelocity, suggestReorderQty } from "@/lib/purchase-orders";
 import ProductForm from "./ProductForm";
 
@@ -12,6 +12,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   if (!data) notFound();
 
   const vel = await getProductVelocity(product);
+  const webCategories = await getWebCategories().catch(() => []);
   const est = suggestReorderQty({
     stock: Number(data.product.stock_quantity) || 0,
     reorderPoint: Number(data.product.reorder_point) || 0,
@@ -30,6 +31,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         product={data.product}
         barcodes={data.barcodes}
         salesHint={{ sold30: Math.round(vel.sold30), monthly: est.monthlyDemand, suggested: est.suggested, basis: est.basis }}
+        webCategories={webCategories}
       />
     </div>
   );

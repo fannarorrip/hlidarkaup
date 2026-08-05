@@ -36,7 +36,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ pr
        info_source         = case when coalesce($15,'') <> '' or $17 is not null then coalesce($20, info_source, 'manual') else info_source end,
        info_updated_at     = case when coalesce($15,'') <> '' or $17 is not null then now() else info_updated_at end,
        preferred_supplier_id = case when $21 then $22::uuid else preferred_supplier_id end,
-       supplier_item_no      = case when $23 then $24 else supplier_item_no end
+       supplier_item_no      = case when $23 then $24 else supplier_item_no end,
+       web_category          = case when $35 then $36 else web_category end
      where product_number = $1
      returning product_number, price_gross`,
     [
@@ -74,6 +75,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ pr
       "naeringargildi" in b,  // $32
       "netto_magn" in b,      // $33
       "uppruni" in b,         // $34
+      "web_category" in b,    // $35 vefflokkur (Krónu-stíll) — óháður kassaflokknum product_group
+      "web_category" in b ? (String(b.web_category ?? "").trim() || null) : null, // $36
     ],
   );
   if (!rows.length) return NextResponse.json({ error: "Vara fannst ekki" }, { status: 404 });

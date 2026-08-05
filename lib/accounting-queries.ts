@@ -553,6 +553,7 @@ export const getProductGroups = () =>
     from shop.products group by 1 order by count desc`);
 
 export interface ProductDetail {
+  web_category: string | null; // vefflokkur (Krónu-stíll) — óháður kassaflokknum
   product_number: string; name: string; description: string | null;
   unit_price_net: string; vat_key: string | null; vat_rate: string; price_gross: number;
   stock_quantity: string; is_stock_controlled: boolean; product_group: string | null;
@@ -612,7 +613,7 @@ export const getCustomer = async (id: string) =>
 
 export async function getProductDetail(productNumber: string) {
   const p = (await query<ProductDetail>(`
-    select p.product_number, p.name, p.description, p.unit_price_net, p.vat_key, p.vat_rate, p.price_gross,
+    select p.product_number, p.name, p.description, p.unit_price_net, p.vat_key, p.vat_rate, p.price_gross, p.web_category,
            p.stock_quantity, p.is_stock_controlled, p.product_group, p.unit_code, p.use_scale, p.allow_discount, p.is_active,
            p.regla_id, p.synced_at::text, p.reorder_point, p.reorder_qty, p.image_url,
            p.innihald, p.ofnaemisvaldar, p.naeringargildi, p.netto_magn, p.uppruni, p.info_source, p.info_updated_at::text,
@@ -796,3 +797,12 @@ export const searchProductsForPicker = (q: string, limit = 20) =>
     where p.is_active and ($1 = '' or p.product_number ilike $1||'%' or unaccent(p.name) ilike unaccent('%'||$1||'%')
        or exists (select 1 from shop.product_barcodes b where b.product_number = p.product_number and b.barcode like $1||'%'))
     order by p.name limit $2`, [q, limit]);
+
+// Vefflokkar (Krónu-stíll) — tré yfir- og undirflokka, óháð kassaflokkunum (product_group).
+export interface WebCategoryRow { slug: string; name: string; parent_slug: string | null; sort: number; product_count: number }
+export const getWebCategories = () =>
+  query<WebCategoryRow>(`
+    select c.slug, c.name, c.parent_slug, c.sort,
+           (select count(*)::int from shop.products p where p.web_category = c.slug and p.is_active) as product_count
+    from shop.web_categories c
+    order by c.parent_slug nulls first, c.sort, c.name`);

@@ -46,10 +46,13 @@ function Check({ checked, onChange, label }: { checked: boolean; onChange: (v: b
   );
 }
 
-export default function ProductForm({ product, barcodes: initialBarcodes, salesHint }: { product: ProductDetail; barcodes: string[]; salesHint?: { sold30: number; monthly: number; suggested: number; basis: "sales" | "manual" } }) {
+interface WebCat { slug: string; name: string; parent_slug: string | null }
+
+export default function ProductForm({ product, barcodes: initialBarcodes, salesHint, webCategories = [] }: { product: ProductDetail; barcodes: string[]; salesHint?: { sold30: number; monthly: number; suggested: number; basis: "sales" | "manual" }; webCategories?: WebCat[] }) {
   const router = useRouter();
   const [name, setName] = useState(product.name);
   const [group, setGroup] = useState(product.product_group ?? "");
+  const [webCat, setWebCat] = useState(product.web_category ?? "");
   const [unit, setUnit] = useState(product.unit_code ?? "");
   const [desc, setDesc] = useState(product.description ?? "");
   const [vat, setVat] = useState(String(Number(product.vat_rate)));
@@ -100,7 +103,7 @@ export default function ProductForm({ product, barcodes: initialBarcodes, salesH
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          name, product_group: group, unit_code: unit, description: desc, vat_rate: vatNum, price_gross: grossNum,
+          name, product_group: group, web_category: webCat, unit_code: unit, description: desc, vat_rate: vatNum, price_gross: grossNum,
           is_stock_controlled: stockControlled, stock_quantity: Number(stock),
           use_scale: useScale, allow_discount: allowDiscount, is_active: isActive,
           reorder_point: reorderPoint, reorder_qty: reorderQty,
@@ -204,7 +207,24 @@ export default function ProductForm({ product, barcodes: initialBarcodes, salesH
             <input value={product.product_number} disabled className={`${inp} bg-gray-50 text-gray-500`} />
           </Field>
           <Field label="Heiti *"><input value={name} onChange={(e) => setName(e.target.value)} className={inp} /></Field>
-          <Field label="Vöruflokkur"><input value={group} onChange={(e) => setGroup(e.target.value)} placeholder="—" className={inp} /></Field>
+          <Field label="Vöruflokkur (kassi)"><input value={group} onChange={(e) => setGroup(e.target.value)} placeholder="—" className={inp} /></Field>
+          {/* Vefflokkurinn (Krónu-stíll) er ÓHÁÐUR kassaflokknum — yfirflokkar sem optgroup, undirflokkar valdir. */}
+          {webCategories.length > 0 && (
+            <Field label="Vefflokkur">
+              <select value={webCat} onChange={(e) => setWebCat(e.target.value)} className={inp}>
+                <option value="">— enginn —</option>
+                {webCategories.filter((c) => !c.parent_slug).map((main) => {
+                  const subs = webCategories.filter((c) => c.parent_slug === main.slug);
+                  return subs.length ? (
+                    <optgroup key={main.slug} label={main.name}>
+                      <option value={main.slug}>{main.name} (almennt)</option>
+                      {subs.map((s) => <option key={s.slug} value={s.slug}>{s.name}</option>)}
+                    </optgroup>
+                  ) : <option key={main.slug} value={main.slug}>{main.name}</option>;
+                })}
+              </select>
+            </Field>
+          )}
           <Field label="Magneining"><input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="t.d. C62 / kg / l" className={inp} /></Field>
           <div className="md:col-span-3">
             <Field label="Lýsing"><textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} className={inp} /></Field>
