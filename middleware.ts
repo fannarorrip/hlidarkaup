@@ -15,6 +15,8 @@ const RULES: { prefix: string; roles: string[] }[] = [
   { prefix: "/api/timar", roles: ["stjornandi", "bokari"] },
   // Lagerstjóri: allt sölukerfið/lagerinn — röðin skiptir máli, þetta VERÐUR að standa á
   // undan almennu "/bokhald"-reglunni (fyrsta samsvörun vinnur).
+  // Sölutölfræði sýnir veltu — EKKI lagerstjóramál (á undan almennu solukerfi-reglunni).
+  { prefix: "/bokhald/solukerfi/salutolfraedi", roles: ["stjornandi", "bokari"] },
   { prefix: "/bokhald/dagatal", roles: ["stjornandi", "bokari", "lagerstjori"] },
   { prefix: "/bokhald/solukerfi", roles: ["stjornandi", "bokari", "lagerstjori"] },
   { prefix: "/bokhald", roles: ["stjornandi", "bokari"] },

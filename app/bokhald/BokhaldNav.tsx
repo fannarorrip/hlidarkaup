@@ -31,6 +31,7 @@ const SECTIONS: { title: string; links: LinkItem[] }[] = [
   {
     title: "Sölukerfi",
     links: [
+      { href: "/bokhald/solukerfi/salutolfraedi", label: "Sölutölfræði" },
       { href: "/bokhald/solukerfi/pantanir/vefverslun", label: "Pantanir – Vefverslun" },
       { href: "/bokhald/solukerfi/pantanir/eldhus", label: "Pantanir – Eldhús" },
       { href: "/bokhald/solukerfi/reikningar", label: "Reikningar" },
