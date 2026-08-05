@@ -13,7 +13,9 @@ const NEW: Draft = {
   private_pension_employee_pct: "0", private_pension_employer_pct: "0",
   union_id: "", starfsheiti: "", deild: "", employment_ratio: "100", vacation_pct: "10.17",
   orlof_method: "accrue", is_active: true, start_date: "",
-  wage_category: "", trade_start: "",
+  // Sjálfgefið: allir hjá okkur eru afgreiðslufólk í verslunum (VR/SA) — handvirk laun
+  // eru undantekningin (stjórnendur o.þ.h.), valin sérstaklega.
+  wage_category: "afgreidsla", trade_start: "",
 };
 
 // Launaflokkar kjarasamnings VR/SA — velji maður flokk reiknast grunnlaun og öll álög
