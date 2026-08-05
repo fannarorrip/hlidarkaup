@@ -14,6 +14,7 @@ const SECTIONS: { title: string; links: LinkItem[] }[] = [
       { href: "/bokhald/fylgiskjol", label: "Fylgiskjöl" },
       { href: "/bokhald/skraning", label: "Skráning" },
       { href: "/bokhald/skraning/postholf", label: "Pósthólf", badgeKey: "pendingEmail" },
+      { href: "/bokhald/skraning/bokadir-reikningar", label: "Bókaðir reikningar" },
       { href: "/bokhald/adalbok", label: "Aðalbók" },
       { href: "/bokhald/hreyfingar", label: "Hreyfingar" },
       { href: "/bokhald/profjofnudur", label: "Prófjöfnuður" },

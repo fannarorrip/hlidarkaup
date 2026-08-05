@@ -261,6 +261,9 @@ export async function confirmReceipt(receiptId: string): Promise<{ voucherId: st
     // uppfærir aðeins birgðir (þegar gert að ofan) + verð (á eftir). Engin bókun, ekkert fylgiskjal.
     if (!rec.book_invoice) {
       await client.query(`update acc.goods_receipts set status='booked', total_gross=$1 where id=$2`, [totalGross, receiptId]);
+      // Pósthólfsröðin sem fæddi móttökuna: merkt BÓKUÐ (var þegar approved með sínu fylgiskjali
+      // — coalesce heldur því) svo hún detti út úr öllum biðlistum og sjáist undir Bókaðir reikningar.
+      await client.query(`update acc.email_invoices set status='approved', error=null where receipt_id = $1`, [receiptId]);
       await client.query("commit");
       await recordCostChanges(costChanges, { receiptId, supplierId: rec.supplier_id, supplierName: rec.supplier_name });
       return { voucherId: "", voucherNumber: "" };
@@ -295,6 +298,9 @@ export async function confirmReceipt(receiptId: string): Promise<{ voucherId: st
     }
 
     await client.query(`update acc.goods_receipts set status='booked', voucher_id=$1, total_gross=$2 where id=$3`, [v.id, totalGross, receiptId]);
+    // Pósthólfsröðin sem fæddi móttökuna („Flutt í móttöku"/skipped): nú BÓKUÐ með þessu
+    // fylgiskjali — dettur út úr biðlistunum og birtist undir Bókaðir reikningar.
+    await client.query(`update acc.email_invoices set status='approved', voucher_id = coalesce(voucher_id, $2), error=null where receipt_id = $1`, [receiptId, v.id]);
     // BÓKUN LÆRIR LÍKA: síðasti bókaði reikningur er sannleikurinn um vörutengingar + pakkastærðir
     // (öryggisnet ef vistunar-lærdómurinn brást, t.d. á útrunninni innskráningu). Sama dedup og í PATCH.
     if (rec.supplier_id) {

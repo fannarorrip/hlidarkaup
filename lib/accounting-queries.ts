@@ -242,6 +242,29 @@ export const getEmailInvoices = (statuses: string[], limit = 100) =>
 export const getPendingEmailCount = async () =>
   Number((await query<{ n: number }>(`select count(*)::int as n from acc.email_invoices where status = 'pending'`))[0]?.n ?? 0);
 
+// BÓKAÐIR innkaupareikningar — allt sem er komið í bókhaldið, óháð leið: móttöku-bókanir
+// (voucher_type 'purchase') OG pósthólfs-bókanir (journal-fylgiskjöl tengd email_invoices).
+// sum(debit) = brúttó fylgiskjalsins (debet=kredit); kreditnótur sjást á lýsingunni.
+export interface BookedPurchaseRow {
+  id: string; voucher_date: string; series_code: string; voucher_number: string;
+  supplier_name: string | null; description: string | null; total: string; source: string;
+}
+export const getBookedPurchaseInvoices = (limit = 300) =>
+  query<BookedPurchaseRow>(`
+    select v.id, v.voucher_date::text as voucher_date, v.series_code, v.voucher_number::text as voucher_number,
+           coalesce(s.name, (select ei.extracted->>'supplier' from acc.email_invoices ei where ei.voucher_id = v.id limit 1)) as supplier_name,
+           v.description,
+           coalesce(sum(le.debit), 0) as total,
+           case when v.voucher_type = 'purchase' then 'Móttaka' else 'Pósthólf' end as source
+    from acc.vouchers v
+    join acc.ledger_entries le on le.voucher_id = v.id
+    left join acc.suppliers s on s.id = v.supplier_id
+    where v.status = 'posted'
+      and (v.voucher_type = 'purchase' or exists (select 1 from acc.email_invoices ei where ei.voucher_id = v.id))
+    group by v.id, s.name
+    order by v.voucher_date desc, v.voucher_number desc
+    limit $1`, [limit]);
+
 export interface EmailInvoiceDetail {
   id: string; status: string; subject: string | null; from_address: string | null; from_name: string | null;
   received_at: string | null; extracted: { supplier?: string; invoiceNumber?: string; date?: string; lines?: unknown[] } | null;

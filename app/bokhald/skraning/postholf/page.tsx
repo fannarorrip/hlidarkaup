@@ -39,7 +39,10 @@ export default async function PostholfPage() {
       <div className="flex items-start justify-between mb-1 gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold mb-1">Pósthólf</h1>
-          <p className="text-sm text-gray-500">Reikningar úr tölvupósti og inExchange — yfirfarðu og samþykktu til að bóka</p>
+          <p className="text-sm text-gray-500">
+            Reikningar úr tölvupósti og inExchange — yfirfarðu og samþykktu til að bóka
+            {" · "}<Link href="/bokhald/skraning/bokadir-reikningar" className="text-red-600 hover:underline">Bókaðir reikningar →</Link>
+          </p>
         </div>
         <PostholfActions />
       </div>
