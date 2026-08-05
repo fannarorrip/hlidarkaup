@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 // Mánaðarblað starfsmanns: einn dagur = ein röð; stimplanir og fjarvistir dagsins inni í röðinni.
 // Bæta við / leiðrétta / eyða — vinna er með inn/út-tímum, fjarvist (veikindi/orlof/...) með klst.
 interface Entry { id: string; entry_type: string; note: string | null; register_id: string | null; edited_by: string | null; clock_in: string; clock_out: string | null; day: string; hours: number }
+// Hádegismatarfrádráttur dagsins (sjálfvirkur, 12–14, 5+ klst dagar) eða yfirseta („matur greiddur").
+interface DayLunch { day: string; deducted: number; overridden: boolean; movedToEftir: number }
 
 const TYPE_LABEL: Record<string, string> = { work: "Vinna", sick: "Veikindi", vacation: "Orlof", holiday: "Frídagur", absence: "Fjarvist" };
 const TYPE_CLS: Record<string, string> = {
@@ -27,6 +29,7 @@ interface EditState {
 export default function MonthSheet({ employeeId }: { employeeId: string }) {
   const [month, setMonth] = useState(thisMonth());
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [lunches, setLunches] = useState<Map<string, DayLunch>>(new Map());
   const [edit, setEdit] = useState<EditState | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -35,8 +38,15 @@ export default function MonthSheet({ employeeId }: { employeeId: string }) {
     const r = await fetch(`/api/timar?employee=${employeeId}&month=${month}`);
     const d = await r.json();
     setEntries(d.entries ?? []);
+    setLunches(new Map(((d.lunches ?? []) as DayLunch[]).map((l) => [l.day, l])));
   }, [employeeId, month]);
   useEffect(() => { load(); }, [load]);
+
+  // „Matur greiddur"-víxlun: unnið í gegnum matinn → enginn frádráttur, tíminn á eftirvinnukaupi.
+  async function toggleLunch(day: string, paid: boolean) {
+    await fetch("/api/timar/matur", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ employee_id: employeeId, day, paid }) });
+    load();
+  }
 
   const [y, m] = month.split("-").map(Number);
   const daysInMonth = new Date(y, m, 0).getDate();
@@ -113,13 +123,14 @@ export default function MonthSheet({ employeeId }: { employeeId: string }) {
               const list = byDay.get(day) ?? [];
               const dow = new Date(day + "T12:00:00").getDay();
               const weekend = dow === 0 || dow === 6;
-              const dayH = list.reduce((s, e) => s + e.hours, 0);
+              const lunch = lunches.get(day);
+              const dayH = list.reduce((s, e) => s + e.hours, 0) - (lunch?.deducted ?? 0);
               return (
                 <tr key={day} className={`border-t border-gray-100 ${weekend ? "bg-gray-50/70" : ""}`}>
                   <td className="px-4 py-2 whitespace-nowrap text-gray-600"><b>{Number(day.slice(8))}.</b> {VIKUDAGAR[dow]}</td>
                   <td className="px-4 py-2">
                     {list.length === 0 ? <span className="text-gray-300">—</span> : (
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-1.5 items-center">
                         {list.map((e) => (
                           <button key={e.id} onClick={() => openEdit(e)} title={`${e.note ?? ""}${e.edited_by ? " (handvirkt breytt)" : ""}`}
                             className={`px-2 py-1 rounded-lg text-xs font-medium hover:ring-2 hover:ring-red-200 ${e.entry_type === "work" ? "bg-[#E4F1F0] text-[#21323A]" : TYPE_CLS[e.entry_type] ?? "bg-gray-100"}`}>
@@ -129,6 +140,20 @@ export default function MonthSheet({ employeeId }: { employeeId: string }) {
                             {e.edited_by && <span className="ml-1 text-amber-600">✎</span>}
                           </button>
                         ))}
+                        {/* Sjálfvirki matarfrádrátturinn (12–14, 5+ klst dagar): smellt á flöguna víxlar
+                           „matur greiddur" (unnið í gegn → tíminn á eftirvinnukaupi, enginn frádráttur). */}
+                        {lunch && !lunch.overridden && (
+                          <button onClick={() => toggleLunch(day, true)} title="Sjálfvirkur hádegismatarfrádráttur — smelltu ef unnið var í gegnum matinn (þá greiðist hann með eftirvinnukaupi)"
+                            className="px-2 py-1 rounded-lg text-xs font-medium bg-orange-50 text-orange-700 hover:ring-2 hover:ring-orange-200">
+                            −{klst(lunch.deducted)} klst matur
+                          </button>
+                        )}
+                        {lunch?.overridden && (
+                          <button onClick={() => toggleLunch(day, false)} title="Unnið í gegnum matinn — greiddur með eftirvinnukaupi. Smelltu til að setja frádráttinn aftur á."
+                            className="px-2 py-1 rounded-lg text-xs font-medium bg-green-50 text-green-700 hover:ring-2 hover:ring-green-200">
+                            matur greiddur ✓ (eftirv.)
+                          </button>
+                        )}
                       </div>
                     )}
                   </td>

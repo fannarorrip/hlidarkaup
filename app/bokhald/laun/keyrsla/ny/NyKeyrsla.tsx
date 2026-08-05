@@ -46,7 +46,7 @@ export default function NyKeyrsla({ employees }: { employees: Emp[] }) {
   }, [year, month]);
   useEffect(() => { loadRates(); }, [loadRates]);
 
-  interface TimaRow { employee_id: string; name: string; dag: number; eftir: number; natur: number; yfir: number; storhatid: number; sick: number; vacation: number; other: number; open_entries: number; work: number; total: number }
+  interface TimaRow { employee_id: string; name: string; dag: number; eftir: number; natur: number; yfir: number; storhatid: number; sick: number; vacation: number; other: number; open_entries: number; lunch_deducted: number; work: number; total: number }
   async function saekjaTima() {
     setBusy(true); setErr(""); setTimaMsg("");
     try {
@@ -72,6 +72,7 @@ export default function NyKeyrsla({ employees }: { employees: Emp[] }) {
               h.yfir > 0 ? `YFIRV. ${s(h.yfir)}` : "", h.storhatid > 0 ? `STÓRHÁTÍÐ ${s(h.storhatid)}` : "",
               h.sick > 0 ? `veikindi ${s(h.sick)}` : "", h.vacation > 0 ? `orlof ${s(h.vacation)}` : "",
               h.other > 0 ? `önnur fjarvist ${s(h.other)}` : "",
+              h.lunch_deducted > 0 ? `matur −${s(h.lunch_deducted)}` : "",
               h.open_entries > 0 ? `⚠ ${h.open_entries} OPIN stimplun ótalin` : "",
             ].filter(Boolean).join(" · ");
             info[e.id] = `${s(h.total)} klst flokkaðar sjálfkrafa${parts ? ` — ${parts}` : ""}`;

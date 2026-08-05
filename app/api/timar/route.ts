@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { classifyPeriod } from "@/lib/wage-hours";
+import { classifyPeriodDetailed } from "@/lib/wage-hours";
 
 // Tímar starfsmanna + afgreiðslutölfræði. Gated stjornandi/bokari (middleware /api/timar).
 // Klst-reglan alls staðar: vinna = út−inn (eða til núna); fjarvist = hours_override (t.d. 8).
@@ -29,6 +29,12 @@ export async function GET(req: NextRequest) {
       from acc.time_entries te join acc.employees e on e.id = te.employee_id
       where (te.clock_in at time zone 'Atlantic/Reykjavik')::date between $1::date and $2::date
       order by te.employee_id, te.clock_in`, [from, to]);
+    // „Matur greiddur"-dagar (unnið í gegnum matinn) — enginn frádráttur, tíminn á eftirvinnu.
+    const ovr = await query<{ employee_id: string; day: string }>(
+      `select employee_id, day::text as day from acc.time_lunch_overrides where day between $1::date and $2::date`, [from, to]);
+    const ovrBy = new Map<string, Set<string>>();
+    for (const o of ovr) { if (!ovrBy.has(o.employee_id)) ovrBy.set(o.employee_id, new Set()); ovrBy.get(o.employee_id)!.add(o.day); }
+
     const byEmp = new Map<string, typeof rows>();
     for (const r of rows) { if (!byEmp.has(r.employee_id)) byEmp.set(r.employee_id, []); byEmp.get(r.employee_id)!.push(r); }
     const hours = [];
@@ -38,11 +44,13 @@ export async function GET(req: NextRequest) {
       const open = list.filter((r) => r.entry_type === "work" && !r.clock_out).length;
       const abs = (t: (x: string) => boolean) => list.filter((r) => r.entry_type !== "work" && t(r.entry_type)).reduce((s, r) => s + (Number(r.hours_override) || 0), 0);
       const sick = abs((t) => t === "sick"), vacation = abs((t) => t === "vacation"), other = abs((t) => t === "holiday" || t === "absence");
-      const b = classifyPeriod(intervals, sick + vacation + other);
+      const det = classifyPeriodDetailed(intervals, sick + vacation + other, { lunchOverrides: ovrBy.get(employeeId) });
+      const b = det.buckets;
+      const lunch = Math.round(det.lunches.reduce((s, l) => s + l.deducted, 0) * 100) / 100;
       hours.push({
         employee_id: employeeId, name: list[0].name,
         dag: b.dag, eftir: b.eftir, natur: b.natur, yfir: b.yfir, storhatid: b.storhatid,
-        sick, vacation, other, open_entries: open,
+        sick, vacation, other, open_entries: open, lunch_deducted: lunch,
         work: Math.round((b.dag + b.eftir + b.natur + b.yfir + b.storhatid) * 100) / 100,
         total: Math.round((b.dag + b.eftir + b.natur + b.yfir + b.storhatid + sick + vacation + other) * 100) / 100,
       });
@@ -56,7 +64,7 @@ export async function GET(req: NextRequest) {
   if (employee && /^\d{4}-\d{2}$/.test(month)) {
     const emp = (await query<{ id: string; name: string }>(`select id, name from acc.employees where id = $1`, [employee]))[0];
     if (!emp) return NextResponse.json({ error: "Starfsmaður fannst ekki" }, { status: 404 });
-    const entries = await query(`
+    const entries = await query<{ id: string; entry_type: string; note: string | null; register_id: string | null; edited_by: string | null; clock_in: string; clock_out: string | null; day: string; hours: number }>(`
       select te.id, te.entry_type, te.note, te.register_id, te.edited_by,
              te.clock_in::text as clock_in, te.clock_out::text as clock_out,
              (te.clock_in at time zone 'Atlantic/Reykjavik')::date::text as day,
@@ -66,7 +74,14 @@ export async function GET(req: NextRequest) {
         and (te.clock_in at time zone 'Atlantic/Reykjavik')::date >= ($2 || '-01')::date
         and (te.clock_in at time zone 'Atlantic/Reykjavik')::date < (($2 || '-01')::date + interval '1 month')
       order by te.clock_in`, [employee, month]);
-    return NextResponse.json({ employee: emp, month, entries });
+    // Matarfrádráttur mánaðarins (per dag) + yfirsetu-dagar — fyrir merkingarnar á blaðinu.
+    const mOvr = await query<{ day: string }>(
+      `select day::text as day from acc.time_lunch_overrides
+       where employee_id = $1 and day >= ($2 || '-01')::date and day < (($2 || '-01')::date + interval '1 month')`, [employee, month]);
+    const det = classifyPeriodDetailed(
+      entries.filter((r) => r.entry_type === "work" && r.clock_out).map((r) => ({ clockIn: new Date(r.clock_in), clockOut: new Date(r.clock_out!) })),
+      0, { lunchOverrides: new Set(mOvr.map((o) => o.day)) });
+    return NextResponse.json({ employee: emp, month, entries, lunches: det.lunches });
   }
 
   const from = /^\d{4}-\d{2}-\d{2}$/.test(sp.get("from") ?? "") ? sp.get("from")! : new Date(Date.now() - 13 * 864e5).toISOString().slice(0, 10);
