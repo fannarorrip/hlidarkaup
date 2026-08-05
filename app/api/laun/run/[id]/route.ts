@@ -28,3 +28,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     client.release();
   }
 }
+
+// Eyða DRÖGUM (keyrslu sem hefur ekki verið bókuð) — ekkert hefur snert höfuðbókina, svo
+// eyðingin er hrein. Bókaðri keyrslu verður ekki eytt; hún leiðréttist með bakfærslu.
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const client = await db.connect();
+  try {
+    await client.query("begin");
+    const run = (await client.query<{ status: string }>(
+      `select status from acc.payroll_runs where id = $1 for update`, [id])).rows[0];
+    if (!run) throw new PayrollError("Launakeyrsla fannst ekki", 404);
+    if (run.status === "posted") throw new PayrollError("Bókaðri launakeyrslu verður ekki eytt — notaðu bakfærslu fylgiskjalsins.", 409);
+    await client.query(`delete from acc.payroll_lines where run_id = $1`, [id]);
+    await client.query(`delete from acc.payroll_runs where id = $1`, [id]);
+    await client.query("commit");
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    await client.query("rollback");
+    const status = err instanceof PayrollError ? err.status : 500;
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Villa" }, { status });
+  } finally {
+    client.release();
+  }
+}

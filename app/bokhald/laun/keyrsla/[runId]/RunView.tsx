@@ -74,6 +74,17 @@ export default function RunView({ run, lines }: { run: PayrollRunRow; lines: Pay
     router.refresh();
   }
 
+  // Drög eru hættulaus — ekkert í höfuðbók fyrr en bókað er — svo þeim má eyða hreinlega.
+  async function remove() {
+    if (!confirm("Eyða þessum drögum? Ekkert hefur verið bókað — keyrslan hverfur og hægt er að byrja upp á nýtt.")) return;
+    setBusy(true); setErr("");
+    const r = await fetch(`/api/laun/run/${run.id}`, { method: "DELETE" });
+    const j = await r.json(); setBusy(false);
+    if (!r.ok) { setErr(j.error ?? "Villa"); return; }
+    router.push("/bokhald/laun");
+    router.refresh();
+  }
+
   const Card = ({ label, value }: { label: string; value: number }) => (
     <div className="bg-white border border-gray-200 rounded-xl px-4 py-3">
       <div className="text-xs text-gray-500">{label}</div>
@@ -173,6 +184,7 @@ export default function RunView({ run, lines }: { run: PayrollRunRow; lines: Pay
           <div className="mt-5 flex items-center gap-4">
             {!posted && <button onClick={post} disabled={busy} className="px-5 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50">{busy ? "Bóka…" : "Bóka launakeyrslu"}</button>}
             {!posted && <button onClick={startEdit} disabled={busy} className="px-5 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50">Breyta drögum</button>}
+            {!posted && <button onClick={remove} disabled={busy} className="px-5 py-2 rounded-lg border border-rose-200 text-sm font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50">Eyða drögum</button>}
             <Link href="/bokhald/laun" className="text-sm text-gray-500 hover:text-gray-800">← Til baka</Link>
           </div>
         </>
