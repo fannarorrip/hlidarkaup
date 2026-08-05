@@ -22,11 +22,14 @@ const RULES: { prefix: string; roles: string[] }[] = [
   { prefix: "/bokhald", roles: ["stjornandi", "bokari"] },
   { prefix: "/api/products", roles: ["stjornandi", "bokari", "lagerstjori"] },
   { prefix: "/api/purchases", roles: ["stjornandi", "bokari", "lagerstjori"] },
+  // Sækja-póst/inExchange takkarnir eru LÍKA á móttökusíðunni sem lagerstjórar nota —
+  // sjálfar sækju-aðgerðirnar eru þeim opnar (röðin: sértækara á undan /api/skraning).
+  { prefix: "/api/skraning/email/poll", roles: ["stjornandi", "bokari", "lagerstjori"] },
   { prefix: "/api/skraning", roles: ["stjornandi", "bokari"] },
   { prefix: "/api/laun", roles: ["stjornandi", "bokari"] },
   { prefix: "/api/suppliers", roles: ["stjornandi", "bokari", "lagerstjori"] },
   { prefix: "/api/innkaup", roles: ["stjornandi", "bokari", "lagerstjori"] },
-  { prefix: "/api/inexchange/poll", roles: ["stjornandi", "bokari"] },
+  { prefix: "/api/inexchange/poll", roles: ["stjornandi", "bokari", "lagerstjori"] },
   { prefix: "/api/einvoice", roles: ["stjornandi", "bokari"] },
   { prefix: "/api/reikningur", roles: ["stjornandi", "bokari", "lagerstjori"] },
   { prefix: "/api/reikningar", roles: ["stjornandi", "bokari", "lagerstjori"] },

@@ -16,10 +16,26 @@ export default function MottakaInbox() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState("");
+  const [pollMsg, setPollMsg] = useState("");
 
-  useEffect(() => {
-    fetch("/api/innkaup/inbox").then((r) => r.json()).then((d) => setRows(d.rows ?? [])).catch(() => setRows([]));
-  }, []);
+  const reload = () => fetch("/api/innkaup/inbox").then((r) => r.json()).then((d) => setRows(d.rows ?? [])).catch(() => setRows([]));
+  useEffect(() => { reload(); }, []);
+
+  // Sækja beint héðan — sömu leiðir og pósthólfið notar, svo enginn þarf að skipta um síðu
+  // til að ná í nýjustu reikningana áður en móttakan hefst.
+  async function poll(kind: "email" | "inexchange") {
+    setBusy("poll"); setErr(""); setPollMsg("");
+    try {
+      const r = await fetch(kind === "email" ? "/api/skraning/email/poll" : "/api/inexchange/poll", { method: "POST" });
+      const d = await r.json();
+      if (!r.ok || d.ok === false) { setErr(d.message || d.error || "Tókst ekki að sækja"); return; }
+      const ny = kind === "email" ? d.pending : d.created;
+      setPollMsg(`${kind === "email" ? "Tölvupóstur" : "inExchange"} — skoðað: ${d.checked} · nýir reikningar: ${ny ?? 0}${d.errors ? ` · villur: ${d.errors}` : ""}`);
+      await reload();
+      router.refresh();
+    } catch (e) { setErr(e instanceof Error ? e.message : "Villa"); }
+    finally { setBusy(null); }
+  }
 
   async function toReceipt(id: string) {
     setBusy(id); setErr("");
@@ -43,15 +59,27 @@ export default function MottakaInbox() {
     setBusy(null);
   }
 
-  if (!rows || rows.length === 0) return null; // ekkert í biðröð → engin auka-sektion
-
   return (
     <div className="mb-6 bg-white border border-gray-200 rounded-xl overflow-hidden">
-      <p className="px-4 py-2 bg-[#F0F7F6] text-sm font-semibold text-gray-700">
-        Úr pósthólfinu — reikningar sem má draga beint í móttöku ({rows.length})
-      </p>
+      <div className="px-4 py-2 bg-[#F0F7F6] flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-gray-700">
+          Úr pósthólfinu — reikningar sem má draga beint í móttöku ({rows?.length ?? "…"})
+        </p>
+        <div className="flex items-center gap-2">
+          <button onClick={() => poll("email")} disabled={busy === "poll"}
+            className="px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-xs font-semibold hover:bg-gray-50 disabled:opacity-50">
+            {busy === "poll" ? "Sæki…" : "↻ Sækja tölvupóst"}
+          </button>
+          <button onClick={() => poll("inexchange")} disabled={busy === "poll"}
+            className="px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-xs font-semibold hover:bg-gray-50 disabled:opacity-50">
+            {busy === "poll" ? "Sæki…" : "↻ Sækja frá inExchange"}
+          </button>
+        </div>
+      </div>
+      {pollMsg && <p className="px-4 py-1.5 text-xs text-green-700 border-b border-gray-100">{pollMsg}</p>}
+      {(!rows || rows.length === 0) && <p className="px-4 py-3 text-sm text-gray-400">{rows === null ? "Sæki biðröðina…" : "Ekkert í biðröðinni — sæktu að ofan ef von er á reikningum."}</p>}
       <div className="divide-y divide-gray-100">
-        {rows.map((r) => (
+        {(rows ?? []).map((r) => (
           <div key={r.id} className="flex items-center gap-3 px-4 py-2.5">
             <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${r.source === "inexchange" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
               {r.source === "inexchange" ? "inExchange" : "Tölvupóstur"}
