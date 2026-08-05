@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { calcLine, getTaxConfig, getUnionFunds, PayrollError, type Employee, type UnionFund, type PayComponent } from "@/lib/payroll";
-import { resolveWageRates } from "@/lib/wage-scale";
+import { resolveWageRates, totalWorkedHours } from "@/lib/wage-scale";
 
 // Create a draft payroll run and compute its lines for the given employees.
 export const runtime = "nodejs";
@@ -39,6 +39,7 @@ export async function computeLines(client: Queryable, runId: string, year: numbe
       const w = await resolveWageRates({
         kennitala: emp.kennitala, category: emp.wage_category,
         startDate: emp.start_date ?? null, tradeStart: emp.trade_start ?? null, at: rateDate,
+        workedHours: await totalWorkedHours(emp.id), // 18–19 ára: 95% að 700 vinnustundum
       });
       if (w) {
         emp.hourly_rate = w.dagvinna;

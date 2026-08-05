@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { resolveWageRates, WAGE_CATEGORIES } from "@/lib/wage-scale";
+import { resolveWageRates, totalWorkedHours, WAGE_CATEGORIES } from "@/lib/wage-scale";
 
 // Leystir kjarasamningstaxtar allra virkra launþega með wage_category, á launatímabili
 // keyrslunnar (taxtadagur = 24. í uppgjörsmánuðinum). Fyrir Ný launakeyrsla-viðmótið —
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     from acc.employees where is_active and wage_category is not null`);
   const rates = [];
   for (const e of emps) {
-    const w = await resolveWageRates({ kennitala: e.kennitala, category: e.wage_category, startDate: e.start_date, tradeStart: e.trade_start, at });
+    const w = await resolveWageRates({ kennitala: e.kennitala, category: e.wage_category, startDate: e.start_date, tradeStart: e.trade_start, at, workedHours: await totalWorkedHours(e.id) });
     if (w) rates.push({ employee_id: e.id, categoryLabel: WAGE_CATEGORIES[e.wage_category] ?? e.wage_category, ...w });
   }
   return NextResponse.json({ at: at.toISOString().slice(0, 10), rates });

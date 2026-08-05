@@ -21,7 +21,14 @@ export const STEP_LABEL: Record<string, string> = {
   "1ar_grein": "Eftir 1 ár í starfsgrein", "3ar_grein": "Eftir 3 ár í starfsgrein",
   "1ar_fyrirtaeki": "Eftir 1 ár í fyrirtæki", "2ar_fyrirtaeki": "Eftir 2 ár í fyrirtæki",
   "5ar_fyrirtaeki": "Eftir 5 ár í fyrirtæki",
+  ungmenni_95: "18–19 ára (95% byrjunarlauna, <700 vinnust.)",
 };
+
+// 18–19 ára reglan af launablaði Hlíðarkaups: 95% af byrjunarlaunum þar til 700
+// vinnustundum er náð — þá full laun. Starfsmaður með eldri starfsgreinarreynslu
+// (trade_start á undan start_date) telst hafa náð stundunum.
+export const YOUNG_ADULT_PCT = 0.95;
+export const YOUNG_ADULT_HOURS = 700;
 
 export interface WageRates {
   category: string; step: string; stepLabel: string; validFrom: string;
@@ -51,8 +58,9 @@ const monthsBetween = (from: Date, to: Date) =>
 
 interface ScaleRow { category: string; step: string; sort: number; valid_from: string; monthly: string; dagvinna: string; eftirvinna: string | null; naeturvinna: string | null; yfirvinna: string; storhatid: string }
 
-/** Réttur taxti starfsmanns á degi `at`. null = flokkur óþekktur eða engir taxtar til. */
-export async function resolveWageRates(opts: { kennitala?: string | null; category: string; startDate?: string | null; tradeStart?: string | null; at: Date }): Promise<WageRates | null> {
+/** Réttur taxti starfsmanns á degi `at`. null = flokkur óþekktur eða engir taxtar til.
+ *  workedHours = vinnustundir starfsmannsins alls (fyrir 18–19 ára regluna; null = óþekkt → full laun). */
+export async function resolveWageRates(opts: { kennitala?: string | null; category: string; startDate?: string | null; tradeStart?: string | null; at: Date; workedHours?: number | null }): Promise<WageRates | null> {
   const rows = await query<ScaleRow>(`
     select category, step, sort, valid_from::text as valid_from, monthly::text as monthly, dagvinna::text as dagvinna,
            eftirvinna::text as eftirvinna, naeturvinna::text as naeturvinna, yfirvinna::text as yfirvinna, storhatid::text as storhatid
@@ -92,10 +100,36 @@ export async function resolveWageRates(opts: { kennitala?: string | null; catego
   }
   if (!pick) return null;
   const n = (v: string | null) => (v == null ? null : Number(v));
+  const r2 = (v: number) => Math.round(v * 100) / 100;
+
+  // 18–19 ára reglan (launablað Hlíðarkaups): 95% af BYRJUNARLAUNUM að 700 vinnustundum.
+  // Eldri starfsgreinarreynsla (trade_start < start_date) telst uppfylla stundirnar.
+  const priorExperience = !!(opts.tradeStart && opts.startDate && opts.tradeStart < opts.startDate);
+  if (age != null && (age === 18 || age === 19) && opts.workedHours != null && opts.workedHours < YOUNG_ADULT_HOURS && !priorExperience) {
+    const byrjun = rows.find((r) => r.step === "byrjun");
+    if (byrjun) {
+      return {
+        category: byrjun.category, step: "ungmenni_95", stepLabel: STEP_LABEL.ungmenni_95, validFrom: byrjun.valid_from,
+        monthly: r2(Number(byrjun.monthly) * YOUNG_ADULT_PCT), dagvinna: r2(Number(byrjun.dagvinna) * YOUNG_ADULT_PCT),
+        eftirvinna: byrjun.eftirvinna == null ? null : r2(Number(byrjun.eftirvinna) * YOUNG_ADULT_PCT),
+        naeturvinna: byrjun.naeturvinna == null ? null : r2(Number(byrjun.naeturvinna) * YOUNG_ADULT_PCT),
+        yfirvinna: r2(Number(byrjun.yfirvinna) * YOUNG_ADULT_PCT), storhatid: r2(Number(byrjun.storhatid) * YOUNG_ADULT_PCT), age,
+      };
+    }
+  }
+
   return {
     category: pick.category, step: pick.step, stepLabel: STEP_LABEL[pick.step] ?? pick.step, validFrom: pick.valid_from,
     monthly: Number(pick.monthly), dagvinna: Number(pick.dagvinna),
     eftirvinna: n(pick.eftirvinna), naeturvinna: n(pick.naeturvinna),
     yfirvinna: Number(pick.yfirvinna), storhatid: Number(pick.storhatid), age,
   };
+}
+
+/** Vinnustundir starfsmanns ALLS (lokaðar vinnustimplanir) — fyrir 18–19 ára regluna. */
+export async function totalWorkedHours(employeeId: string): Promise<number> {
+  const r = await query<{ h: string }>(`
+    select coalesce(sum(extract(epoch from (clock_out - clock_in)) / 3600.0), 0)::text as h
+    from acc.time_entries where employee_id = $1 and entry_type = 'work' and clock_out is not null`, [employeeId]);
+  return Number(r[0]?.h) || 0;
 }
