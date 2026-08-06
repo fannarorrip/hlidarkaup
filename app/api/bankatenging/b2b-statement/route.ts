@@ -19,7 +19,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) ?? {}; // JSON-bodyið `null` er líka löglegt JSON
   const st = accountsStatus();
   if (!st.configured) {
     return NextResponse.json({ ok: false, configured: false, message: "B2B yfirlitsþjónusta er ekki tengd (ARION_B2B_ACCOUNTS_URL — sjá deploy/ARION_B2B_BRIDGE.md)." });

@@ -91,8 +91,10 @@ export async function getAccountStatement(opts: {
     `<s:Body><GetAccountStatement xmlns="${A}"><Query>` +
     `<at:Account>${esc(account)}</at:Account>` +
     `<at:DateFrom>${esc(opts.dateFrom)}</at:DateFrom><at:DateTo>${esc(opts.dateTo)}</at:DateTo>` +
-    `<at:RecordFrom>${Math.max(1, Math.floor(opts.recordFrom ?? 1))}</at:RecordFrom>` +
-    `<at:RecordTo>${Math.max(1, Math.floor(opts.recordTo ?? 999999))}</at:RecordTo>` +
+    // Number.isFinite-vörn: Infinity/NaN/1e21 strengjast sem ógild xs:long ("Infinity", "1e+21")
+    // og fella afserjalunina bankamegin — klemmt í heiltölur á föstu bili.
+    `<at:RecordFrom>${Number.isFinite(opts.recordFrom as number) ? Math.min(999999999, Math.max(1, Math.floor(opts.recordFrom as number))) : 1}</at:RecordFrom>` +
+    `<at:RecordTo>${Number.isFinite(opts.recordTo as number) ? Math.min(999999999, Math.max(1, Math.floor(opts.recordTo as number))) : 999999}</at:RecordTo>` +
     `</Query></GetAccountStatement></s:Body></s:Envelope>`;
 
   try {
@@ -102,10 +104,12 @@ export async function getAccountStatement(opts: {
       body: envelope,
     });
     const text = await res.text();
-    // A SOAP 1.2 reply (2003/05 namespace) or HTTP 415 means the endpoint is NOT the bridge's
+    // A SOAP 1.2 reply (2003/05 ENVELOPE) or HTTP 415 means the endpoint is NOT the bridge's
     // StatementService speaking SOAP 1.1 — almost always the old 2017 Bridge (no StatementService;
     // WCF answers unmatched endpoints with a SOAP 1.2 fault) or a wrong ARION_B2B_ACCOUNTS_URL.
-    if (res.status === 415 || text.includes("http://www.w3.org/2003/05/soap-envelope")) {
+    // ATH: skoða UMSLAGIÐ sjálft, ekki text.includes — faultstring getur nefnt 2003/05-nafnrýmið
+    // í villutexta (t.d. "Body ... was not encrypted") án þess að vera SOAP 1.2 svar.
+    if (res.status === 415 || /<(?:\w+:)?Envelope[^>]{0,300}2003\/05\/soap-envelope/.test(text)) {
       return {
         ok: false,
         error: "Bridge-inn á þessari slóð er ekki með yfirlitsþjónustuna (StatementService) — líklega eldri Bridge-útgáfa eða röng ARION_B2B_ACCOUNTS_URL. Slóðin á að enda á /B2BBridge/StatementService á nýju Bridge-vélinni.",
@@ -115,11 +119,20 @@ export async function getAccountStatement(opts: {
     const body = ((parsed.Envelope as Record<string, unknown>)?.Body ?? {}) as Record<string, unknown>;
     const fault = body.Fault as Record<string, unknown> | undefined;
     if (fault) {
+      // BanksErrorText (raunvillan) FYRST í sér-match — eitt regex með víxlröð valdi alltaf
+      // GeneralErrorText („Almenn villa") því hann stendur framar í skjalinu. Kóðarnir fylgja með.
       const flat = JSON.stringify(fault);
-      const m = flat.match(/"(?:BanksErrorText|GeneralErrorText|GeneralSourceText)":"([^"]{1,200})"/);
-      return { ok: false, error: m ? m[1] : flat.slice(0, 300) };
+      const txt = flat.match(/"BanksErrorText":"([^"]{1,300})"/) ?? flat.match(/"GeneralErrorText":"([^"]{1,300})"/) ?? flat.match(/"GeneralSourceText":"([^"]{1,300})"/);
+      const gc = flat.match(/"GeneralErrorCode":"?(\d{1,6})/);
+      const bc = flat.match(/"BanksErrorCode":"?(\d{1,6})/);
+      const codes = gc || bc ? ` (villa ${gc?.[1] ?? "?"}/${bc?.[1] ?? "?"})` : "";
+      return { ok: false, error: txt ? txt[1] + codes : flat.slice(0, 300) };
     }
     if (!res.ok) return { ok: false, error: `B2B Bridge svaraði ${res.status}: ${text.slice(0, 300)}` };
+    // 200 án svar-elementsins (HTML/proxy-rusl) má ALDREI verða ok:true með tómu yfirliti.
+    if (!("GetAccountStatementResponse" in body)) {
+      return { ok: false, error: `Óvænt svar frá Bridge (ekkert GetAccountStatementResponse): ${text.slice(0, 200)}` };
+    }
 
     const st = (((body.GetAccountStatementResponse ?? {}) as Record<string, unknown>).AccountStatement ?? {}) as Record<string, unknown>;
     const txWrap = (st.Transactions ?? {}) as Record<string, unknown>;

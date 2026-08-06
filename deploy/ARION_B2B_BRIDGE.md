@@ -1,6 +1,32 @@
 # Arion / RB B2B — Ógreiddar kröfur Á OKKUR (BillService) um B2B Bridge
 
-## 🆕 2026-07-27: HK-BRÚIN SMÍÐUÐ (deploy/hk-bridge/) — bíður aðgangs hjá Arion
+## ✅✅ 2026-08-06: RÁÐGÁTAN LEYST — BANKINN VAR ALDREI BILAÐUR, yfirlitið RENNUR gegnum HK-brúna
+
+Þrjár villur OKKAR megin bjuggu til „bilun bankamegin"-söguna:
+
+1. **Prófunarskriptan `_test-statement.mjs` var með rangt nafnrými** á `<GetAccountStatement>`
+   (`…/2013/10/15` í stað `…/2013/10/15/Accounts` skv. lifandi WSDL) → bankinn afserjalaði
+   `Query=null` → NullReferenceException → **villa 1000/14000 „Object reference not set"**.
+   Öll „sönnunargögnin" 27.7 og 4.8 komu úr þessari skriptu — appið (lib/arion-b2b-accounts.ts)
+   var alltaf með rétt nafnrými (þess vegna virkaði það 10.7). Aðgangur/heimildir notandans
+   voru aldrei vandamálið.
+2. **Verndarstillingar brúarinnar fyrir SVÖR virkuðu ekki**: WCF túlkar
+   ChannelProtectionRequirements úr binding-parametrum spegluð fyrir client-rásina, svo gamla
+   uppsetningin KRAFÐIST dulkóðaðs svars → fyrsta alvöru gagnasvarið féll á
+   „Body … was not encrypted" (fault-svör sluppu alltaf í gegn — lúta vægari reglum — svo þetta
+   sást aldrei fyrr). Lagað í HKProtectionLevel.cs (speglun) + hk-bridge.cs (typed universal
+   contract með ProtectionLevel per skilaboð: fyrirspurn EncryptAndSign, svar Sign).
+3. **ReplyBodyXml-lykkjan** braut XML-skrifarann á öllum vel heppnuðum (afkóðuðum) svörum —
+   dýptartalningin er önnur en í berum skeytum. Lagað.
+
+Auk þess: bankinn **XSD-hafnar fyrirspurn án `<Account>`** (villa 1200) þótt WSDL segi
+minOccurs=0 — `ARION_B2B_DEBIT_ACCOUNT` er nú skylda í prófunarskriptunum (appið sendir alltaf
+reikning). **Staðfest lifandi 6.8:** GetAccountStatement skilar yfirliti með færslum gegnum
+HK-brúna á ws.b2b.is. Villa 1000/14000-kaflarnir hér fyrir neðan standa sem SAGA — ályktunin
+„vandinn er bankamegin" reyndist röng. Eftir breytingu á brúarkóðanum: STÖÐVA gamla ferlið,
+`build.cmd`, ræsa aftur (exe-ið er læst á meðan gamla keyrir).
+
+## 2026-07-27: HK-BRÚIN SMÍÐUÐ (deploy/hk-bridge/) — bíður aðgangs hjá Arion
 
 **Eigin brú fyrir 20131015-fjölskylduna** (yfirlit + kröfuþjónusta + greiðslur) sem leysir
 "Body was not encrypted"-vandann í gamla 2017-Bridge: `deploy/hk-bridge/hk-bridge.cs` +

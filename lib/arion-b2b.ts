@@ -101,13 +101,23 @@ async function fetchBillList(method: "GetBills" | "GetBillsInDirectDebit"): Prom
       method: "POST",
       headers: { "content-type": "text/xml; charset=utf-8", SOAPAction: `"${NS}/IBillService/${method}"` },
       body: envelope,
+      // Óvaktað cron-kall má ekki hanga á sjálfgefnum undici-mörkum ef Windows-vélin er half-open.
+      signal: AbortSignal.timeout(30_000),
     });
     const text = await res.text();
-    if (!res.ok) return { ok: false, bills: [], error: `B2B Bridge svaraði ${res.status}: ${text.slice(0, 300)}` };
-    const parsed = parser.parse(text) as Record<string, unknown>;
+    // SOAP-fault kemur með HTTP 500 — þátta fault Á UNDAN res.ok svo bankavillan birtist
+    // skiljanlega í stað 300 stafa af hráu XML.
+    const parsed = ((): Record<string, unknown> => { try { return parser.parse(text) as Record<string, unknown>; } catch { return {}; } })();
     const body = ((parsed.Envelope as Record<string, unknown>)?.Body ?? {}) as Record<string, unknown>;
     const fault = body.Fault as Record<string, unknown> | undefined;
-    if (fault) return { ok: false, bills: [], error: `B2B villa: ${JSON.stringify(fault).slice(0, 300)}` };
+    if (fault) {
+      const flat = JSON.stringify(fault);
+      const txt = flat.match(/"BanksErrorText":"([^"]{1,300})"/) ?? flat.match(/"GeneralErrorText":"([^"]{1,300})"/) ?? flat.match(/"faultstring":"([^"]{1,300})"/);
+      return { ok: false, bills: [], error: `B2B villa: ${txt ? txt[1] : flat.slice(0, 300)}` };
+    }
+    if (!res.ok) return { ok: false, bills: [], error: `B2B Bridge svaraði ${res.status}: ${text.slice(0, 300)}` };
+    // 200 án svar-elementsins (HTML/proxy-rusl) má ekki líta út eins og "engar kröfur".
+    if (!(`${method}Response` in body)) return { ok: false, bills: [], error: `Óvænt svar frá Bridge (ekkert ${method}Response): ${text.slice(0, 200)}` };
     const resp = (body[`${method}Response`] ?? {}) as Record<string, unknown>;
     const result = (resp[`${method}Result`] ?? {}) as Record<string, unknown>;
     const rows = arr(result.BillInfo as Record<string, unknown> | Record<string, unknown>[]);

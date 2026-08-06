@@ -35,7 +35,7 @@ const envelope =
   `<at:RecordFrom>1</at:RecordFrom><at:RecordTo>50</at:RecordTo>` +
   `</Query></GetAccountStatement></s:Body></s:Envelope>`;
 
-const r = await fetch("http://localhost/Temporary_Listen_Addresses/hkbridge/StatementService", {
+const r = await fetch(process.env.HKBRIDGE_URL || "http://localhost/Temporary_Listen_Addresses/hkbridge/StatementService", {
   method: "POST",
   headers: { "content-type": "text/xml; charset=utf-8", SOAPAction: `"${ACTION}"` },
   body: envelope,
@@ -44,11 +44,11 @@ const text = await r.text();
 console.log("HTTP:", r.status);
 const has = (s) => text.includes(s);
 if (has("GetAccountStatementResponse")) {
+  // Prentum ALDREI fjárhæðir/stöðu — bara að gögnin hafi komið (skjáútskrift getur lent víða).
   const bal = text.match(/<(?:\w+:)?Balance>([^<]+)</)?.[1];
-  const iban = text.match(/<(?:\w+:)?IBAN>([^<]+)</)?.[1];
-  const txCount = (text.match(/<(?:\w+:)?Transaction>/g) || []).length;
+  const txCount = (text.match(/<(?:\w+:)?TransactionDate>/g) || []).length;
   console.log("✓✓✓ GetAccountStatementResponse frá BANKANUM gegnum HK-brúna!");
-  console.log("  Staða reiknings:", bal ?? "(fannst ekki)", "| IBAN endar á:", iban ? "…" + iban.slice(-4) : "?", "| færslur síðustu 7 daga:", txCount);
+  console.log("  Staða reiknings:", bal ? "(kom — ekki prentuð)" : "(fannst ekki)", "| færslur síðustu 7 daga:", txCount);
 } else if (has("faultstring")) {
   console.log("SOAP FAULT:", text.match(/<faultstring>([\s\S]{0,300}?)<\/faultstring>/)?.[1]);
 } else {

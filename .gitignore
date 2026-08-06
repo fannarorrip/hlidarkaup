@@ -28,3 +28,4 @@ hlidarkaup-signature.pdf
 # Local Netlify folder
 .netlify
 sjalfsali-applications.json
+deploy/hk-bridge/hk-bridge-test.exe

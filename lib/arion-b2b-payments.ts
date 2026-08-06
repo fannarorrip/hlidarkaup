@@ -31,12 +31,13 @@ function cfg(): Cfg {
   };
 }
 
-export interface PaymentsStatus { configured: boolean; have: { url: boolean; user: boolean; pass: boolean; debitAccount: boolean } }
+export interface PaymentsStatus { configured: boolean; have: { url: boolean; user: boolean; pass: boolean; debitAccount: boolean; debitOwnerId: boolean } }
 export function paymentsStatus(): PaymentsStatus {
   const c = cfg(); const has = (v: string) => v.length > 0;
+  // debitOwnerId er líka skylda: án hans færi tómt/vantandi AccountOwnerID og payor-kt á vírinn.
   return {
-    configured: has(c.url) && has(c.user) && has(c.pass) && c.debitAccount.length === 12,
-    have: { url: has(c.url), user: has(c.user), pass: has(c.pass), debitAccount: c.debitAccount.length === 12 },
+    configured: has(c.url) && has(c.user) && has(c.pass) && c.debitAccount.length === 12 && c.debitOwnerId.length === 10,
+    have: { url: has(c.url), user: has(c.user), pass: has(c.pass), debitAccount: c.debitAccount.length === 12, debitOwnerId: c.debitOwnerId.length === 10 },
   };
 }
 
@@ -46,12 +47,17 @@ const arr = <T>(v: T | T[] | undefined): T[] => (Array.isArray(v) ? v : v == nul
 const isk = (n: number) => (Math.round(Math.abs(n) * 100) / 100).toFixed(2); // xs:decimal, 2 fraction digits
 
 // SOAP 1.2 Fault detail carries IOBSFault (ns .../2013/10/15/Exceptions) — surface the Icelandic text.
+// BanksErrorText (raunvillan frá bankanum) FYRST í sér-match: eitt regex með víxlröð valdi alltaf
+// GeneralErrorText („Almenn villa") því hann stendur framar í skjalinu — og kóðarnir fylgja með.
 function faultText(body: Record<string, unknown>): string | null {
   const fault = body.Fault as Record<string, unknown> | undefined;
   if (!fault) return null;
   const flat = JSON.stringify(fault);
-  const m = flat.match(/"(?:BanksErrorText|GeneralErrorText|GeneralSourceText)":"([^"]{1,200})"/);
-  return m ? m[1] : flat.slice(0, 300);
+  const txt = flat.match(/"BanksErrorText":"([^"]{1,300})"/) ?? flat.match(/"GeneralErrorText":"([^"]{1,300})"/) ?? flat.match(/"GeneralSourceText":"([^"]{1,300})"/);
+  const gc = flat.match(/"GeneralErrorCode":"?(\d{1,6})/);
+  const bc = flat.match(/"BanksErrorCode":"?(\d{1,6})/);
+  const codes = gc || bc ? ` (villa ${gc?.[1] ?? "?"}/${bc?.[1] ?? "?"})` : "";
+  return txt ? txt[1] + codes : flat.slice(0, 300);
 }
 
 export interface PayClaimInput {
@@ -88,9 +94,11 @@ export async function payClaim(input: PayClaimInput): Promise<PayResult> {
   if (!(input.amount > 0)) return { ok: false, status: "invalid", error: "Upphæð verður að vera stærri en 0." };
 
   // Element order is schema-enforced: In = choice item FIRST, then Amount, then Description.
-  // DateOfForwardPayment omitted = pay now. (If the Bridge faults 1200 on a missing element,
-  // the schema vintage requires it — then send today's date explicitly.)
   // SOAP 1.1 toward the Bridge (ClearUsernameBinding, Soap11) — the Bridge converts upstream.
+  // DateOfForwardPayment er SKYLDA (minOccurs=1 í lifandi WSDL 6.8.2026) og kemur Á EFTIR In;
+  // dagurinn í dag (staðartími) = greiða strax. Vantandi skyldureitur = 1000/14000-mynstrið.
+  const nu = new Date();
+  const idag = `${nu.getFullYear()}-${String(nu.getMonth() + 1).padStart(2, "0")}-${String(nu.getDate()).padStart(2, "0")}`;
   const envelope =
     `<?xml version="1.0" encoding="utf-8"?>` +
     `<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" xmlns:pt="${PT}">` +
@@ -99,7 +107,9 @@ export async function payClaim(input: PayClaimInput): Promise<PayResult> {
     `<wsse:Password Type="${PW_TEXT}">${esc(cfg().pass)}</wsse:Password></wsse:UsernameToken>` +
     `</wsse:Security></s:Header>` +
     `<s:Body><DoPayment xmlns="${P}"><Payment>` +
-    `<pt:Out><pt:Account>${esc(c.debitAccount)}</pt:Account><pt:AccountOwnerID>${esc(c.debitOwnerId)}</pt:AccountOwnerID></pt:Out>` +
+    `<pt:Out><pt:Account>${esc(c.debitAccount)}</pt:Account>` +
+    (c.debitOwnerId ? `<pt:AccountOwnerID>${esc(c.debitOwnerId)}</pt:AccountOwnerID>` : "") +
+    `</pt:Out>` +
     `<pt:In>` +
     `<pt:Claim><pt:Account>${esc(claimAccount)}</pt:Account><pt:Claimant>${esc(claimant)}</pt:Claimant>` +
     `<pt:PayorID>${esc(payor)}</pt:PayorID><pt:DueDate>${esc(input.dueDate)}</pt:DueDate>` +
@@ -107,6 +117,7 @@ export async function payClaim(input: PayClaimInput): Promise<PayResult> {
     `<pt:Amount>${isk(input.amount)}</pt:Amount>` +
     (input.description ? `<pt:Description>${esc(String(input.description).slice(0, 35))}</pt:Description>` : "") +
     `</pt:In>` +
+    `<pt:DateOfForwardPayment>${idag}</pt:DateOfForwardPayment>` +
     `</Payment></DoPayment></s:Body></s:Envelope>`;
 
   try {

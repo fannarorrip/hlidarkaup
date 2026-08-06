@@ -45,7 +45,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         where b.id = $1`, [id])).rows[0];
     if (!b) { await revert(); return NextResponse.json({ ok: false, message: "Krafa fannst ekki." }); }
 
-    const claimAccount = `${(b.bank || "").replace(/\D/g, "")}${(b.ledger || "").replace(/\D/g, "")}${(b.number || "").replace(/\D/g, "").padStart(6, "0")}`;
+    // Núll-padda ALLA þrjá hlutana (útibú 4 + höfuðbók 2 + númer 6) — gildi með týndum
+    // forystunúllum ("301" f. "0301") gæfu annars 11 stafa reikning og höfnun að óþörfu.
+    const claimAccount = `${(b.bank || "").replace(/\D/g, "").padStart(4, "0")}${(b.ledger || "").replace(/\D/g, "").padStart(2, "0")}${(b.number || "").replace(/\D/g, "").padStart(6, "0")}`;
     const amount = Math.abs(Number(b.amount_due) || 0);
     if (claimAccount.length !== 12 || !b.due_date || !b.claimant_id || !amount) {
       await revert();

@@ -46,6 +46,17 @@ using System.Text;
 using System.Xml;
 using IsIT.B2B.Common.Security;
 
+// Samningslaus „universal“ WCF-samningur (Action=*) — í stað hráa IRequestChannel svo hægt sé
+// að stilla verndarstig PER SKILABOÐ: fyrirspurn EncryptAndSign (bankinn krefst dulkóðaðs Body)
+// en svar SIGN ONLY (bankinn undirritar svör en dulkóðar þau EKKI — ódulkóðað svar með
+// IRequestChannel-sjálfgefnu kröfunum felldi "required message part was not encrypted", 6.8.2026).
+[ServiceContract]
+public interface IUniversalRequest
+{
+    [OperationContract(Action = "*", ReplyAction = "*")]
+    Message Call(Message request);
+}
+
 static class HkBridge
 {
     const string SecurityNs = "http://IcelandicOnlineBanking/Security/";
@@ -54,7 +65,7 @@ static class HkBridge
 
     static X509Certificate2 clientCert, bankCert;
     static readonly Dictionary<string, string> upstream = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-    static readonly Dictionary<string, IChannelFactory<IRequestChannel>> factories = new Dictionary<string, IChannelFactory<IRequestChannel>>(StringComparer.OrdinalIgnoreCase);
+    static readonly Dictionary<string, ChannelFactory<IUniversalRequest>> factories = new Dictionary<string, ChannelFactory<IUniversalRequest>>(StringComparer.OrdinalIgnoreCase);
     static readonly object factoryLock = new object();
 
     static int Main(string[] args)
@@ -188,12 +199,14 @@ static class HkBridge
 
     static Message CallBank(string svc, string url, string action, XmlElement payload, string user, string pass)
     {
-        IChannelFactory<IRequestChannel> factory = GetFactory(svc, url);
+        ChannelFactory<IUniversalRequest> factory = GetFactory(svc, url);
         var identity = EndpointIdentity.CreateDnsIdentity(bankCert.GetNameInfo(X509NameType.SimpleName, false));
-        IRequestChannel channel = factory.CreateChannel(new EndpointAddress(new Uri(url), identity));
+        IUniversalRequest channel = factory.CreateChannel(new EndpointAddress(new Uri(url), identity));
+        IClientChannel cc = (IClientChannel)channel;
         try
         {
-            channel.Open();
+            cc.OperationTimeout = TimeSpan.FromSeconds(100);
+            cc.Open();
             // NOTE: CreateMessage reads the body LAZILY (at Request/serialization time) — the reader
             // must stay open until the call completes, so no using-block here (XmlNodeReader holds
             // no unmanaged resources; GC handles it).
@@ -203,21 +216,29 @@ static class HkBridge
             // The 20131015 services take the B2B user as plain headers (Arion SampleClients pattern).
             msg.Headers.Add(MessageHeader.CreateHeader("UserName", SecurityNs, user));
             msg.Headers.Add(MessageHeader.CreateHeader("Password", SecurityNs, pass));
-            Message reply = channel.Request(msg, TimeSpan.FromSeconds(100));
-            channel.Close();
+            Message reply = channel.Call(msg);
+            cc.Close();
             return reply;
         }
-        catch { try { channel.Abort(); } catch { } throw; }
+        catch { try { cc.Abort(); } catch { } throw; }
     }
 
-    static IChannelFactory<IRequestChannel> GetFactory(string svc, string url)
+    static ChannelFactory<IUniversalRequest> GetFactory(string svc, string url)
     {
         lock (factoryLock)
         {
-            IChannelFactory<IRequestChannel> f;
+            ChannelFactory<IUniversalRequest> f;
             if (factories.TryGetValue(svc, out f) && f.State == CommunicationState.Opened) return f;
             var binding = new HKArionBinding();
-            var cf = new ChannelFactory<IRequestChannel>(binding);
+            var cf = new ChannelFactory<IUniversalRequest>(binding);
+            // Verndarstig PER SKILABOÐ á samningnum — þetta er leiðin sem WCF virðir í raun:
+            // fyrirspurn (Input) dulkóðuð+undirrituð, svar (Output) BARA undirritað, því bankinn
+            // dulkóðar ekki svör (WSDL-stefnan hans telur einungis SignedParts).
+            foreach (System.ServiceModel.Description.OperationDescription od in cf.Endpoint.Contract.Operations)
+                foreach (System.ServiceModel.Description.MessageDescription md in od.Messages)
+                    md.ProtectionLevel = md.Direction == System.ServiceModel.Description.MessageDirection.Input
+                        ? System.Net.Security.ProtectionLevel.EncryptAndSign
+                        : System.Net.Security.ProtectionLevel.Sign;
             cf.Credentials.ClientCertificate.Certificate = clientCert;
             cf.Credentials.ServiceCertificate.DefaultCertificate = bankCert;
             cf.Credentials.ServiceCertificate.Authentication.CertificateValidationMode = X509CertificateValidationMode.None; // per Arion's own sample
@@ -245,9 +266,16 @@ static class HkBridge
         }
         using (XmlDictionaryReader r = reply.GetReaderAtBodyContents())
         {
+            // Dýptartalning afkóðaðs (áður dulkóðaðs) svars er önnur en í berum skeytum — gamla
+            // skilyrðið (Depth != 0) skrifaði þá einum EndElement of mikið og felldi skrifarann.
+            // Öruggt óháð dýpt: skrifa element-undirtré þar til Body lokast eða lesarinn tæmist.
             var sb = new StringBuilder();
             using (var w = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = true, ConformanceLevel = ConformanceLevel.Fragment }))
-                while (r.NodeType != XmlNodeType.EndElement || r.Depth != 0) { if (r.NodeType == XmlNodeType.None) break; w.WriteNode(r, false); }
+                while (!r.EOF && r.NodeType != XmlNodeType.EndElement)
+                {
+                    if (r.NodeType == XmlNodeType.Element) w.WriteNode(r, false);
+                    else if (!r.Read()) break;
+                }
             return sb.ToString();
         }
     }

@@ -63,12 +63,15 @@ namespace IsIT.B2B.Common.Security
             MessagePartSpecification bodyAndAuth = new MessagePartSpecification(true, authHeaders);
             MessagePartSpecification body = new MessagePartSpecification(true);
             MessagePartSpecification none = new MessagePartSpecification();
-            req.OutgoingSignatureParts.AddParts(bodyAndAuth, "*");  // sign request body + auth headers
-            req.OutgoingEncryptionParts.AddParts(body, "*"); // encrypt the BODY only — headers stay
-            // readable (classic WSS pattern; an EncryptedHeader would hide UserName from the bank's
-            // auth module). Credentials remain protected by TLS + the signature.
-            req.IncomingSignatureParts.AddParts(body, "*");   // require signed response body
-            req.IncomingEncryptionParts.AddParts(none, "*");  // bank does NOT encrypt responses
+            // ATH SPEGLUN (staðfest 6.8.2026): WCF túlkar ChannelProtectionRequirements úr
+            // binding-parametrum frá SJÓNARHÓLI ÞJÓNUSTUNNAR og speglar þær fyrir client-rásina —
+            // "Incoming" hér = FYRIRSPURNIN okkar, "Outgoing" = SVAR bankans. Gamla uppsetningin
+            // (Outgoing=encrypt body) varð því að kröfu um DULKÓÐAÐ SVAR og felldi fyrstu
+            // alvöru gagnasvörin með "required message part was not encrypted".
+            req.IncomingSignatureParts.AddParts(bodyAndAuth, "*"); // fyrirspurn: sign body + auth headers
+            req.IncomingEncryptionParts.AddParts(body, "*");       // fyrirspurn: encrypt BODY (bankakrafa)
+            req.OutgoingSignatureParts.AddParts(body, "*");        // svar: krefjast undirritaðs body
+            req.OutgoingEncryptionParts.AddParts(none, "*");       // svar: bankinn dulkóðar EKKI svör
             parameters.Add(req);
         }
     }
