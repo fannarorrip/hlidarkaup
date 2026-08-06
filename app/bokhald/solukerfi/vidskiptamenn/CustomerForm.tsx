@@ -21,7 +21,7 @@ export default function CustomerForm({ customer }: { customer?: CustomerRow | nu
     is_account: customer?.is_account ?? false, is_active: customer?.is_active ?? true,
     rafraen_vidskipti: customer?.rafraen_vidskipti ?? false,
     email_each_sale: customer?.email_each_sale ?? false,
-    billing_mode: ["per_trip", "per_trip_invoice", "staff"].includes(customer?.billing_mode ?? "") ? (customer!.billing_mode as string) : "consolidated",
+    billing_mode: ["per_trip", "per_trip_invoice", "staff", "instore"].includes(customer?.billing_mode ?? "") ? (customer!.billing_mode as string) : "consolidated",
   });
   const set = (k: string, v: string | boolean) => setF((p) => ({ ...p, [k]: v }));
   const [saving, setSaving] = useState(false);
@@ -101,9 +101,13 @@ export default function CustomerForm({ customer }: { customer?: CustomerRow | nu
             <option value="per_trip_invoice">Hver verslun — reikningur strax (engin krafa)</option>
             <option value="per_trip">Hver verslun — reikningur og krafa strax</option>
             <option value="staff">Starfsmaður — dregst af launum (engin krafa)</option>
+            <option value="instore">Safna saman — greiðir í verslun um mánaðamót (engin krafa)</option>
           </select>
           {f.billing_mode === "staff" && (
             <p className="text-xs text-gray-500 mt-1.5">Úttektir safnast í EINN mánaðarreikning í mánaðaruppgjöri en ENGIN bankakrafa stofnast — reikningurinn er frádráttarseðill sem dregst af launum við launakeyrslu.</p>
+          )}
+          {f.billing_mode === "instore" && (
+            <p className="text-xs text-gray-500 mt-1.5">Úttektir safnast í EINN mánaðarreikning í mánaðaruppgjöri en ENGIN bankakrafa stofnast — viðskiptamaðurinn kemur í verslunina um mánaðamót og borgar summuna á posanum („Innborgun á reikning" á kassanum).</p>
           )}
         </div>
       </div>

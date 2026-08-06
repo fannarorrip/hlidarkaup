@@ -59,6 +59,10 @@ export default function StaffTill() {
   const [custOpen, setCustOpen] = useState(false);
   const [custQ, setCustQ] = useState("");
   const [custResults, setCustResults] = useState<Customer[]>([]);
+  const [innbOpen, setInnbOpen] = useState(false);         // Innborgun á reikning (viðskiptamaður borgar skuld)
+  const [innbBal, setInnbBal] = useState<number | null>(null);
+  const [innbAmt, setInnbAmt] = useState("");
+  const [innbDone, setInnbDone] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [cashFor, setCashFor] = useState(false);
@@ -601,6 +605,46 @@ export default function StaffTill() {
       else if (res === "unknown") { setSplitTenders(paid); setError("Símgreiðslan VAR rukkuð en ÓVÍST er hvort salan bókaðist — athugaðu FYRRI SÖLUR. Sé salan EKKI þar: Skipta greiðslu → „Bóka sölu“ (rukkar ekki aftur)."); }
     } finally { setBusy(false); }
   }
+  // INNBORGUN Á REIKNING: viðskiptamaður (t.d. „greiðir í verslun um mánaðamót") borgar
+  // úttektarsummuna sína á kassanum — rukkað FYRST (posi, sama öryggislag og salan), svo
+  // bókað Dr kort/sjóður Cr kröfulykill hans. Mistakist bókun eftir rukkun bókar
+  // „Kort — þegar rukkað"-leiðin án þess að rukka aftur (sama vörn og í sölunni).
+  async function openInnborgun() {
+    if (!customer) return;
+    setInnbOpen(true); setInnbBal(null); setInnbAmt(""); setInnbDone(""); setError("");
+    try {
+      const r = await fetch(`/api/kassi/innborgun?customer=${customer.id}`);
+      const d = await r.json();
+      if (d.ok) { setInnbBal(d.balance); if (d.balance > 0) setInnbAmt(String(d.balance)); }
+    } catch { /* staðan er hjálpartala — innborgunin sjálf virkar án hennar */ }
+  }
+  async function doInnborgun(method: "card" | "cash" | "card_done") {
+    if (!customer) return;
+    const amt = Math.round(Number(innbAmt) || 0);
+    if (!(amt > 0)) { setError("Sláðu inn upphæð."); return; }
+    setBusy(true); setError("");
+    try {
+      if (method === "card") {
+        const ok = await chargeCard(amt, { unknownHint: "ÓVÍST er hvort innborgunin var rukkuð — skoðaðu POSANN. EF kvittun kom: veldu „Kort — þegar rukkað á posa“ (bókar án þess að rukka aftur)." });
+        if (!ok) return;
+      }
+      const r = await fetch("/api/kassi/innborgun", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ customer_id: customer.id, amount: amt, method: method === "cash" ? "cash" : "card", reg: regRef.current }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!d.ok) {
+        setError(method === "cash"
+          ? (d.error || "Bókun mistókst — reyndu aftur.")
+          : "Kortið VAR rukkað en bókunin mistókst — veldu „Kort — þegar rukkað á posa“ til að reyna bókunina aftur (rukkar EKKI aftur).");
+        return;
+      }
+      setInnbDone(`✓ Innborgun ${kr(amt)} bókuð (${d.voucher}).`);
+      setInnbBal((b) => (b == null ? b : b - amt));
+      setInnbAmt("");
+    } finally { setBusy(false); }
+  }
+
   // Refund a card ON the posi (skil). Standalone refund — the customer taps their card and gets the
   // money back. Same waiting screen + "Hætta við" (Abort) as a charge; returns approval only.
   async function refundCard(amount: number): Promise<boolean> {
@@ -862,6 +906,12 @@ export default function StaffTill() {
                   <PayBtn label="Símgreiðsla" cls="bg-white border-2 border-gray-300 text-gray-600 hover:bg-gray-50" onClick={() => pay("transfer")} disabled={busy || !cart.length} />
                 </div>
                 <button onClick={openSplit} disabled={busy || !cart.length} className={`mt-2 w-full py-2.5 rounded-lg border-2 text-sm font-semibold disabled:opacity-40 ${splitTenders.length ? "border-amber-500 bg-amber-50 text-amber-700 hover:bg-amber-100" : "border-dashed border-gray-300 text-gray-600 hover:bg-gray-50"}`}>{splitTenders.length ? `Skipting í gangi — ${kr(splitRemaining)} eftir` : "Skipta greiðslu"}</button>
+                {customer?.is_account && !cart.length && !splitTenders.length && (
+                  <button onClick={openInnborgun} disabled={busy}
+                    className="mt-2 w-full py-2.5 rounded-lg border-2 border-[#2C687B] text-[#2C687B] text-sm font-semibold hover:bg-[#F0F7F6] disabled:opacity-40">
+                    Innborgun á reikning — {customer.name}
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -889,6 +939,43 @@ export default function StaffTill() {
               <TouchKeyboard onKey={kbKey} onBackspace={kbBack} onClear={kbClear} onClose={() => setKb(null)} variant="fixed" />
             </div>
           )}
+        </div>
+      )}
+
+      {/* Innborgun á reikning — viðskiptamaður borgar úttektarsummu sína (posi eða reiðufé) */}
+      {innbOpen && (
+        <div className="fixed inset-0 z-40 bg-black/40 flex items-start justify-center pt-14" onClick={() => !busy && setInnbOpen(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="font-bold text-lg">Innborgun á reikning</h2>
+              <button onClick={() => !busy && setInnbOpen(false)} className="text-gray-400 text-3xl leading-none w-11 h-11" aria-label="Loka">×</button>
+            </div>
+            <p className="text-sm text-gray-500 mb-3">
+              {customer?.name}
+              {innbBal != null && <> — staða reiknings: <b className="tabular-nums">{kr(Math.abs(innbBal))}</b>{innbBal < 0 ? " (INNEIGN)" : ""}</>}
+            </p>
+            {innbDone ? (
+              <>
+                <p className="text-sm text-green-700 font-medium mb-3">{innbDone}</p>
+                <button onClick={() => { setInnbOpen(false); setCustomer(null); }} className="w-full py-3 rounded-xl bg-[#21323A] text-white font-bold">Loka</button>
+              </>
+            ) : (
+              <>
+                <label className="block text-[11px] text-gray-500 mb-1">Upphæð (kr.)</label>
+                <input value={innbAmt} onChange={(e) => setInnbAmt(e.target.value.replace(/\D/g, ""))} inputMode="numeric"
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-lg tabular-nums outline-none focus:border-[#8CC7C4] mb-3" placeholder="0" />
+                {error && <p className="text-sm text-[#DB1A1A] font-medium mb-2">{error}</p>}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <PayBtn label="Kort (posi)" cls={`${RED} text-white`} onClick={() => doInnborgun("card")} disabled={busy || !(Number(innbAmt) > 0)} />
+                  <PayBtn label="Reiðufé" cls={`${INK} text-white`} onClick={() => doInnborgun("cash")} disabled={busy || !(Number(innbAmt) > 0)} />
+                </div>
+                <button onClick={() => doInnborgun("card_done")} disabled={busy || !(Number(innbAmt) > 0)}
+                  className="mt-2 w-full py-2 rounded-lg border border-gray-300 text-xs text-gray-500 hover:bg-gray-50 disabled:opacity-40">
+                  Kort — þegar rukkað á posa (bókar án þess að rukka aftur)
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
 

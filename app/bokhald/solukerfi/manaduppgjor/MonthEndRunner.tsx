@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { dags, kr } from "@/lib/format";
 
-interface PreviewCustomer { customerId: string; name: string; kennitala: string | null; rafraen: boolean; hasEmail: boolean; staff: boolean; tripCount: number; total: number }
+interface PreviewCustomer { customerId: string; name: string; kennitala: string | null; rafraen: boolean; hasEmail: boolean; staff: boolean; instore: boolean; tripCount: number; total: number }
 interface Preview { from: string; to: string; customers: PreviewCustomer[] }
 
 export default function MonthEndRunner({ defaultPeriod, emailPending }: { defaultPeriod: string; emailPending: number }) {
@@ -83,7 +83,10 @@ export default function MonthEndRunner({ defaultPeriod, emailPending }: { defaul
               <tbody>
                 {preview.customers.map((c) => (
                   <tr key={c.customerId} className="border-t border-gray-100">
-                    <td className="px-4 py-2">{c.name}{c.staff && <span className="ml-2 text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700">Starfsmaður — dregst af launum</span>}</td>
+                    <td className="px-4 py-2">{c.name}
+                      {c.staff && <span className="ml-2 text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700">Starfsmaður — dregst af launum</span>}
+                      {c.instore && <span className="ml-2 text-xs px-2 py-0.5 rounded bg-purple-50 text-purple-700">Greiðir í verslun</span>}
+                    </td>
                     <td className="px-4 py-2 font-mono text-gray-600">{c.kennitala ?? "—"}</td>
                     <td className="px-4 py-2 text-center text-gray-600">{c.tripCount}</td>
                     <td className="px-4 py-2 text-gray-500">{c.rafraen ? "Rafrænt (inExchange)" : c.hasEmail ? "PDF í tölvupósti" : "⚠ engin afhending"}</td>
