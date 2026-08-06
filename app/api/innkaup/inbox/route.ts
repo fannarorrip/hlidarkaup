@@ -16,7 +16,7 @@ export interface InboxRow {
 export async function GET() {
   const rows = await query<InboxRow>(`
     select e.id, e.received_at::text as received_at,
-           coalesce(nullif(e.from_name, ''), e.from_address, 'Óþekktur') as supplier,
+           coalesce(nullif(e.extracted->>'supplier', ''), nullif(e.from_name, ''), e.from_address, 'Óþekktur') as supplier,
            e.subject, e.attachment_name,
            (coalesce(e.attachment_mime,'') ilike '%xml%') as is_xml,
            nullif((e.extracted->>'totalGross'), '')::numeric as total,
