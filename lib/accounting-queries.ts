@@ -776,14 +776,26 @@ export interface GoodsReceiptLineRow {
   learned_match: boolean; // pörunin er LÆRÐ (supplier_items: vörunúmer birgja → þessi vara) — bókuð áður
   reviewed: boolean;      // „farið yfir"-hakið — línan ljósgræn í yfirferðinni
 }
+// TVÍTEKNIR BIRGJAR („Bananar" OG „Bananar ehf." sem tvær skráningar): minnið lítur á birgja
+// sem SAMA aðila þegar kennitalan er sú sama eða nafnið er eins fyrir utan félagsformsendingu
+// (ehf/hf/sf...). Annars „gleymdi" kerfið pörunum sem lærðust undir hinni skráningunni.
+const SUPPLIER_EQV = `join acc.suppliers s2 on s2.id = si.supplier_id and (
+        s2.id = s1.id
+        or (nullif(regexp_replace(coalesce(s1.kennitala,''),'\\D','','g'),'') is not null
+            and regexp_replace(coalesce(s2.kennitala,''),'\\D','','g') = regexp_replace(coalesce(s1.kennitala,''),'\\D','','g'))
+        or lower(unaccent(trim(regexp_replace(s2.name, '\\s+(ehf|hf|sf|slf|ohf)\\.?\\s*$', '', 'i')))) =
+           lower(unaccent(trim(regexp_replace(s1.name, '\\s+(ehf|hf|sf|slf|ohf)\\.?\\s*$', '', 'i'))))
+      )`;
+
 export const getReceiptLines = (receiptId: string) =>
   query<GoodsReceiptLineRow>(`select l.*, p.name as matched_name, p.markup::text as matched_markup,
       p.price_gross as matched_price, p.cost_price::text as matched_cost,
       exists (
         select 1 from acc.supplier_items si
         join acc.goods_receipts r on r.id = l.receipt_id
-        where si.supplier_id = r.supplier_id
-          and si.match_key = any(array[nullif(btrim(coalesce(l.gtin,'')),''), nullif(btrim(coalesce(l.supplier_item_id,'')),'')])
+        join acc.suppliers s1 on s1.id = r.supplier_id
+        ${SUPPLIER_EQV}
+        where si.match_key = any(array[nullif(btrim(coalesce(l.gtin,'')),''), nullif(btrim(coalesce(l.supplier_item_id,'')),'')])
           and si.product_number = l.matched_product_number
       ) as learned_match
     from acc.goods_receipt_lines l left join shop.products p on p.product_number = l.matched_product_number

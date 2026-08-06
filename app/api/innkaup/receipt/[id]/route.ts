@@ -54,13 +54,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // (t.d. PDF án kennitölu) fengu nafnalíkinda-gisk — lærða tengingin er sannleikurinn og
     // yfirskrifar giskið (keyrir á eftir línuvistuninni svo giskin úr vafranum vinni ekki).
     if (supplierJustAssigned) {
+      // Birgja-jafngildi: tvíteknar skráningar sama fyrirtækis (sama kennitala eða sama nafn
+      // án ehf/hf-endingar) teljast sami birgir — annars fannst gamli lærdómurinn ekki.
       await client.query(
         `update acc.goods_receipt_lines l
             set matched_product_number = si.product_number,
                 pack_qty = coalesce(l.pack_qty, si.pack_qty)
            from acc.supplier_items si
+           join acc.suppliers s2 on s2.id = si.supplier_id
+           join acc.suppliers s1 on s1.id = $2 and (
+             s2.id = s1.id
+             or (nullif(regexp_replace(coalesce(s1.kennitala,''),'\\D','','g'),'') is not null
+                 and regexp_replace(coalesce(s2.kennitala,''),'\\D','','g') = regexp_replace(coalesce(s1.kennitala,''),'\\D','','g'))
+             or lower(unaccent(trim(regexp_replace(s2.name, '\\s+(ehf|hf|sf|slf|ohf)\\.?\\s*$', '', 'i')))) =
+                lower(unaccent(trim(regexp_replace(s1.name, '\\s+(ehf|hf|sf|slf|ohf)\\.?\\s*$', '', 'i'))))
+           )
           where l.receipt_id = $1
-            and si.supplier_id = $2
             and si.match_key = any(array[nullif(btrim(coalesce(l.gtin,'')),''), nullif(btrim(coalesce(l.supplier_item_id,'')),'')])`,
         [id, supplier_id]);
     }

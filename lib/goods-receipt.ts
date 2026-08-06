@@ -22,11 +22,25 @@ interface Queryable { query<T = Record<string, unknown>>(text: string, params?: 
 // (3) nafnalíkindi aðeins sem síðasta hálmstrá á ópöruðu.
 export async function matchLine(client: Queryable, supplierId: string | null, line: ParsedLine): Promise<{ productNumber: string | null; packQty: number | null }> {
   if (supplierId) {
-    // Báðir mögulegir lyklar athugaðir — tengingin gæti hafa lærst á hvorn sem er.
+    // Báðir mögulegir lyklar athugaðir — tengingin gæti hafa lærst á hvorn sem er. Og birgja-
+    // JAFNGILDI: tvíteknar skráningar sama fyrirtækis („Bananar" og „Bananar ehf.") teljast
+    // sami birgir (sama kennitala eða sama nafn án félagsformsendingar).
     const keys = [line.gtin, line.supplierItemId].map((k) => (k ?? "").trim()).filter((k) => k !== "");
     if (keys.length) {
       const m = (await client.query<{ product_number: string; pack_qty: string | null }>(
-        `select product_number, pack_qty::text from acc.supplier_items where supplier_id = $1 and match_key = any($2::text[]) limit 1`, [supplierId, keys])).rows[0];
+        `select si.product_number, si.pack_qty::text as pack_qty
+         from acc.supplier_items si
+         join acc.suppliers s1 on s1.id = $1
+         join acc.suppliers s2 on s2.id = si.supplier_id and (
+           s2.id = s1.id
+           or (nullif(regexp_replace(coalesce(s1.kennitala,''),'\\D','','g'),'') is not null
+               and regexp_replace(coalesce(s2.kennitala,''),'\\D','','g') = regexp_replace(coalesce(s1.kennitala,''),'\\D','','g'))
+           or lower(unaccent(trim(regexp_replace(s2.name, '\\s+(ehf|hf|sf|slf|ohf)\\.?\\s*$', '', 'i')))) =
+              lower(unaccent(trim(regexp_replace(s1.name, '\\s+(ehf|hf|sf|slf|ohf)\\.?\\s*$', '', 'i'))))
+         )
+         where si.match_key = any($2::text[])
+         order by (si.supplier_id = $1) desc
+         limit 1`, [supplierId, keys])).rows[0];
       if (m) return { productNumber: m.product_number, packQty: m.pack_qty ? Number(m.pack_qty) : null };
     }
   }
