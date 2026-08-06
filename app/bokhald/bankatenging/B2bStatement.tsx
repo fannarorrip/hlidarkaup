@@ -10,7 +10,10 @@ interface Row {
   id: string; entry_reference: string; booking_date: string | null; amount: number; currency: string | null;
   counterparty: string | null; remittance: string | null; status: string;
   series_code: string | null; voucher_number: string | null; contra_account: string | null;
-  suggested_contra: string | null;   // learned counterparty→lykill rule
+  suggested_contra: string | null;   // learned counterparty→lykill rule (eða mynstur: Straumur→7716 o.fl.)
+  matched_series: string | null; matched_number: string | null;   // parað við þegar bókað fylgiskjal
+  sug_voucher_id: string | null; sug_series: string | null; sug_number: string | null;
+  sug_date: string | null; sug_desc: string | null; sug_candidates: number | null;  // pörunartillaga
 }
 interface BankAcct { account_number: string; name: string }
 
@@ -93,9 +96,76 @@ export default function B2bStatement({ bankAccounts, defaultBank, contraIn, cont
     finally { setBookingId(null); }
   }
 
+  /** Para línu við ÞEGAR bókað fylgiskjal (t.d. greidda innheimtukröfu) — engin ný bókun. */
+  async function pairOne(row: Row): Promise<boolean> {
+    if (!row.sug_voucher_id) return false;
+    const r = await fetch("/api/bankatenging/statement/match", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ bankTxId: row.id, voucherId: row.sug_voucher_id }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.message || "Villa");
+    setRows((prev) => prev?.map((x) => x.id === row.id
+      ? { ...x, status: "matched", matched_series: d.voucher?.series_code ?? row.sug_series, matched_number: d.voucher?.voucher_number ?? row.sug_number }
+      : x) ?? null);
+    return true;
+  }
+
+  async function pair(row: Row) {
+    setBookingId(row.id); setErr(""); setMsg("");
+    try { await pairOne(row); setMsg("✓ Parað — engin ný bókun (var þegar í bókhaldinu)."); }
+    catch (e) { setErr(e instanceof Error ? e.message : "Villa"); }
+    finally { setBookingId(null); }
+  }
+
+  async function unpair(row: Row) {
+    setBookingId(row.id); setErr(""); setMsg("");
+    try {
+      const r = await fetch("/api/bankatenging/statement/match", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ bankTxId: row.id, undo: true }),
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.message || "Villa");
+      setRows((prev) => prev?.map((x) => x.id === row.id ? { ...x, status: "unmatched", matched_series: null, matched_number: null } : x) ?? null);
+    } catch (e) { setErr(e instanceof Error ? e.message : "Villa"); }
+    finally { setBookingId(null); }
+  }
+
+  /** Para allar línur með ótvíræða tillögu (nákvæmlega eitt fylgiskjal kom til greina). */
+  async function pairObvious() {
+    const targets = (rows ?? []).filter((r) => r.status === "unmatched" && r.sug_voucher_id && r.sug_candidates === 1);
+    if (!targets.length) return;
+    setBulkBooking(true); setErr(""); setMsg("");
+    let ok = 0;
+    for (const row of targets) { try { if (await pairOne(row)) ok++; } catch { /* næsta */ } }
+    setMsg(`✓ Paraði ${ok} af ${targets.length} — þessar innborganir voru þegar bókaðar (kröfur/millifærslur).`);
+    setBulkBooking(false);
+  }
+
+  /** AI stingur upp á mótlyklum fyrir línur sem hvorki lærð regla né pörun skýrir. */
+  const [aiBusy, setAiBusy] = useState(false);
+  async function aiSuggest() {
+    const targets = (rows ?? []).filter((r) => r.status === "unmatched" && !r.sug_voucher_id && !r.suggested_contra && !(contra[r.id] ?? "").trim());
+    if (!targets.length) { setMsg("Allar óbókaðar línur eru þegar með tillögu."); return; }
+    setAiBusy(true); setErr(""); setMsg("");
+    try {
+      const r = await fetch("/api/bankatenging/statement/ai-suggest", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ids: targets.map((t) => t.id) }),
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.message || "Villa");
+      const got = Object.keys(d.suggestions ?? {}).length;
+      setContra((p) => ({ ...d.suggestions, ...p }));
+      setMsg(`🤖 AI stakk upp á mótlykli fyrir ${got} af ${targets.length} línum — yfirfarðu og bókaðu.`);
+    } catch (e) { setErr(e instanceof Error ? e.message : "Villa"); }
+    finally { setAiBusy(false); }
+  }
+
   /** Book every ticked, unbooked row with its own mótlykill — one by one, stopping on errors. */
   async function bookSelected() {
-    const targets = (rows ?? []).filter((r) => sel[r.id] && r.status !== "booked");
+    const targets = (rows ?? []).filter((r) => sel[r.id] && r.status === "unmatched");
     if (!targets.length) return;
     setBulkBooking(true); setErr(""); setMsg("");
     let ok = 0;
@@ -170,6 +240,23 @@ export default function B2bStatement({ bankAccounts, defaultBank, contraIn, cont
       {err && <div className="mb-3 text-sm rounded-lg px-3 py-2 bg-red-50 text-red-700">✗ {err}</div>}
       {msg && <div className="mb-3 text-sm rounded-lg px-3 py-2 bg-green-50 text-green-700">{msg}</div>}
 
+      {rows && rows.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          {rows.some((r) => r.status === "unmatched" && r.sug_voucher_id && r.sug_candidates === 1) && (
+            <button onClick={pairObvious} disabled={bulkBooking || bookingId !== null}
+              className="px-3 py-1.5 rounded-lg bg-sky-600 text-white text-xs font-semibold hover:bg-sky-700 disabled:opacity-40">
+              ≡ Para augljósar ({rows.filter((r) => r.status === "unmatched" && r.sug_voucher_id && r.sug_candidates === 1).length}) — þegar bókaðar
+            </button>
+          )}
+          {rows.some((r) => r.status === "unmatched" && !r.sug_voucher_id && !r.suggested_contra && !(contra[r.id] ?? "").trim()) && (
+            <button onClick={aiSuggest} disabled={aiBusy || bulkBooking}
+              className="px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-semibold hover:bg-gray-50 disabled:opacity-40">
+              {aiBusy ? "AI hugsar…" : "🤖 AI-tillögur á mótlykla"}
+            </button>
+          )}
+        </div>
+      )}
+
       {rows && (rows.length === 0 ? (
         <p className="text-sm text-gray-400">Engar hreyfingar á tímabilinu.</p>
       ) : (
@@ -180,8 +267,8 @@ export default function B2bStatement({ bankAccounts, defaultBank, contraIn, cont
             <tr>
               <th className="py-1 w-8">
                 <input type="checkbox"
-                  checked={rows.filter((r) => r.status !== "booked").length > 0 && rows.filter((r) => r.status !== "booked").every((r) => sel[r.id])}
-                  onChange={(e) => setSel(Object.fromEntries(rows.filter((r) => r.status !== "booked").map((r) => [r.id, e.target.checked])))}
+                  checked={rows.filter((r) => r.status === "unmatched").length > 0 && rows.filter((r) => r.status === "unmatched").every((r) => sel[r.id])}
+                  onChange={(e) => setSel(Object.fromEntries(rows.filter((r) => r.status === "unmatched").map((r) => [r.id, e.target.checked])))}
                   aria-label="Velja allar" />
               </th>
               <th className="py-1 font-medium">Dags.</th>
@@ -197,7 +284,7 @@ export default function B2bStatement({ bankAccounts, defaultBank, contraIn, cont
               return (
                 <tr key={r.id} className="border-t border-gray-100 align-top">
                   <td className="py-1.5">
-                    {r.status !== "booked" && (
+                    {r.status === "unmatched" && (
                       <input type="checkbox" checked={!!sel[r.id]} onChange={(e) => setSel((p) => ({ ...p, [r.id]: e.target.checked }))} aria-label="Velja" />
                     )}
                   </td>
@@ -205,6 +292,12 @@ export default function B2bStatement({ bankAccounts, defaultBank, contraIn, cont
                   <td className="py-1.5">
                     {r.counterparty || "—"}
                     {r.remittance && <span className="block text-[11px] text-gray-400">{r.remittance}</span>}
+                    {r.status === "unmatched" && r.sug_voucher_id && (
+                      <span className="block text-[11px] text-sky-700 mt-0.5">
+                        ≡ Stemmir líklega við {vNr(r.sug_series, r.sug_number)} ({dags(r.sug_date)}{r.sug_desc ? ` · ${r.sug_desc.slice(0, 40)}` : ""})
+                        {(r.sug_candidates ?? 1) > 1 && <span className="text-amber-600"> · {r.sug_candidates} koma til greina</span>}
+                      </span>
+                    )}
                   </td>
                   <td className={`py-1.5 text-right tabular-nums whitespace-nowrap ${inbound ? "text-green-700" : "text-gray-700"}`}>
                     {inbound ? "+" : "−"}{kr(Math.abs(r.amount))} kr.
@@ -212,15 +305,26 @@ export default function B2bStatement({ bankAccounts, defaultBank, contraIn, cont
                   <td className="py-1.5">
                     {r.status === "booked" ? (
                       <span className="text-xs text-green-700">✓ {vNr(r.series_code, r.voucher_number)}</span>
+                    ) : r.status === "matched" ? (
+                      <span className="text-xs text-sky-700" title="Innborgunin var þegar bókuð (t.d. greidd krafa) — pöruð, ekki bókuð aftur">
+                        ≡ {vNr(r.matched_series, r.matched_number)}
+                        <button onClick={() => unpair(r)} disabled={bookingId !== null || bulkBooking}
+                          className="ml-1.5 text-[10px] text-gray-400 hover:text-red-600 underline">aftengja</button>
+                      </span>
                     ) : (
                       <input value={contra[r.id] ?? defContra(r)} onChange={(e) => setContra((p) => ({ ...p, [r.id]: e.target.value }))}
                         placeholder={inbound ? "t.d. 7600" : "t.d. 9300"}
-                        title={r.suggested_contra ? "Lært af fyrri bókunum" : undefined}
+                        title={r.suggested_contra ? "Lært af fyrri bókunum / þekkt mynstur" : undefined}
                         className={`w-24 border rounded px-2 py-1 text-xs tabular-nums ${r.suggested_contra && (contra[r.id] ?? defContra(r)) === r.suggested_contra ? "border-emerald-300 bg-emerald-50/50" : "border-gray-300"}`} />
                     )}
                   </td>
-                  <td className="py-1.5">
-                    {r.status !== "booked" && (
+                  <td className="py-1.5 whitespace-nowrap">
+                    {r.status === "unmatched" && r.sug_voucher_id && (
+                      <button onClick={() => pair(r)} disabled={bookingId !== null || bulkBooking}
+                        title="Innborgunin er þegar í bókhaldinu — tengja hana við fylgiskjalið í stað þess að bóka aftur"
+                        className="mr-1.5 px-3 py-1 rounded-lg bg-sky-600 text-white text-xs font-semibold hover:bg-sky-700 disabled:opacity-40">{bookingId === r.id ? "…" : "Para"}</button>
+                    )}
+                    {r.status === "unmatched" && (
                       <button onClick={() => book(r)} disabled={bookingId !== null || bulkBooking || !(contra[r.id] ?? defContra(r)).trim()}
                         className="px-3 py-1 rounded-lg bg-gray-800 text-white text-xs font-semibold hover:bg-gray-900 disabled:opacity-40">{bookingId === r.id ? "Bóka…" : "Bóka"}</button>
                     )}
@@ -231,10 +335,10 @@ export default function B2bStatement({ bankAccounts, defaultBank, contraIn, cont
           </tbody>
         </table>
         </div>
-        {rows.some((r) => sel[r.id] && r.status !== "booked") && (
+        {rows.some((r) => sel[r.id] && r.status === "unmatched") && (
           <button onClick={bookSelected} disabled={bulkBooking || bookingId !== null}
             className="mt-3 px-4 py-1.5 rounded-lg bg-gray-800 text-white text-sm font-semibold hover:bg-gray-900 disabled:opacity-40">
-            {bulkBooking ? "Bóka…" : `Bóka valdar (${rows.filter((r) => sel[r.id] && r.status !== "booked").length})`}
+            {bulkBooking ? "Bóka…" : `Bóka valdar (${rows.filter((r) => sel[r.id] && r.status === "unmatched").length})`}
           </button>
         )}
         </>
@@ -243,6 +347,7 @@ export default function B2bStatement({ bankAccounts, defaultBank, contraIn, cont
       <p className="mt-3 text-[11px] text-gray-400">
         Innborgun (+) bókast: Debet bankalykill / Kredit mótlykill (t.d. 7600 viðskiptakröfur). Úttekt (−): Debet mótlykill / Kredit bankalykill (t.d. 9300 lánardrottnar).
         Kerfið man mótlykilinn fyrir hvern mótaðila (grænt = lært). Sama færsla bókast aðeins einu sinni; innandagsfærslur skila sér daginn eftir.
+        <span className="block mt-0.5">≡ = innborgunin var <b>þegar bókuð</b> annars staðar (greidd innheimtukrafa, millifærslusala af kassa) — hún parast við fylgiskjalið í stað þess að bókast aftur, svo ekkert kemur tvisvar inn. Útborgun Straums bókast á 7716 (kort á leiðinni) — afgangurinn á 7716 er þóknun Straums.</span>
       </p>
     </div>
   );

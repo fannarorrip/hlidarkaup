@@ -26,12 +26,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!bankAccount) return NextResponse.json({ ok: false, message: "Veldu bankalykil til að bóka greiðsluna á." });
 
   // Claim the bill for payment atomically — a double-click can never pay twice.
+  // Beingreiðslukröfur (is_debited) greiðast sjálfkrafa hjá bankanum — handgreiðsla á þeim
+  // væri tvígreiðsla, svo þær eru útilokaðar hér (UI-ið felur takkann; þetta er server-vörnin).
   const claimed = await db.query<{ id: string }>(
     `update acc.bank_bills set payment_status='initiating'
-      where id=$1 and status='open' and (payment_status is null or payment_status='failed')
+      where id=$1 and status='open' and coalesce(is_debited,false) = false
+        and (payment_status is null or payment_status='failed')
       returning id`, [id]);
   if (!claimed.rows[0]) {
-    return NextResponse.json({ ok: false, message: "Krafan er þegar í greiðsluferli eða frágengin." });
+    return NextResponse.json({ ok: false, message: "Krafan er þegar í greiðsluferli, frágengin — eða í beingreiðslu (greiðist sjálfkrafa)." });
   }
   const revert = () => db.query(
     `update acc.bank_bills set payment_status='failed' where id=$1 and payment_status='initiating'`, [id]).catch(() => {});
