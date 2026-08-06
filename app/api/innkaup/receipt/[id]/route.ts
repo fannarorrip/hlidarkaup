@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { applyDraftPrices } from "@/lib/goods-receipt";
+import { SUPPLIER_EQV_JOIN } from "@/lib/supplier-eqv";
 
 // Update a draft receipt: set the supplier, and per-line the matched product + received qty.
 // When a line gets matched, the supplier-item → product mapping is learned for next time.
@@ -54,21 +55,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // (t.d. PDF án kennitölu) fengu nafnalíkinda-gisk — lærða tengingin er sannleikurinn og
     // yfirskrifar giskið (keyrir á eftir línuvistuninni svo giskin úr vafranum vinni ekki).
     if (supplierJustAssigned) {
-      // Birgja-jafngildi: tvíteknar skráningar sama fyrirtækis (sama kennitala eða sama nafn
-      // án ehf/hf-endingar) teljast sami birgir — annars fannst gamli lærdómurinn ekki.
+      // Birgja-jafngildi (lib/supplier-eqv.ts): tvíteknar skráningar sama fyrirtækis teljast
+      // sami birgir — annars fannst gamli lærdómurinn ekki þegar birgir var nývalinn.
       await client.query(
         `update acc.goods_receipt_lines l
             set matched_product_number = si.product_number,
                 pack_qty = coalesce(l.pack_qty, si.pack_qty)
            from acc.supplier_items si
-           join acc.suppliers s2 on s2.id = si.supplier_id
-           join acc.suppliers s1 on s1.id = $2 and (
-             s2.id = s1.id
-             or (nullif(regexp_replace(coalesce(s1.kennitala,''),'\\D','','g'),'') is not null
-                 and regexp_replace(coalesce(s2.kennitala,''),'\\D','','g') = regexp_replace(coalesce(s1.kennitala,''),'\\D','','g'))
-             or lower(unaccent(trim(regexp_replace(s2.name, '\\s+(ehf|hf|sf|slf|ohf)\\.?\\s*$', '', 'i')))) =
-                lower(unaccent(trim(regexp_replace(s1.name, '\\s+(ehf|hf|sf|slf|ohf)\\.?\\s*$', '', 'i'))))
-           )
+           join acc.suppliers s1 on s1.id = $2
+           ${SUPPLIER_EQV_JOIN}
           where l.receipt_id = $1
             and si.match_key = any(array[nullif(btrim(coalesce(l.gtin,'')),''), nullif(btrim(coalesce(l.supplier_item_id,'')),'')])`,
         [id, supplier_id]);
