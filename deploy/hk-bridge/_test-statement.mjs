@@ -7,9 +7,14 @@ const user = get("ARION_B2B_USERNAME") || get("ARION_USERNAME");
 const pass = get("ARION_B2B_PASSWORD") || get("ARION_PASSWORD");
 const account = (get("ARION_B2B_DEBIT_ACCOUNT") || "").replace(/\D/g, "");
 if (!user || !pass) { console.log("VANTAR ARION_B2B_USERNAME/PASSWORD í .env.local"); process.exit(1); }
-if (account.length !== 12) console.log("(ekkert 12-stafa ARION_B2B_DEBIT_ACCOUNT — sendi fyrirspurn ÁN Account; XSD leyfir það)");
+// Bankinn XSD-HAFNAR fyrirspurn án Account (villa 1200, staðfest 6.8) þó WSDL segi minOccurs=0.
+if (account.length !== 12) { console.log("VANTAR ARION_B2B_DEBIT_ACCOUNT í .env.local (12 tölustafir) — bankinn hafnar fyrirspurn án Account."); process.exit(1); }
 
-const A = "http://IcelandicOnlineBanking/2013/10/15";
+// VILLA LÖGUÐ 6.8: body-elementið á að vera í .../Accounts (elementFormDefault=qualified skv.
+// lifandi WSDL) — án þess afserjalar bankinn Query=null → villa 1000/14000 "Object reference not set".
+// SOAPAction er hins vegar ÁN /Accounts (wsaw:Action í WSDL).
+const ANS = "http://IcelandicOnlineBanking/2013/10/15/Accounts";
+const ACTION = "http://IcelandicOnlineBanking/2013/10/15/GetAccountStatement";
 const AT = "http://IcelandicOnlineBanking/2013/10/15/AccountTypes";
 const WSSE = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd";
 const PW = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText";
@@ -24,15 +29,15 @@ const envelope =
   `<wsse:UsernameToken><wsse:Username>${esc(user)}</wsse:Username>` +
   `<wsse:Password Type="${PW}">${esc(pass)}</wsse:Password></wsse:UsernameToken>` +
   `</wsse:Security></s:Header>` +
-  `<s:Body><GetAccountStatement xmlns="${A}"><Query>` +
-  (account.length === 12 ? `<at:Account>${esc(account)}</at:Account>` : "") +
+  `<s:Body><GetAccountStatement xmlns="${ANS}"><Query>` +
+  `<at:Account>${esc(account)}</at:Account>` +
   `<at:DateFrom>${iso(from)}</at:DateFrom><at:DateTo>${iso(to)}</at:DateTo>` +
   `<at:RecordFrom>1</at:RecordFrom><at:RecordTo>50</at:RecordTo>` +
   `</Query></GetAccountStatement></s:Body></s:Envelope>`;
 
 const r = await fetch("http://localhost/Temporary_Listen_Addresses/hkbridge/StatementService", {
   method: "POST",
-  headers: { "content-type": "text/xml; charset=utf-8", SOAPAction: `"${A}/GetAccountStatement"` },
+  headers: { "content-type": "text/xml; charset=utf-8", SOAPAction: `"${ACTION}"` },
   body: envelope,
 });
 const text = await r.text();

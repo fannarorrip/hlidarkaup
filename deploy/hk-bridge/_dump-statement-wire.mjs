@@ -12,15 +12,19 @@ const user = get("ARION_B2B_USERNAME") || get("ARION_USERNAME");
 const pass = get("ARION_B2B_PASSWORD") || get("ARION_PASSWORD");
 const account = (get("ARION_B2B_DEBIT_ACCOUNT") || "").replace(/\D/g, "");
 if (!user || !pass) { console.log("VANTAR ARION_B2B_USERNAME/PASSWORD í .env.local"); process.exit(1); }
+// Bankinn XSD-HAFNAR fyrirspurn án Account (villa 1200, staðfest 6.8) þó WSDL segi hann valfrjálsan.
+if (account.length !== 12) { console.log("VANTAR ARION_B2B_DEBIT_ACCOUNT í .env.local (12 tölustafir: útibú4+höfuðbók2+reikningur6) — bankinn hafnar fyrirspurn án Account."); process.exit(1); }
 
-const A = "http://IcelandicOnlineBanking/2013/10/15";
+// Body-elementið er í .../Accounts (elementFormDefault=qualified skv. lifandi WSDL) en
+// SOAPAction er ÁN /Accounts (wsaw:Action) — röng nafnrými hér voru einmitt 1000/14000-villan.
+const ANS = "http://IcelandicOnlineBanking/2013/10/15/Accounts";
 const AT = "http://IcelandicOnlineBanking/2013/10/15/AccountTypes";
 const WSSE = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd";
 const PW = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText";
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const iso = (d) => d.toISOString().slice(0, 10);
 const to = new Date(), from = new Date(Date.now() - 7 * 864e5);
-const action = `${A}/GetAccountStatement`;
+const action = "http://IcelandicOnlineBanking/2013/10/15/GetAccountStatement";
 
 const envelope =
   `<?xml version="1.0" encoding="utf-8"?>` +
@@ -29,8 +33,8 @@ const envelope =
   `<wsse:UsernameToken><wsse:Username>${esc(user)}</wsse:Username>` +
   `<wsse:Password Type="${PW}">${esc(pass)}</wsse:Password></wsse:UsernameToken>` +
   `</wsse:Security></s:Header>` +
-  `<s:Body><GetAccountStatement xmlns="${A}"><Query>` +
-  (account.length === 12 ? `<at:Account>${esc(account)}</at:Account>` : "") +
+  `<s:Body><GetAccountStatement xmlns="${ANS}"><Query>` +
+  `<at:Account>${esc(account)}</at:Account>` +
   `<at:DateFrom>${iso(from)}</at:DateFrom><at:DateTo>${iso(to)}</at:DateTo>` +
   `<at:RecordFrom>1</at:RecordFrom><at:RecordTo>50</at:RecordTo>` +
   `</Query></GetAccountStatement></s:Body></s:Envelope>`;
