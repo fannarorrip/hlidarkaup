@@ -203,9 +203,9 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
                           {/* Grænt ✓ = LÆRÐ pörun (vörunúmer birgja → þessi vara, bókuð áður) — hverfur ef línu er endurparað */}
                           {l.learned_match && rows[i]?.matched === l.matched_product_number &&
                             <span className="shrink-0 text-green-600 font-bold" title="Staðfest tenging — bókuð áður út frá vörunúmeri birgja">✓</span>}
-                          {/* „ný" = pörun sem minnið þekkir EKKI enn — lærist og fær grænt hak við vistun/bókun */}
+                          {/* „ný" = pörun sem minnið þekkir EKKI enn — lærist og fær grænt hak við BÓKUN (ekki vistun: sjálfvirk gisk mega ekki verða „staðfest") */}
                           {(supplierId ?? receipt.supplier_id) && rows[i]?.matched && !(l.learned_match && rows[i]?.matched === l.matched_product_number) &&
-                            <span className="shrink-0 text-[10px] px-1 py-0.5 rounded bg-gray-100 text-gray-400" title="Ný pörun — kerfið lærir hana og sýnir grænt hak eftir vistun eða bókun">ný</span>}
+                            <span className="shrink-0 text-[10px] px-1 py-0.5 rounded bg-gray-100 text-gray-400" title="Ný pörun — kerfið lærir hana og sýnir grænt hak eftir að móttakan er BÓKUÐ">ný</span>}
                           <div className="flex-1 min-w-0">
                             <ProductPicker value={rows[i]?.matched ?? null} valueName={rows[i]?.matchedName} onChange={(pn, name) => setRow(i, { matched: pn, matchedName: name })} />
                           </div>

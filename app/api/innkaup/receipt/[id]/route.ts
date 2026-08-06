@@ -69,30 +69,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         [id, supplier_id]);
     }
 
-    // Learn supplier-item → product mappings (+ pack size) for matched lines that carry a key.
-    // Pakkastærðin lærist með: næsti reikningur frá birginum fyllir hana sjálfkrafa á línuna.
-    const sid = (await client.query<{ supplier_id: string | null }>(`select supplier_id from acc.goods_receipts where id = $1`, [id])).rows[0]?.supplier_id;
-    if (sid) {
-      // DISTINCT ON: sama varan getur verið á FLEIRI en einni línu reiknings (Innnes o.fl.) —
-      // án dedup springur upsertið á "ON CONFLICT DO UPDATE cannot affect row a second time".
-      // Síðasta línan (hæsta line_no) vinnur. BÁÐIR lyklar lærðir (strikamerki OG vörunúmer
-      // birgja) — næsti reikningur sýnir stundum bara annan þeirra.
-      await client.query(
-        `insert into acc.supplier_items (supplier_id, match_key, product_number, pack_qty)
-         select distinct on (key) $1, key, matched_product_number, pack_qty
-         from (
-           select k.key, l.matched_product_number, l.pack_qty, l.line_no
-           from acc.goods_receipt_lines l
-           cross join lateral (values (nullif(btrim(coalesce(l.gtin,'')),'')),
-                                      (nullif(btrim(coalesce(l.supplier_item_id,'')),''))) as k(key)
-           where l.receipt_id = $2 and l.matched_product_number is not null and k.key is not null
-         ) x
-         order by key, line_no desc
-         on conflict (supplier_id, match_key) do update
-           set product_number = excluded.product_number,
-               pack_qty = coalesce(excluded.pack_qty, acc.supplier_items.pack_qty)`,
-        [sid, id]);
-    }
+    // ATH: HÉR er EKKERT lært lengur (840). Vistun — þar með talin SJÁLFVIRKA vistunin —
+    // geymir bara vinnuna; sjálfvirku giskin á drögum mega aldrei rata í pörunarminnið
+    // sem „staðfest". Lært er eingöngu við BÓKUN (confirmReceipt) — mannlega staðfestingin.
     await client.query("commit");
     // "Vista drög" með apply_prices: verðin keyrast inn STRAX af drögunum (ekki bara við bókun).
     // Sjálfvirka vistunin sendir ekki flaggið — hún geymir bara vinnuna.
