@@ -156,6 +156,10 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
         <div className="mb-5 max-w-md">
           <label className="block text-sm font-medium text-gray-700 mb-1">Birgir (lánadrottinn)</label>
           <SupplierPicker suggestName={receipt.supplier_name ?? undefined} onChange={(id) => setSupplierId(id)} />
+          <p className="text-xs text-amber-700 mt-1.5">
+            ⚠ Án birgis man kerfið EKKI fyrri paranir — grænu hökin og sjálfvirka pörunin úr minninu
+            virka fyrst þegar birgir er valinn og vistað.
+          </p>
         </div>
       )}
 
@@ -199,6 +203,9 @@ export default function ReceiptDetail({ receipt, lines }: { receipt: GoodsReceip
                           {/* Grænt ✓ = LÆRÐ pörun (vörunúmer birgja → þessi vara, bókuð áður) — hverfur ef línu er endurparað */}
                           {l.learned_match && rows[i]?.matched === l.matched_product_number &&
                             <span className="shrink-0 text-green-600 font-bold" title="Staðfest tenging — bókuð áður út frá vörunúmeri birgja">✓</span>}
+                          {/* „ný" = pörun sem minnið þekkir EKKI enn — lærist og fær grænt hak við vistun/bókun */}
+                          {(supplierId ?? receipt.supplier_id) && rows[i]?.matched && !(l.learned_match && rows[i]?.matched === l.matched_product_number) &&
+                            <span className="shrink-0 text-[10px] px-1 py-0.5 rounded bg-gray-100 text-gray-400" title="Ný pörun — kerfið lærir hana og sýnir grænt hak eftir vistun eða bókun">ný</span>}
                           <div className="flex-1 min-w-0">
                             <ProductPicker value={rows[i]?.matched ?? null} valueName={rows[i]?.matchedName} onChange={(pn, name) => setRow(i, { matched: pn, matchedName: name })} />
                           </div>
