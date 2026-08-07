@@ -17,6 +17,7 @@ const RULES: { prefix: string; roles: string[] }[] = [
   // undan almennu "/bokhald"-reglunni (fyrsta samsvörun vinnur).
   // Sölutölfræði sýnir veltu — EKKI lagerstjóramál (á undan almennu solukerfi-reglunni).
   { prefix: "/bokhald/solukerfi/salutolfraedi", roles: ["stjornandi", "bokari"] },
+  { prefix: "/bokhald/skraning/skeytamidlari", roles: ["stjornandi", "bokari", "lagerstjori"] },
   { prefix: "/bokhald/dagatal", roles: ["stjornandi", "bokari", "lagerstjori"] },
   { prefix: "/bokhald/solukerfi", roles: ["stjornandi", "bokari", "lagerstjori"] },
   { prefix: "/bokhald", roles: ["stjornandi", "bokari"] },
@@ -30,7 +31,7 @@ const RULES: { prefix: string; roles: string[] }[] = [
   { prefix: "/api/suppliers", roles: ["stjornandi", "bokari", "lagerstjori"] },
   { prefix: "/api/innkaup", roles: ["stjornandi", "bokari", "lagerstjori"] },
   { prefix: "/api/inexchange/poll", roles: ["stjornandi", "bokari", "lagerstjori"] },
-  { prefix: "/api/inexchange/skeytamidlari", roles: ["stjornandi", "bokari"] },
+  { prefix: "/api/inexchange/skeytamidlari", roles: ["stjornandi", "bokari", "lagerstjori"] },
   { prefix: "/api/einvoice", roles: ["stjornandi", "bokari"] },
   { prefix: "/api/reikningur", roles: ["stjornandi", "bokari", "lagerstjori"] },
   { prefix: "/api/reikningar", roles: ["stjornandi", "bokari", "lagerstjori"] },

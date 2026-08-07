@@ -74,6 +74,9 @@ export default function MottakaInbox() {
             className="px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-xs font-semibold hover:bg-gray-50 disabled:opacity-50">
             {busy === "poll" ? "Sæki…" : "↻ Sækja frá inExchange"}
           </button>
+          <a href="/bokhald/skraning/skeytamidlari" className="px-3 py-1.5 text-xs font-semibold text-[#2C687B] hover:underline">
+            Skeytamiðlari →
+          </a>
         </div>
       </div>
       {pollMsg && <p className="px-4 py-1.5 text-xs text-green-700 border-b border-gray-100">{pollMsg}</p>}
