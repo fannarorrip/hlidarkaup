@@ -8,6 +8,10 @@ const LINES = `
   join acc.vouchers v on v.id = l.voucher_id
   where v.status = 'posted' and v.voucher_type in ${SALE_TYPES}
     and v.voucher_date = $1::date and l.product_number is not null and l.line_total > 0`;
+// Burðarpokar og „Ýmsar vörur"-safnliðirnir tróna alltaf efst og segja ekkert — síaðir úr
+// TOPPLISTUNUM (velta/magn/körfur/pör/framlegð/keypt-með). Dagsheildir og flokkaskipting
+// telja þá áfram með, enda alvöru velta.
+const EXCLUDE_NOISE = ` and not (l.name ilike 'burðarpoki%' or l.name ilike 'ýmsar vörur%')`;
 
 export interface DayOverview { baskets: number; gross: string; avg_basket: string; avg_items: string; products: number }
 export const getDayOverview = async (d: string) => (await query<DayOverview>(`
@@ -26,7 +30,7 @@ const TOP_SELECT = `
          round(100.0 * count(distinct l.voucher_id) / greatest((select count(distinct v2.id) from acc.vouchers v2
             join shop.sale_lines l2 on l2.voucher_id = v2.id
             where v2.status = 'posted' and v2.voucher_type in ${SALE_TYPES} and v2.voucher_date = $1::date), 1), 1) as basket_pct
-  ${LINES}
+  ${LINES}${EXCLUDE_NOISE}
   group by l.product_number`;
 
 export const getTopByRevenue = (d: string, limit = 10) =>
@@ -43,7 +47,7 @@ export const getTopPairs = (d: string, limit = 10) =>
   query<PairRow>(`
     with day_lines as (
       select distinct l.voucher_id, l.product_number, l.name
-      ${LINES}
+      ${LINES}${EXCLUDE_NOISE}
     )
     select a.name as name_a, b.name as name_b, count(*)::int as baskets
     from day_lines a
@@ -119,7 +123,7 @@ export const getMarginHeroes = (d: string, limit = 10) =>
     join acc.vouchers v on v.id = l.voucher_id
     join shop.products p on p.product_number = l.product_number and p.cost_price > 0
     where v.status = 'posted' and v.voucher_type in ${SALE_TYPES}
-      and v.voucher_date = $1::date and l.line_total > 0
+      and v.voucher_date = $1::date and l.line_total > 0${EXCLUDE_NOISE}
     group by l.product_number
     order by margin desc limit $2`, [d, limit]);
 
@@ -200,7 +204,7 @@ export const getCompanions = (pn: string, days = 30, limit = 10) =>
     select l.product_number, max(l.name) as name, count(distinct l.voucher_id)::int as together
     from shop.sale_lines l
     join baskets b on b.voucher_id = l.voucher_id
-    where l.product_number is not null and l.product_number <> $1 and l.line_total > 0
+    where l.product_number is not null and l.product_number <> $1 and l.line_total > 0${EXCLUDE_NOISE}
     group by l.product_number
     order by together desc limit $3`, [pn, days, limit]);
 
