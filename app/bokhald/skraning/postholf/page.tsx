@@ -42,6 +42,7 @@ export default async function PostholfPage() {
           <p className="text-sm text-gray-500">
             Reikningar úr tölvupósti og inExchange — yfirfarðu og samþykktu til að bóka
             {" · "}<Link href="/bokhald/skraning/bokadir-reikningar" className="text-red-600 hover:underline">Bókaðir reikningar →</Link>
+            {" · "}<Link href="/bokhald/skraning/skeytamidlari" className="text-red-600 hover:underline">Skeytamiðlari →</Link>
           </p>
         </div>
         <PostholfActions />
