@@ -70,6 +70,7 @@ export const getFastLowStock = (limit = 10) =>
     ) s
     join shop.products p on p.product_number = s.product_number
     where p.is_active and p.is_stock_controlled and p.stock_quantity < s.sold7
+      and not (p.name ilike 'burðarpoki%' or p.name ilike 'ýmsar vörur%')
     order by s.sold7 - p.stock_quantity desc limit $1`, [limit]);
 
 // Skil dagsins: kreditnótulínur.
@@ -78,7 +79,7 @@ export const getDayReturns = (d: string, limit = 10) =>
   query<ReturnRow>(`
     select l.product_number, max(l.name) as name, sum(l.quantity) as qty, sum(l.line_total) as amount
     from shop.sale_lines l join acc.vouchers v on v.id = l.voucher_id
-    where v.status = 'posted' and v.voucher_type = 'credit_note' and v.voucher_date = $1::date
+    where v.status = 'posted' and v.voucher_type = 'credit_note' and v.voucher_date = $1::date${EXCLUDE_NOISE}
     group by l.product_number order by sum(l.quantity) desc limit $2`, [d, limit]);
 
 // Hreyfingarlausar birgðavörur: ekkert selst í 14+ daga — raðað eftir bundnu birgðavirði.
@@ -91,6 +92,7 @@ export const getDeadStock = (days = 14, limit = 10) =>
              where l.product_number = p.product_number and v.status = 'posted' and v.voucher_type in ${SALE_TYPES}) as last_sold
     from shop.products p
     where p.is_active and p.is_stock_controlled and p.stock_quantity > 0
+      and not (p.name ilike 'burðarpoki%' or p.name ilike 'ýmsar vörur%')
       and not exists (
         select 1 from shop.sale_lines l join acc.vouchers v on v.id = l.voucher_id
         where l.product_number = p.product_number and v.status = 'posted'
