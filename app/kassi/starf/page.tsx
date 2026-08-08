@@ -341,13 +341,65 @@ export default function StaffTill() {
   // Which register this till is (?reg=kassi1..3) — drives the sale tag AND which
   // network printer the server prints to (PRINTER_IP_<REG>).
   const regRef = useRef<string | null>(null);
+  const kioskKeyRef = useRef<string>("");   // ?k= úr ræsislóðinni — endurmyntar sessjón við 401
   const netPrintRef = useRef(false);
+
+  // SESSJÓNARVÖRNIN (atvik 8.8.2026): kiosk-sessjónin rann út í MIÐRI afgreiðslu — kort rukkað,
+  // bókun fékk 401 „innskráning krafist". Öll peningaköll fara nú í gegnum þetta: við 401 er
+  // sessjónin endurmyntuð hljóðlega með kiosk-lyklinum úr ræsislóðinni og kallið reynt aftur.
+  async function kassiFetch(input: string, init?: RequestInit): Promise<Response> {
+    let r = await fetch(input, init);
+    if (r.status === 401 && kioskKeyRef.current) {
+      try { await fetch(`/api/kassi/products?limit=1&k=${encodeURIComponent(kioskKeyRef.current)}`); } catch { /* endurtekningin sker úr */ }
+      r = await fetch(input, init);
+    }
+    return r;
+  }
+
+  // SALAN LIFIR AF ENDURHLEÐSLU: karfa + skráð greiðsluform geymast í vafranum jafnóðum og
+  // endurheimtast við ræsingu (yngri en 12 klst). Rukkað kort getur þá ALDREI týnt sölunni
+  // sinni þótt síðan endurhlaðist/hrynji — „Bóka sölu" klárar án þess að rukka aftur.
+  // parkReady: vistunin má EKKI keyra á fyrstu umferð (tóm karfa myndi þurrka geymsluna út
+  // áður en endurheimtin les hana) — endurheimtin kveikir á henni.
+  const parkReady = useRef(false);
+  useEffect(() => {
+    if (!parkReady.current) return;
+    try {
+      if (cart.length || splitTenders.length) {
+        localStorage.setItem("hk_kassi_sala", JSON.stringify({ t: Date.now(), cart, splitTenders, saleDiscPct, customer, returnMode }));
+      } else {
+        localStorage.removeItem("hk_kassi_sala");
+      }
+    } catch { /* localStorage stíflað — engin hindrun á afgreiðslu */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart, splitTenders, saleDiscPct, customer, returnMode]);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("hk_kassi_sala");
+      if (!raw) return;
+      const p = JSON.parse(raw);
+      if (!p || Date.now() - (p.t ?? 0) > 12 * 3600 * 1000) { localStorage.removeItem("hk_kassi_sala"); return; }
+      if (p.cart?.length || p.splitTenders?.length) {
+        setCart(p.cart ?? []); setSplitTenders(p.splitTenders ?? []); setSaleDiscPct(p.saleDiscPct ?? 0);
+        setCustomer(p.customer ?? null); setReturnMode(!!p.returnMode);
+        if (p.splitTenders?.length) {
+          setError("Endurheimt eftir endurhleðslu: greiðsluform voru þegar skráð (kort GÆTI verið rukkað). Kláraðu söluna með Skipta greiðslu → „Bóka sölu“ — það rukkar EKKI aftur.");
+        } else {
+          setToast("Karfa endurheimt eftir endurhleðslu.");
+          setTimeout(() => setToast(""), 5000);
+        }
+      }
+    } catch { /* skemmd geymsla — byrjum bara hreint */ }
+    finally { parkReady.current = true; }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Hardware detection: kassabrú local bridge (NCR serial gear) if present;
   // otherwise ask the server whether a network printer (Volcora) is configured.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     regRef.current = params.get("reg");
+    kioskKeyRef.current = params.get("k") ?? "";
     setKiosk(params.get("kiosk") === "1");
     let stop = false;
     let cleanup: (() => void) | undefined;
@@ -433,7 +485,7 @@ export default function StaffTill() {
     if (!ok) { setSimgrOpen(true); return; }               // decline/abort — nothing booked, let them retry
     setSimgrBusy(true);
     try {
-      const r = await fetch("/api/kassi/simgreidsla/collect", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ voucherIds: sel.map((s) => s.id), reg: regRef.current }) });
+      const r = await kassiFetch("/api/kassi/simgreidsla/collect", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ voucherIds: sel.map((s) => s.id), reg: regRef.current }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { setError(`Kortið var RUKKAÐ en bókun mistókst: ${d.error ?? "villa"} — leiðréttu handvirkt.`); setSimgrOpen(true); }
       else { setToast(`Innheimt: ${d.count} símgr. · ${kr(d.total)} · ${d.journalNumber}`); setTimeout(() => setToast(""), 6000); await openSimgr(); }
@@ -455,7 +507,7 @@ export default function StaffTill() {
     // og með skipta greiðslu er kort MÖGULEGA þegar rukkað, svo skilaboðin verða að vera hrein.
     let r: Response, d: { error?: string; invoiceNumber?: string };
     try {
-      r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: snapshot.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, tenders, note: note || undefined, customerId: customer?.id, reg: regRef.current, employeeId: activeEmpRef.current?.id ?? undefined, payment: { approved: true, processor: "STAFF" } }) });
+      r = await kassiFetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: snapshot.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, tenders, note: note || undefined, customerId: customer?.id, reg: regRef.current, employeeId: activeEmpRef.current?.id ?? undefined, payment: { approved: true, processor: "STAFF" } }) });
       d = await r.json();
     } catch {
       setBusy(false);
@@ -534,7 +586,7 @@ export default function StaffTill() {
     const ac = new AbortController(); terminalAbort.current = ac;
     const svc = String(Date.now()).slice(-10); terminalSvcId.current = svc; // so "Hætta við" can Abort THIS payment
     try {
-      const r = await fetch("/api/kassi/terminal/pay", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount, ref: `${moto ? "sim" : "till"}-${Date.now()}`, reg: regRef.current, serviceId: svc, ...(moto ? { moto: true } : {}) }), signal: ac.signal });
+      const r = await kassiFetch("/api/kassi/terminal/pay", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount, ref: `${moto ? "sim" : "till"}-${Date.now()}`, reg: regRef.current, serviceId: svc, ...(moto ? { moto: true } : {}) }), signal: ac.signal });
       const d = await r.json().catch(() => ({}));
       // Serverinn missti sambandið við skýið og gat EKKI staðfest afdrifin — sama óvissa og
       // þegar okkar eigin fetch springur: fara verify-leiðina, ALDREI sýna sem venjulega höfnun.
@@ -570,7 +622,7 @@ export default function StaffTill() {
   async function verifyCharge(serviceId: string, waitMsg?: string): Promise<"approved" | "declined" | "unknown"> {
     setWaiting(waitMsg ?? "Samband rofnaði — athuga hvort greiðslan fór í gegn…");
     try {
-      const r = await fetch("/api/kassi/terminal/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ serviceId, reg: regRef.current }) });
+      const r = await kassiFetch("/api/kassi/terminal/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ serviceId, reg: regRef.current }) });
       const d = await r.json().catch(() => ({}));
       if (d.known === true) return d.approved === true ? "approved" : "declined";
     } catch { /* fellur í unknown */ }
@@ -613,7 +665,7 @@ export default function StaffTill() {
     if (!customer) return;
     setInnbOpen(true); setInnbBal(null); setInnbAmt(""); setInnbDone(""); setError("");
     try {
-      const r = await fetch(`/api/kassi/innborgun?customer=${customer.id}`);
+      const r = await kassiFetch(`/api/kassi/innborgun?customer=${customer.id}`);
       const d = await r.json();
       if (d.ok) { setInnbBal(d.balance); if (d.balance > 0) setInnbAmt(String(d.balance)); }
     } catch { /* staðan er hjálpartala — innborgunin sjálf virkar án hennar */ }
@@ -628,7 +680,7 @@ export default function StaffTill() {
         const ok = await chargeCard(amt, { unknownHint: "ÓVÍST er hvort innborgunin var rukkuð — skoðaðu POSANN. EF kvittun kom: veldu „Kort — þegar rukkað á posa“ (bókar án þess að rukka aftur)." });
         if (!ok) return;
       }
-      const r = await fetch("/api/kassi/innborgun", {
+      const r = await kassiFetch("/api/kassi/innborgun", {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ customer_id: customer.id, amount: amt, method: method === "cash" ? "cash" : "card", reg: regRef.current }),
       });
@@ -653,7 +705,7 @@ export default function StaffTill() {
     const ac = new AbortController(); terminalAbort.current = ac;
     const svc = String(Date.now()).slice(-10); terminalSvcId.current = svc; // so "Hætta við" can Abort THIS refund
     try {
-      const r = await fetch("/api/kassi/terminal/refund", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount, ref: `skil-${Date.now()}`, reg: regRef.current, serviceId: svc }), signal: ac.signal });
+      const r = await kassiFetch("/api/kassi/terminal/refund", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount, ref: `skil-${Date.now()}`, reg: regRef.current, serviceId: svc }), signal: ac.signal });
       const d = await r.json().catch(() => ({}));
       if (!d.approved && d.unknown === true) {
         // Serverinn gat ekki staðfest afdrifin — sama óvissuferli og við rukkun.
@@ -681,7 +733,7 @@ export default function StaffTill() {
   // itself — no need to press the red X on the posi — then abort our waiting request.
   async function cancelTerminal() {
     if (terminalSvcId.current) {
-      fetch("/api/kassi/terminal/abort", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reg: regRef.current, serviceId: terminalSvcId.current }) }).catch(() => {});
+      kassiFetch("/api/kassi/terminal/abort", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reg: regRef.current, serviceId: terminalSvcId.current }) }).catch(() => {});
     }
     terminalAbort.current?.abort();
     setWaiting("");
@@ -711,7 +763,7 @@ export default function StaffTill() {
     if (mode === "card" && terminalEnabled) { if (!await refundCard(total)) return; }
     setBusy(true); setError("");
     const snapshot = cart.map((l) => ({ ...l, discount: lineDisc(l) })); // bake customer discount into each line
-    const r = await fetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: snapshot.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, kind: "return", customerId: customer?.id, reg: regRef.current, employeeId: activeEmpRef.current?.id ?? undefined, payment: { approved: true, processor: "STAFF" } }) });
+    const r = await kassiFetch("/api/kassi/sale", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: snapshot.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.priceOverride != null ? { unitPrice: l.priceOverride } : {}), ...(l.discount ? { discount: l.discount } : {}) })), mode, kind: "return", customerId: customer?.id, reg: regRef.current, employeeId: activeEmpRef.current?.id ?? undefined, payment: { approved: true, processor: "STAFF" } }) });
     const d = await r.json(); setBusy(false);
     if (!r.ok) { setError(d.error ?? "Villa við skil"); return; }
     const buyer = customer

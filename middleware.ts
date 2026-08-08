@@ -189,7 +189,17 @@ export async function middleware(req: NextRequest) {
   }
 
   const res = NextResponse.next();
-  if (mintedKiosk) res.cookies.set(STAFF_COOKIE, mintedKiosk, { httpOnly: true, sameSite: "lax", path: "/", maxAge: KIOSK_TTL });
+  if (mintedKiosk) {
+    res.cookies.set(STAFF_COOKIE, mintedKiosk, { httpOnly: true, sameSite: "lax", path: "/", maxAge: KIOSK_TTL });
+  } else if (session.kiosk && isKioskPath && session.exp - Math.floor(Date.now() / 1000) < KIOSK_TTL / 2) {
+    // RENNANDI LÍFTÍMI (atvik 8.8.2026): kassinn stóð opinn í viku án þess að ræsislóðin væri
+    // opnuð aftur — sessjónin rann út í MIÐRI afgreiðslu (kort rukkað, bókun fékk 401). Virk
+    // kiosk-sessjón endurnýjast nú sjálfkrafa þegar helmingur líftímans er liðinn; aðeins
+    // kassi sem er ónotaður í 7 daga samfleytt rennur út.
+    const fresh = await createStaffSession(
+      { email: session.email, sub: session.sub, role: session.role, mfa: session.mfa, kiosk: true }, KIOSK_TTL);
+    res.cookies.set(STAFF_COOKIE, fresh, { httpOnly: true, sameSite: "lax", path: "/", maxAge: KIOSK_TTL });
+  }
   return res;
 }
 
