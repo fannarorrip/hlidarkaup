@@ -16,7 +16,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
   if (bare) return <>{children}</>;
 
   return (
-    <div className="bg-gray-50 text-gray-900 min-h-screen pb-24 sm:pb-0">
+    <div className="bg-brand-mist text-brand-ink min-h-screen pb-24 sm:pb-0">
       <Header />
       <main>{children}</main>
       <CartBar />

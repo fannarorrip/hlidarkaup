@@ -66,12 +66,12 @@ export default function SearchBar({ value, onChange }: Props) {
         onChange={(e) => onChange(e.target.value)}
         onFocus={handleFocus}
         onKeyDown={handleKeyDown}
-        className="w-full pl-11 pr-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:border-brand-red transition-colors bg-white shadow-sm"
+        className="w-full pl-11 pr-4 py-3 text-base border border-gray-300 rounded-md focus:outline-none focus:border-brand-deep transition-colors bg-white"
       />
 
       {/* Recent searches dropdown */}
       {showHistory && visibleHistory.length > 0 && (
-        <div className="absolute top-full mt-2 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
+        <div className="absolute top-full mt-2 left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 bg-gray-50">
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Nýlegar leitir</span>
             <button
